@@ -66,24 +66,38 @@ uint16_t transformHextripet(uint8_t byte0, uint8_t byte1, uint8_t byte2) {
     return (uint16_t)lsb | ((uint16_t)msb << 7);
 }
 
-float transformBrewTemp(int brewnumber) {
-    // 754 = 24 deg C
-    // 173 = 93 deg C
+// Because the value is a 12 bit integer, it's cube will stay within a 32 bit integer
+float transformBrewTemp(int32_t brewnumber) {
+    // y = -2.605206553272E-07x3 + 0.0003531791829x2 - 0.2752x + 131.18
 
-    float k = ((93. - 24.) / (754. - 173.))*-1.;
-    float m = ((k * 754.) - 24.)*-1.;
+    int32_t squaredInt = brewnumber*brewnumber;
+    auto x = (double)brewnumber;
+    auto squared = (double)squaredInt;
+    auto cubed = (double)(squaredInt*brewnumber);
 
-    return k*((float)brewnumber)+m;
+    double a = -2.605206553272E-07;
+    double b = 0.0003531791829;
+    double c = -0.269789035157;
+    double d = 131.18;
+
+    return (float)(a*cubed + b*squared + c*x + d);
 }
 
-float transformServiceTemp(int servicenumber) {
-    // 735 = 24 deg C
-    // 63 = 125 deg C
+// Because the value is a 12 bit integer, it's cube will stay within a 32 bit integer
+float transformServiceTemp(int32_t servicenumber) {
+    // y = -2.385618290221E-07x3 + 0.0003263626511x2 + -0.2605374992884x + 140.42
 
-    float k = ((125. - 24.) / (735. - 63.))*-1.;
-    float m = ((k * 735.) - 24.)*-1;
+    int32_t squaredInt = servicenumber*servicenumber;
+    auto x = (double)servicenumber;
+    auto squared = (double)squaredInt;
+    auto cubed = (double)(squaredInt*servicenumber);
 
-    return k*((float)servicenumber)+m;
+    double a = -2.385618290221E-07;
+    double b = 0.0003263626511;
+    double c = -0.2605374992884;
+    double d = 140.42;
+
+    return (float)(a*cubed + b*squared + c*x + d);
 }
 
 void setup() {
