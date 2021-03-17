@@ -51,6 +51,8 @@ public:
     size_t readDatagram(uint8_t *buffer);
     bool goodTimeForWifi();
 
+    volatile unsigned long datagramUpdatedAt;
+
     explicit operator bool() override { return true; }
 
 private:
@@ -190,6 +192,7 @@ void BiancaUart<N>::IrqHandler()
                 //memset(previousDatagram, 1, N);
                 memcpy(previousDatagram, currentDatagram, N);
                 _goodTimeForWifi = true;
+                datagramUpdatedAt = currentTime;
             }
 
             datagramTail++;

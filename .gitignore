@@ -1,4 +1,6 @@
 .pio
 CMakeListsPrivate.txt
 cmake-build-*/ 
-src/secrets.h
+secrets.h
+.idea
+.DS_Store
