@@ -6,6 +6,7 @@
 
 
 #include <cstdio>
+#include <cstring>
 #include "hardware/irq.h"
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
@@ -14,13 +15,14 @@
 
 #include "control_board_protocol.h"
 #include "utils/uart_extras.h"
+#include "utils/hex_format.h"
 
 /// \tag::main[]
 
 #define CB_UART uart0
 #define CB_BAUD_RATE 9600
-#define CB_TX_PIN 0
-#define CB_RX_PIN 1
+#define CB_TX_PIN 12
+#define CB_RX_PIN 13
 
 /*
 void loop(void) {
@@ -178,21 +180,32 @@ void loop() {
     uint8_t safeLcc[5] = {0x80, 0x00, 0x00, 0x00, 0x00};
 
     uart_write_blocking(CB_UART, safeLcc, sizeof(safeLcc));
-    ControlBoardRawPacket control_board_packet;
-    if (!uart_read_blocking_timeout(CB_UART, (uint8_t*)&control_board_packet, sizeof(control_board_packet), make_timeout_time_ms(200))) {
-        printf("Can't read Control Board\n");
+
+    uint8_t cb[18];
+
+    if (!uart_read_blocking_timeout(CB_UART, cb, sizeof(cb), make_timeout_time_ms(200))) {
+        printf("Can't read Control Board \n");
 
         return;
     }
 
-    if (!validate_raw_packet(control_board_packet)) {
-        printf("Control Board packet invalid\n");
+    ControlBoardRawPacket control_board_packet;
+    memcpy(&control_board_packet, cb, sizeof(cb));
+
+    if (uint16_t validation = validate_raw_packet(control_board_packet)) {
+        printf("Control Board packet invalid: %hx \n", validation);
+
+        size_t cbsz = 3*sizeof(cb);
+        char cbstr[cbsz];
+        hex_format(cb, sizeof(cb), cbstr, cbsz);
+
+        printf("%s\n", cbstr);
     }
 
     ControlBoardParsedPacket parsed_packet = convert_raw_packet(control_board_packet);
 
     printf(
-            "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low &s     \x1b[1000D",
+            "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low %s          \x1b[1000D",
             parsed_packet.brew_boiler_temperature,
             parsed_packet.service_boiler_temperature,
             parsed_packet.brew_switch ? "Y" : "N",
@@ -216,10 +229,13 @@ void setup() {
 }
 
 int main() {
+    setup();
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         loop();
+        sleep_ms(50);
     }
 #pragma clang diagnostic pop
 }

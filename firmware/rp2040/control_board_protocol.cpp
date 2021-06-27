@@ -2,6 +2,7 @@
 // Created by Magnus Nordlander on 2021-06-27.
 //
 
+#include <cstdio>
 #include "control_board_protocol.h"
 #include "utils/polymath.h"
 #include "utils/checksum.h"
@@ -32,7 +33,10 @@ uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
     }
 
     static_assert(sizeof(packet) > 2);
-    if (calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01) != packet.checksum) {
+    uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01);
+    if (calculated_checksum != packet.checksum) {
+        printf("Calculated: %hu Actual %hu \n", calculated_checksum, packet.checksum);
+
         error |= INVALID_CHECKSUM;
     }
 
@@ -49,4 +53,6 @@ ControlBoardParsedPacket convert_raw_packet(ControlBoardRawPacket raw_packet) {
             triplet_to_int(raw_packet.brew_boiler_temperature_high_gain));
     packet.service_boiler_temperature = high_gain_adc_to_float(
             triplet_to_int(raw_packet.service_boiler_temperature_high_gain));
+
+    return packet;
 }

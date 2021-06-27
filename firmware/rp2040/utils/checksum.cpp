@@ -10,7 +10,7 @@ uint8_t calculate_checksum(const uint8_t *buf, size_t len, uint8_t initial) {
     }
 
     uint16_t checksum = initial;
-    for (unsigned int i = 1; i < len; i++) {
+    for (unsigned int i = 0; i < len; i++) {
         checksum += buf[i];
     }
 
