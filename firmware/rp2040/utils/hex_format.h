@@ -8,5 +8,7 @@
 #include <cstdlib>
 
 void hex_format(unsigned char * in, size_t insz, char * out, size_t outsz);
+void printhex(unsigned char * in, size_t insz);
+
 
 #endif //LCC_RELAY_HEX_FORMAT_H

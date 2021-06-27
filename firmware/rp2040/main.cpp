@@ -6,206 +6,40 @@
 
 
 #include <cstdio>
-#include <cstring>
-#include "hardware/irq.h"
-#include "pico/stdlib.h"
-#include "hardware/gpio.h"
-#include "hardware/uart.h"
-#include "pico/timeout_helper.h"
-
+#include "platform/platform.h"
 #include "control_board_protocol.h"
-#include "utils/uart_extras.h"
 #include "utils/hex_format.h"
+
+#define LINE "\n"
+// #define LINE "\x1b[1000D"
 
 /// \tag::main[]
 
-#define CB_UART uart0
-#define CB_BAUD_RATE 9600
-#define CB_TX_PIN 12
-#define CB_RX_PIN 13
-
-/*
-void loop(void) {
-    uart_write_blocking(CB_UART, &lccVariations[currVariation*5], 5);
-    if (!uart_read_blocking_timeout(CB_UART, cbData, sizeof(cbData), make_timeout_time_ms(200))) {
-        return;
-    }
-
-    bool brew = cbData[1] & 0x02;
-    bool tank = cbData[1] & 0x40;
-    printf("V: %u A: %hu B: %hu C: %hu D: %hu E: %hu BS: %s TS: %s\n",
-           currVariation,
-           tripletToInt(&cbData[2]),
-           tripletToInt(&cbData[5]),
-           tripletToInt(&cbData[8]),
-           tripletToInt(&cbData[11]),
-           tripletToInt(&cbData[14]),
-           brew ? "true" : "false",
-           tank ? "true" : "false");
-
-    if (currVariation < 2) {
-        currVariation++;
-    } else if (currVariation == 2) {
-        currVariation = 0;
-    }
-}
-
-
-void loop(void) {
-    uart_read_blocking(LCC_UART, lccData, sizeof(lccData));
-
-    uint8_t safeLcc[5] = {0x80, 0x00, 0x00, 0x00, 0x00};
-
-    uart_write_blocking(CB_UART, safeLcc, sizeof(lccData));
-    size_t lccsz = 3*sizeof(lccData);
-    char lccStr[lccsz];
-    tohex(lccData, sizeof(lccData), lccStr, lccsz);
-//    printf("%s\n", lccStr);
-
-    if (!uart_read_blocking_timeout(CB_UART, cbData, sizeof(cbData), make_timeout_time_ms(200))) {
-        return;
-    }
-    uart_write_blocking(LCC_UART, cbData, sizeof(cbData));
-    size_t cbsz = 3*sizeof(cbData);
-    // size_t cbsz = 9;
-    char cbstr[cbsz];
-    tohex(cbData, sizeof(cbData), cbstr, cbsz);
-//    tohex(&cbData[8], 3, cbstr, cbsz);
-    //printf("%s\n", cbstr);
-    bool brew = cbData[1] & 0x02;
-    bool tank = cbData[1] & 0x40;
-    printf("BrewS: %.2f BrewL: %.2f ServiceS %.2f ServiceL %.2f A: %hu B: %hu C: %hu D: %hu E: %hu BS: %s TS: %s\n",
-           adcSmallToTemp(tripletToInt(&cbData[2])),
-           adcLargeToTemp(tripletToInt(&cbData[8])),
-           low_gain_adc_to_float(tripletToInt(&cbData[5])),
-           high_gain_adc_to_float(tripletToInt(&cbData[11])),
-           tripletToInt(&cbData[2]),
-           tripletToInt(&cbData[5]),
-           tripletToInt(&cbData[8]),
-           tripletToInt(&cbData[11]),
-           tripletToInt(&cbData[14]),
-           brew ? "true" : "false",
-           tank ? "true" : "false");
-}
-
-void loop(void) {
-    uart_read_blocking(LCC_UART, lccData, sizeof(lccData));
-
-    bool pumpOn = lccData[1] & 0x10;
-    bool serviceBoilerOn = lccData[1] & 0x01;
-    bool electroValve = lccData[2] & 0x10;
-    bool coffeeBoiler = lccData[2] & 0x08;
-
-    if (!gpio_get(20)) {
-        cb.brewSwitch = true;
-    } else {
-        cb.brewSwitch = false;
-    }
-
-    if (!gpio_get(21)) {
-        cb.serviceTapOpen = true;
-    } else {
-        cb.serviceTapOpen = false;
-    }
-
-    if (!gpio_get(22)) {
-        cb.tankFull = false;
-    } else {
-        cb.tankFull = true;
-    }
-
-
-    int64_t timePassed = cb.update(get_absolute_time(), pumpOn, electroValve, coffeeBoiler, serviceBoilerOn);
-
-    uint8_t cbVal[18];
-    cb.copyPacket(cbVal);
-
-    uart_write_blocking(LCC_UART, cbVal, sizeof(cbVal));
-
-    bool fault = false;
-
-    if (lccData[3] != 0x00) {
-        fault = true;
-        printf("Weird number found in LCC byte 3\n");
-    }
-
-    if (timePassed > 60) {
-        fault = true;
-        printf("Time passed is long\n");
-    }
-
-    if (timePassed <30 ) {
-        fault = true;
-        printf("Time passed is short\n");
-    }
-
-    if (fault) {
-        size_t lccsz = 3*sizeof(lccData);
-        char lccStr[lccsz];
-        tohex(lccData, sizeof(lccData), lccStr, lccsz);
-
-        size_t cbsz = 3*sizeof(cbVal);
-        char cbstr[cbsz];
-        tohex(cbVal, sizeof(cbVal), cbstr, cbsz);
-
-        printf("%s\n", lccStr);
-        printf("%s\n", cbstr);
-    }
-
-    printf("TP: %lld P: %s SB: %s EV: %s CB: %s WN: %u CT: %.1lf ST: %.1lf CL: %.0lf SL: %.0lf CA: %.1lf ST %.1l                     ",
-           timePassed,
-           pumpOn ? "Y" : "N",
-           serviceBoilerOn ? "Y" : "N",
-           electroValve ? "Y" : "N",
-           coffeeBoiler ? "Y" : "N",
-           lccData[3],
-           cb.coffeeTempC(),
-           cb.serviceTempC(),
-           cb.coffeeLevelMl(),
-           cb.serviceLevelMl(),
-           cb.coffeeAmbientC(),
-           cb.serviceAmbientC()
-    );
-
-    if (fault) {
-        printf("\n");
-    } else {
-        printf("\x1b[1000D");
-    }
-}
-
-*/
-
 void loop() {
-    uint8_t safeLcc[5] = {0x80, 0x00, 0x00, 0x00, 0x00};
+    LccParsedPacket unsafeLcc = LccParsedPacket();
+    unsafeLcc.brew_boiler_ssr_on = true;
+    LccRawPacket lccPacket = convert_lcc_parsed_to_raw(unsafeLcc);
 
-    uart_write_blocking(CB_UART, safeLcc, sizeof(safeLcc));
+//    LccRawPacket safeLcc = {0x80, 0x00, 0x00, 0x00, 0x00};
+    write_control_board_packet(lccPacket);
 
-    uint8_t cb[18];
-
-    if (!uart_read_blocking_timeout(CB_UART, cb, sizeof(cb), make_timeout_time_ms(200))) {
+    ControlBoardRawPacket control_board_packet;
+    if (!read_control_board_packet(&control_board_packet)) {
         printf("Can't read Control Board \n");
 
         return;
     }
 
-    ControlBoardRawPacket control_board_packet;
-    memcpy(&control_board_packet, cb, sizeof(cb));
-
     if (uint16_t validation = validate_raw_packet(control_board_packet)) {
         printf("Control Board packet invalid: %hx \n", validation);
-
-        size_t cbsz = 3*sizeof(cb);
-        char cbstr[cbsz];
-        hex_format(cb, sizeof(cb), cbstr, cbsz);
-
-        printf("%s\n", cbstr);
+        printhex((uint8_t*)&control_board_packet, sizeof(control_board_packet));
+        printf("\n");
     }
 
     ControlBoardParsedPacket parsed_packet = convert_raw_packet(control_board_packet);
 
     printf(
-            "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low %s          \x1b[1000D",
+            "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low %s" LINE,
             parsed_packet.brew_boiler_temperature,
             parsed_packet.service_boiler_temperature,
             parsed_packet.brew_switch ? "Y" : "N",
@@ -214,28 +48,14 @@ void loop() {
             );
 }
 
-void setup() {
-    stdio_init_all();
-
-    // Initialize the UARTs
-    uart_init(CB_UART, CB_BAUD_RATE);
-
-    gpio_set_function(CB_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(CB_RX_PIN, GPIO_FUNC_UART);
-
-    // The Bianca uses inverted UART
-    gpio_set_outover(CB_TX_PIN, GPIO_OVERRIDE_INVERT);
-    gpio_set_inover(CB_RX_PIN, GPIO_OVERRIDE_INVERT);
-}
-
 int main() {
-    setup();
+    init_platform();
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
     while (1) {
         loop();
-        sleep_ms(50);
+        loop_sleep();
     }
 #pragma clang diagnostic pop
 }

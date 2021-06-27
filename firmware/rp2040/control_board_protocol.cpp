@@ -3,6 +3,7 @@
 //
 
 #include <cstdio>
+#include <cmath>
 #include "control_board_protocol.h"
 #include "utils/polymath.h"
 #include "utils/checksum.h"
@@ -40,6 +41,26 @@ uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
         error |= INVALID_CHECKSUM;
     }
 
+    if (packet.flags & 0xBD) {
+        error |= UNEXPECTED_FLAGS;
+    }
+/*
+    if (std::fabs(
+            high_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_high_gain))
+            -
+            low_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_low_gain))
+            ) > 1.0f ) {
+        error |= HIGH_AND_LOW_GAIN_BREW_BOILER_TEMP_TOO_DIFFERENT;
+    }
+
+    if (std::fabs(
+            high_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_high_gain))
+            -
+            low_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_low_gain))
+    ) > 1.0f ) {
+        error |= HIGH_AND_LOW_GAIN_SERVICE_BOILER_TEMP_TOO_DIFFERENT;
+    }
+*/
     return error;
 }
 

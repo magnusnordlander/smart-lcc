@@ -56,7 +56,7 @@ U 1 1 60D9B58C
 P 1450 3700
 F 0 "R2" V 1243 3700 50  0000 C CNN
 F 1 "3K3" V 1334 3700 50  0000 C CNN
-F 2 "Resistor_SMD:R_0402_1005Metric" V 1380 3700 50  0001 C CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 1380 3700 50  0001 C CNN
 F 3 "~" H 1450 3700 50  0001 C CNN
 	1    1450 3700
 	0    1    1    0   
@@ -67,14 +67,14 @@ U 1 1 60D9A388
 P 1150 3700
 F 0 "R1" V 943 3700 50  0000 C CNN
 F 1 "2K2" V 1034 3700 50  0000 C CNN
-F 2 "Resistor_SMD:R_0402_1005Metric" V 1080 3700 50  0001 C CNN
+F 2 "Resistor_SMD:R_0603_1608Metric" V 1080 3700 50  0001 C CNN
 F 3 "~" H 1150 3700 50  0001 C CNN
 	1    1150 3700
 	0    1    1    0   
 $EndComp
-Text GLabel 1050 1050 2    50   Output ~ 0
+Text GLabel 1750 950  0    50   Output ~ 0
 RX_FROM_CONTROL_BOARD_5V
-Text GLabel 1050 950  2    50   Input ~ 0
+Text GLabel 1750 850  0    50   Input ~ 0
 TX_TO_CONTROL_BOARD
 $Comp
 L power:+3V3 #PWR0109
@@ -100,7 +100,7 @@ F 3 "" H 750 2950 50  0001 C CNN
 $EndComp
 Text GLabel 1050 2150 2    50   UnSpc ~ 0
 3V3_OLED
-Text GLabel 1050 1250 2    50   UnSpc ~ 0
+Text GLabel 1750 1150 0    50   UnSpc ~ 0
 3V3_OLED
 $Comp
 L power:+12V #PWR0108
@@ -116,13 +116,13 @@ $EndComp
 $Comp
 L power:+12V #PWR0103
 U 1 1 60D7DDC1
-P 1050 850
-F 0 "#PWR0103" H 1050 700 50  0001 C CNN
-F 1 "+12V" V 1065 978 50  0000 L CNN
-F 2 "" H 1050 850 50  0001 C CNN
-F 3 "" H 1050 850 50  0001 C CNN
-	1    1050 850 
-	0    1    1    0   
+P 1750 750
+F 0 "#PWR0103" H 1750 600 50  0001 C CNN
+F 1 "+12V" V 1765 878 50  0000 L CNN
+F 2 "" H 1750 750 50  0001 C CNN
+F 3 "" H 1750 750 50  0001 C CNN
+	1    1750 750 
+	0    -1   -1   0   
 $EndComp
 $Comp
 L power:GND #PWR0102
@@ -138,13 +138,13 @@ $EndComp
 $Comp
 L power:GND #PWR0101
 U 1 1 60D7C577
-P 1050 1150
-F 0 "#PWR0101" H 1050 900 50  0001 C CNN
-F 1 "GND" V 1055 1022 50  0000 R CNN
-F 2 "" H 1050 1150 50  0001 C CNN
-F 3 "" H 1050 1150 50  0001 C CNN
-	1    1050 1150
-	0    -1   -1   0   
+P 1750 1050
+F 0 "#PWR0101" H 1750 800 50  0001 C CNN
+F 1 "GND" V 1755 922 50  0000 R CNN
+F 2 "" H 1750 1050 50  0001 C CNN
+F 3 "" H 1750 1050 50  0001 C CNN
+	1    1750 1050
+	0    1    1    0   
 $EndComp
 $Comp
 L Switch:SW_Push SW2
@@ -473,18 +473,7 @@ Wire Wire Line
 	4100 3750 4350 3750
 Text GLabel 4350 1950 0    50   UnSpc ~ 0
 3V3_OLED
-$Comp
-L Connector:Conn_01x06_Male J1
-U 1 1 60D7884D
-P 850 1050
-F 0 "J1" H 958 1431 50  0000 C CNN
-F 1 "Control board connector" H 958 1340 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" H 850 1050 50  0001 C CNN
-F 3 "~" H 850 1050 50  0001 C CNN
-	1    850  1050
-	1    0    0    -1  
-$EndComp
-Text GLabel 1050 1350 2    50   UnSpc ~ 0
+Text GLabel 1750 1250 0    50   UnSpc ~ 0
 3V3_MCU
 Text GLabel 1050 2250 2    50   UnSpc ~ 0
 3V3_MCU
@@ -531,7 +520,7 @@ U 1 1 60D9151C
 P 3850 4300
 F 0 "C3" V 3621 4300 50  0000 C CNN
 F 1 "0.1 µF / 25V, X7R" V 3712 4300 50  0000 C CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric" H 3850 4300 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric" H 3850 4300 50  0001 C CNN
 F 3 "~" H 3850 4300 50  0001 C CNN
 	1    3850 4300
 	0    1    1    0   
@@ -546,5 +535,21 @@ F 2 "Capacitor_SMD:C_1206_3216Metric" H 3850 3950 50  0001 C CNN
 F 3 "~" H 3850 3950 50  0001 C CNN
 	1    3850 3950
 	0    1    1    0   
+$EndComp
+$Comp
+L TE_280372-1:280372-1 J1
+U 1 1 60D8FA50
+P 2150 1050
+F 0 "J1" H 2380 1146 50  0000 L CNN
+F 1 "280372-1" H 2380 1055 50  0000 L CNN
+F 2 "TE_280372-1" H 2150 1050 50  0001 L BNN
+F 3 "" H 2150 1050 50  0001 L BNN
+F 4 "Connector" H 2150 1050 50  0001 L BNN "Product_Type"
+F 5 "2.54 mm[.1 in]" H 2150 1050 50  0001 L BNN "Centerline_Pitch"
+F 6 "6" H 2150 1050 50  0001 L BNN "Number_of_Positions"
+F 7 "280372-1" H 2150 1050 50  0001 L BNN "Comment"
+F 8 "Compliant" H 2150 1050 50  0001 L BNN "EU_RoHS_Compliance"
+	1    2150 1050
+	1    0    0    -1  
 $EndComp
 $EndSCHEMATC

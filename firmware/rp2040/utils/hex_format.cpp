@@ -2,7 +2,17 @@
 // Created by Magnus Nordlander on 2021-06-27.
 //
 
+#include <cstdio>
 #include "hex_format.h"
+
+void printhex(unsigned char * in, size_t insz)
+{
+    size_t outsz = 3*insz;
+    char str[outsz];
+    hex_format(in, insz, str, outsz);
+
+    printf("%s", str);
+}
 
 void hex_format(unsigned char * in, size_t insz, char * out, size_t outsz)
 {
