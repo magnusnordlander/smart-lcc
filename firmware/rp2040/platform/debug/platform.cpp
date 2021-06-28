@@ -9,6 +9,7 @@
 #include "emulator/BiancaControlBoard.h"
 #include <ctime>
 #include <cmath>
+#include <cstdio>
 
 BiancaControlBoard controlBoard;
 uint64_t ltime = 0;
@@ -20,13 +21,21 @@ void init_platform()
 
 void loop_sleep()
 {
-    usleep(1000);
+    usleep(500);
 }
 
 void write_control_board_packet(LccRawPacket packet) {
     LccParsedPacket parsed = convert_lcc_raw_to_parsed(packet);
 
     ltime += 50;
+    printf("Updating CB. Time passed: %.02f s Pump: %s Solenoid: %s BrewSSR: %s ServiceSSR: %s\n",
+           (float)ltime/1000.0f,
+           parsed.pump_on ? "Y" : "N",
+           parsed.service_boiler_solenoid_open ? "Y" : "N",
+           parsed.brew_boiler_ssr_on ? "Y" : "N",
+           parsed.service_boiler_ssr_on ? "Y" : "N"
+           );
+
     controlBoard.update(ltime, parsed.pump_on, parsed.service_boiler_solenoid_open, parsed.brew_boiler_ssr_on, parsed.service_boiler_ssr_on);
 }
 

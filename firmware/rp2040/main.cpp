@@ -9,18 +9,17 @@
 #include "platform/platform.h"
 #include "control_board_protocol.h"
 #include "utils/hex_format.h"
+#include "SystemController.h"
 
 #define LINE "\n"
 // #define LINE "\x1b[1000D"
 
 /// \tag::main[]
 
-void loop() {
-    LccParsedPacket unsafeLcc = LccParsedPacket();
-    unsafeLcc.brew_boiler_ssr_on = true;
-    LccRawPacket lccPacket = convert_lcc_parsed_to_raw(unsafeLcc);
+SystemController controller = SystemController();
 
-//    LccRawPacket safeLcc = {0x80, 0x00, 0x00, 0x00, 0x00};
+void loop() {
+    LccRawPacket lccPacket = convert_lcc_parsed_to_raw(controller.createLccPacket());
     write_control_board_packet(lccPacket);
 
     ControlBoardRawPacket control_board_packet;
@@ -37,6 +36,7 @@ void loop() {
     }
 
     ControlBoardParsedPacket parsed_packet = convert_raw_packet(control_board_packet);
+    controller.updateWithControlBoardPacket(parsed_packet);
 
     printf(
             "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low %s" LINE,

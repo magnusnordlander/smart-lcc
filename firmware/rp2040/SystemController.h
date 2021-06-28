@@ -11,10 +11,12 @@
 #include "lcc_protocol.h"
 
 class SystemController {
+public:
     void updateWithControlBoardPacket(ControlBoardParsedPacket packet);
     LccParsedPacket createLccPacket();
 
 protected:
+    ControlBoardParsedPacket latestParsedPacket;
     PIDController* pidController;
 };
 

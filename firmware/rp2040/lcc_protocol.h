@@ -25,12 +25,12 @@ struct LccRawPacket {
 };
 
 struct LccParsedPacket {
-    bool pump_on;
-    bool service_boiler_ssr_on;
-    bool service_boiler_solenoid_open;
-    bool brew_boiler_ssr_on;
-    bool minus_button_pressed;
-    bool plus_button_pressed;
+    bool pump_on = false;
+    bool service_boiler_ssr_on = false;
+    bool service_boiler_solenoid_open = false;
+    bool brew_boiler_ssr_on = false;
+    bool minus_button_pressed = false;
+    bool plus_button_pressed = false;
 };
 
 LccRawPacket convert_lcc_parsed_to_raw(LccParsedPacket parsed);
