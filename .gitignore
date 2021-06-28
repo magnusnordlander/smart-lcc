@@ -4,3 +4,4 @@ cmake-build-*/
 secrets.h
 .idea
 .DS_Store
+pcb/smart-lcc/artifacts
