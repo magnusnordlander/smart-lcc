@@ -152,7 +152,7 @@ U 1 1 60D7B6C4
 P 1650 2950
 F 0 "SW2" H 1650 3235 50  0000 C CNN
 F 1 "SW_Push" H 1650 3144 50  0000 C CNN
-F 2 "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" H 1650 3150 50  0001 C CNN
+F 2 "SW_Push_ADTSMW65:ADTSMW65" H 1650 3150 50  0001 C CNN
 F 3 "~" H 1650 3150 50  0001 C CNN
 	1    1650 2950
 	1    0    0    -1  
@@ -163,7 +163,7 @@ U 1 1 60D7AD07
 P 950 2950
 F 0 "SW1" H 950 3235 50  0000 C CNN
 F 1 "SW_Push" H 950 3144 50  0000 C CNN
-F 2 "Button_Switch_SMD:SW_Push_1P1T_NO_6x6mm_H9.5mm" H 950 3150 50  0001 C CNN
+F 2 "SW_Push_ADTSMW65:ADTSMW65" H 950 3150 50  0001 C CNN
 F 3 "~" H 950 3150 50  0001 C CNN
 	1    950  2950
 	1    0    0    -1  
@@ -408,9 +408,9 @@ Text GLabel 6950 3400 0    50   Output ~ 0
 TX_TO_CONTROL_BOARD
 Text GLabel 8350 3000 2    50   Output ~ 0
 SSD1309_MOSI
-Text GLabel 6950 3000 0    50   Output ~ 0
+Text GLabel 8350 2100 2    50   Output ~ 0
 SSD1309_DC
-Text GLabel 6950 3100 0    50   Output ~ 0
+Text GLabel 8350 2200 2    50   Output ~ 0
 SSD1309_RES
 Text GLabel 8350 2900 2    50   Output ~ 0
 SSD1309_CS
@@ -455,12 +455,10 @@ Text GLabel 1150 2950 3    50   Output ~ 0
 SW_MINUS
 Text GLabel 1850 2950 3    50   Output ~ 0
 SW_PLUS
-Text GLabel 8350 2300 2    50   Input ~ 0
-SW_MINUS
 Text GLabel 8350 2400 2    50   Input ~ 0
+SW_MINUS
+Text GLabel 8350 2300 2    50   Input ~ 0
 SW_PLUS
-NoConn ~ 8350 2200
-NoConn ~ 8350 2100
 NoConn ~ 6950 2100
 NoConn ~ 6950 2200
 NoConn ~ 6950 2400
