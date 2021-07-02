@@ -46,6 +46,12 @@ void loop() {
             parsed_packet.service_boiler_low ? "Y" : "N",
             parsed_packet.water_tank_empty ? "Y" : "N"
             );
+
+#ifdef TEST_RIG
+    if (parsed_packet.service_boiler_temperature >= 125) {
+        exit(0);
+    }
+#endif
 }
 
 int main() {

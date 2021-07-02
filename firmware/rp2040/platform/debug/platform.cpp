@@ -21,7 +21,7 @@ void init_platform()
 
 void loop_sleep()
 {
-    usleep(500);
+    usleep(100);
 }
 
 void write_control_board_packet(LccRawPacket packet) {

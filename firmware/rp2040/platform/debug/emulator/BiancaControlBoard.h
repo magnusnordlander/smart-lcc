@@ -28,7 +28,7 @@ public:
     double serviceLevelMl();
 private:
     WaterBoiler coffeeBoiler = WaterBoiler(800000, 25, 0.0008, 25, 14);
-    WaterBoiler serviceBoiler = WaterBoiler(2500000, 25, 0.0016, 25, 14);
+    WaterBoiler serviceBoiler = WaterBoiler(1400000, 25, 0.0008, 25, 14);
 
     bool pumpState = false;
     bool serviceBoilerSolenoidState = false;
