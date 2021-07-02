@@ -1,10 +1,4 @@
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-
+#include <Arduino.h>
 #include <cstdio>
 #include "platform/platform.h"
 #include "control_board_protocol.h"
@@ -13,8 +7,6 @@
 
 #define LINE "\n"
 // #define LINE "\x1b[1000D"
-
-/// \tag::main[]
 
 SystemController controller = SystemController();
 
@@ -45,25 +37,17 @@ void loop() {
             parsed_packet.brew_switch ? "Y" : "N",
             parsed_packet.service_boiler_low ? "Y" : "N",
             parsed_packet.water_tank_empty ? "Y" : "N"
-            );
+    );
 
 #ifdef TEST_RIG
     if (parsed_packet.service_boiler_temperature >= 125) {
         exit(0);
     }
 #endif
+
+    loop_sleep();
 }
 
-int main() {
+void setup() {
     init_platform();
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-    while (1) {
-        loop();
-        loop_sleep();
-    }
-#pragma clang diagnostic pop
 }
-
-/// \end::main[]
