@@ -31,8 +31,8 @@ Also preliminarily, the Nina W102 module will not be running the "regular" WifiN
     * Also includes Wifi authentication settings
   * Basically bakes the LCC Packets for the control board
 * UI controller
-* ESP32 communication
-  * Allows the ESP32 to query and change state in the machine controller.
+* Nina W102 communication
+  * Allows the Nina W102 to query and change state in the machine controller.
 
 #### Threads on Nina W102
 * MQTT client
