@@ -20,7 +20,7 @@ A first manufacturing run of the rev A PCB has been ordered, but not yet receive
 ### Firmware
 The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Preliminarily, this project will use the RTOS capabilities of Mbed OS, and run the processes as different threads.
 
-Also preliminarily, the Nina W102 module will not be running the "regular" WifiNina firmware. It will be running a custom firmware which handles all external communication.
+It's currently undecided whether the Nina W102 will be running the "regular" WifiNina firmware. The other option is creating a custom firmware that handles all external communication. 
 
 #### Threads on RP2040
 * Control Board communication
@@ -31,11 +31,7 @@ Also preliminarily, the Nina W102 module will not be running the "regular" WifiN
     * Also includes Wifi authentication settings
   * Basically bakes the LCC Packets for the control board
 * UI controller
-* Nina W102 communication
-  * Allows the Nina W102 to query and change state in the machine controller.
-
-#### Threads on Nina W102
-* MQTT client
+* External communication
 
 ## Status
 
