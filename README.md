@@ -24,7 +24,9 @@ It's currently undecided whether the Nina W102 will be running the "regular" Wif
 
 #### Threads on RP2040
 * Control Board communication
-  * Also performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
+  * Safety critical, runs at a higher priority, defensively coded
+  * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
+  * Responsible for kicking the watchdog
 * Machine controller
   * Responsible for PID, keeping water in the boiler, running pumps etc.
     * Includes set points for boilers, PID parameters etc
