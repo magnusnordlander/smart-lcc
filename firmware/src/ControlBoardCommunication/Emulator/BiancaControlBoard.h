@@ -5,14 +5,17 @@
 #ifndef LCC_RELAY_BIANCACONTROLBOARD_H
 #define LCC_RELAY_BIANCACONTROLBOARD_H
 
+#include <mbed.h>
 #include "WaterBoiler.h"
+#include <ControlBoardCommunication/lcc_protocol.h>
+#include <ControlBoardCommunication/control_board_protocol.h>
 
 class BiancaControlBoard {
 public:
     BiancaControlBoard();
 
-    uint64_t update(uint64_t currentTime, bool pumpOn, bool serviceBoilerSolenoidOpen, bool coffeeBoilerSsrOn, bool serviceBoilerSsrOn);
-    void copyPacket(uint8_t* buf);
+    void update(rtos::Kernel::Clock::time_point currentTime, LccRawPacket packet);
+    ControlBoardRawPacket latestPacket();
 
     bool tankFull = true;
     bool brewSwitch = false;
@@ -37,17 +40,9 @@ private:
 
     bool serviceBoilerLow = false;
 
-    uint64_t lastTime{};
+    rtos::Kernel::Clock::time_point lastTime;
 
-    // uint8_t packet[18] = {0x81, 0x00, 0x00, 0x5D, 0x7F, 0x00, 0x79, 0x7F, 0x02, 0x5D, 0x7F, 0x03, 0x2B, 0x00, 0x02, 0x05, 0x7F, 0x67};
-     uint8_t packet[18] = {0x81,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-    void updatePacketWithBooleans(void);
-    void updatePacketWithBoilerLevel(void);
-    void updatePacketWithTemperatures(void);
-    void updatePacketWithChecksum(void);
-
-    static void writeNumber(uint16_t number, uint8_t* buf);
+    ControlBoardRawPacket packet;
 };
 
 

@@ -1,53 +1,76 @@
-#include <Arduino.h>
-#include <cstdio>
-#include "platform/platform.h"
-#include "control_board_protocol.h"
-#include "utils/hex_format.h"
-#include "SystemController.h"
+#include "mbed.h"
+#include "SystemStatus.h"
+#include "ControlBoardCommunication/ControlBoardTransceiver.h"
+#include <USB/PluggableUSBSerial.h>
+#include <UI/UIController.h>
+#include <SystemController/SystemController.h>
+#include "ssd1309/Adafruit_SSD1306.h"
 
-#define LINE "\n"
-// #define LINE "\x1b[1000D"
+REDIRECT_STDOUT_TO(SerialUSB);
 
-SystemController controller = SystemController();
+using namespace std::chrono_literals;
+mbed::DigitalOut led(LED1);
 
-void loop() {
-    LccRawPacket lccPacket = convert_lcc_parsed_to_raw(controller.createLccPacket());
-    write_control_board_packet(lccPacket);
+SystemStatus* systemStatus = new SystemStatus;
 
-    ControlBoardRawPacket control_board_packet;
-    if (!read_control_board_packet(&control_board_packet)) {
-        printf("Can't read Control Board \n");
+rtos::Thread controlBoardCommunicationThread;
+ControlBoardTransceiver trx(SERIAL1_TX, SERIAL1_RX, systemStatus);
 
-        return;
-    }
-
-    if (uint16_t validation = validate_raw_packet(control_board_packet)) {
-        printf("Control Board packet invalid: %hx \n", validation);
-        printhex((uint8_t*)&control_board_packet, sizeof(control_board_packet));
-        printf("\n");
-    }
-
-    ControlBoardParsedPacket parsed_packet = convert_raw_packet(control_board_packet);
-    controller.updateWithControlBoardPacket(parsed_packet);
-
-    printf(
-            "Brew temp: %.02f Service temp: %.02f Brew switch: %s Service boiler low: %s Water tank low %s" LINE,
-            parsed_packet.brew_boiler_temperature,
-            parsed_packet.service_boiler_temperature,
-            parsed_packet.brew_switch ? "Y" : "N",
-            parsed_packet.service_boiler_low ? "Y" : "N",
-            parsed_packet.water_tank_empty ? "Y" : "N"
-    );
-
-#ifdef TEST_RIG
-    if (parsed_packet.service_boiler_temperature >= 125) {
-        exit(0);
-    }
-#endif
-
-    loop_sleep();
+void mbed_error_hook(const mbed_error_ctx *error_context) {
+    led = true;
 }
 
-void setup() {
-    init_platform();
+class SPIPreInit : public mbed::SPI
+{
+public:
+    SPIPreInit(PinName mosi, PinName miso, PinName clk) : SPI(mosi,miso,clk)
+    {
+        format(8,3);
+        frequency(2000000);
+    };
+};
+
+SPIPreInit gSpi(
+        digitalPinToPinName(PIN_SPI_MOSI),
+        digitalPinToPinName(PIN_SPI_MISO),
+        digitalPinToPinName(PIN_SPI_SCK)
+        );
+
+Adafruit_SSD1306_Spi gOled1(
+        gSpi,
+        digitalPinToPinName(19),
+        digitalPinToPinName(18),
+        digitalPinToPinName(PIN_SPI_SS),
+        64
+        );
+
+rtos::Thread uiThread;
+UIController uiController(systemStatus, &gOled1);
+
+rtos::Thread systemControllerThread;
+SystemController systemController(systemStatus);
+
+int main()
+{
+#ifdef SERIAL_DEBUG
+#if defined(SERIAL_CDC)
+    PluggableUSBD().begin();
+    _SerialUSB.begin(9600);
+#endif
+#endif
+    uiThread.start([] { uiController.run(); });
+
+#ifdef SERIAL_DEBUG
+    rtos::ThisThread::sleep_for(10000ms);
+#endif
+
+    controlBoardCommunicationThread.start([] { trx.run(); });
+    systemControllerThread.start([] { systemController.run(); });
+
+    while(true) {
+#ifdef SERIAL_DEBUG
+        printf("Main loop\n");
+#endif
+        rtos::ThisThread::sleep_for(1000ms);
+    }
 }

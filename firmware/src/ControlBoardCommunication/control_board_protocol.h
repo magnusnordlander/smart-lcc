@@ -6,7 +6,7 @@
 #define LCC_RELAY_CONTROL_BOARD_PROTOCOL_H
 
 #include <cstdint>
-#include "utils/triplet.h"
+#include "../utils/triplet.h"
 
 typedef enum : uint16_t {
     NONE = 0,
@@ -37,6 +37,7 @@ struct ControlBoardParsedPacket {
 };
 
 uint16_t validate_raw_packet(ControlBoardRawPacket packet);
-ControlBoardParsedPacket convert_raw_packet(ControlBoardRawPacket raw_packet);
+ControlBoardParsedPacket convert_raw_control_board_packet(ControlBoardRawPacket raw_packet);
+ControlBoardRawPacket convert_parsed_control_board_packet(ControlBoardParsedPacket parsed_packet);
 
 #endif //LCC_RELAY_CONTROL_BOARD_PROTOCOL_H

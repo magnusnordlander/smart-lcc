@@ -14,5 +14,6 @@ struct Triplet {
 };
 
 uint16_t triplet_to_int(Triplet triplet);
+Triplet int_to_triplet(uint16_t);
 
 #endif //LCC_RELAY_TRIPLET_H

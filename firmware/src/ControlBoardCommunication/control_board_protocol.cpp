@@ -5,8 +5,8 @@
 #include <cstdio>
 #include <cmath>
 #include "control_board_protocol.h"
-#include "utils/polymath.h"
-#include "utils/checksum.h"
+#include "../utils/polymath.h"
+#include "../utils/checksum.h"
 
 float high_gain_adc_to_float(uint16_t adcValue) {
     double a = 2.80075E-07;
@@ -24,6 +24,24 @@ float low_gain_adc_to_float(uint16_t adcValue) {
     double d = -17.22637553;
 
     return (float)polynomial4(a, b, c, d, adcValue);
+}
+
+uint16_t float_to_high_gain_adc(float floatValue) {
+    double a = -0.000468472;
+    double b = 0.097074921;
+    double c = 1.6935213;
+    double d = 27.8765092;
+
+    return (uint16_t)round(polynomial4(a, b, c, d, floatValue));
+}
+
+uint16_t float_to_low_gain_adc(float floatValue) {
+    double a = 1.94759E-06;
+    double b = -0.000294428;
+    double c = 1.812604664;
+    double d = 31.49048711;
+
+    return (uint16_t)round(polynomial4(a, b, c, d, floatValue));
 }
 
 uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
@@ -64,7 +82,7 @@ uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
     return error;
 }
 
-ControlBoardParsedPacket convert_raw_packet(ControlBoardRawPacket raw_packet) {
+ControlBoardParsedPacket convert_raw_control_board_packet(ControlBoardRawPacket raw_packet) {
     ControlBoardParsedPacket packet = ControlBoardParsedPacket();
 
     packet.brew_switch = raw_packet.flags & 0x02;
@@ -76,4 +94,32 @@ ControlBoardParsedPacket convert_raw_packet(ControlBoardRawPacket raw_packet) {
             triplet_to_int(raw_packet.service_boiler_temperature_high_gain));
 
     return packet;
+}
+
+ControlBoardRawPacket convert_parsed_control_board_packet(ControlBoardParsedPacket parsed_packet) {
+    ControlBoardRawPacket rawPacket = ControlBoardRawPacket();
+    rawPacket.header = 0x81;
+
+    rawPacket.flags = 0x0;
+    if (parsed_packet.water_tank_empty) {
+        rawPacket.flags |= 0x40;
+    }
+    if (parsed_packet.brew_switch) {
+        rawPacket.flags |= 0x02;
+    }
+
+    uint16_t smallCoffee = float_to_low_gain_adc(parsed_packet.brew_boiler_temperature);
+    uint16_t smallService = float_to_low_gain_adc(parsed_packet.service_boiler_temperature);
+    uint16_t largeCoffee = float_to_high_gain_adc(parsed_packet.brew_boiler_temperature);
+    uint16_t largeService = float_to_high_gain_adc(parsed_packet.service_boiler_temperature);
+
+    rawPacket.brew_boiler_temperature_low_gain = int_to_triplet(smallCoffee);
+    rawPacket.brew_boiler_temperature_high_gain = int_to_triplet(largeCoffee);
+    rawPacket.service_boiler_temperature_low_gain = int_to_triplet(smallService);
+    rawPacket.service_boiler_temperature_high_gain = int_to_triplet(largeService);
+
+    rawPacket.service_boiler_level = int_to_triplet(parsed_packet.service_boiler_low ? 128 : 650);
+    rawPacket.checksum = calculate_checksum(reinterpret_cast<uint8_t*>(&rawPacket), 17, 0x1);
+
+    return rawPacket;
 }

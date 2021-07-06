@@ -3,7 +3,7 @@
 //
 
 #include "lcc_protocol.h"
-#include "utils/checksum.h"
+#include "../utils/checksum.h"
 
 LccRawPacket convert_lcc_parsed_to_raw(LccParsedPacket parsed) {
     LccRawPacket packet = LccRawPacket();
@@ -12,7 +12,7 @@ LccRawPacket convert_lcc_parsed_to_raw(LccParsedPacket parsed) {
     packet.byte1 = (parsed.pump_on ? 0x10 : 0x00) | (parsed.service_boiler_ssr_on ? 0x01: 0x00);
     packet.byte2 = (parsed.service_boiler_solenoid_open ? 0x10 : 0x00) | (parsed.brew_boiler_ssr_on ? 0x08 : 0x00);
     packet.byte3 = (parsed.minus_button_pressed ? 0x08 : 0x00) | (parsed.plus_button_pressed ? 0x04 : 0x00);
-    static_assert(sizeof(packet) > 2);
+    static_assert(sizeof(packet) > 2, "LCC Packet is too small, for some reason");
     packet.checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x00);
 
     return packet;
