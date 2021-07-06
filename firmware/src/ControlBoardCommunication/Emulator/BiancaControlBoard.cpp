@@ -14,6 +14,8 @@ BiancaControlBoard::BiancaControlBoard(): lastTime() {
 }
 
 void BiancaControlBoard::update(rtos::Kernel::Clock::time_point currentTime, LccRawPacket lccPacket){
+    updateSwitches();
+
     LccParsedPacket parsed = convert_lcc_raw_to_parsed(lccPacket);
 
     std::chrono::milliseconds diff = currentTime - lastTime;
@@ -88,5 +90,11 @@ double BiancaControlBoard::serviceAmbientC() {
 
 ControlBoardRawPacket BiancaControlBoard::latestPacket() {
     return packet;
+}
+
+void BiancaControlBoard::updateSwitches() {
+    printf("Brew: %s, Tap: %s\n", !brewInput ? "Y" : "N", !tapInput ? "Y" : "N");
+    brewSwitch = !brewInput;
+    serviceTapOpen = !tapInput;
 }
 

@@ -7,6 +7,8 @@
 
 
 #include <SystemStatus.h>
+#include "TimedLatch.h"
+#include "HysteresisController.h"
 
 class SystemController {
 public:
@@ -18,6 +20,11 @@ private:
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
 
     SystemStatus* status;
+
+    HysteresisController serviceBoilerController = HysteresisController(124.f, 126.f);
+
+    TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
+    TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);
 };
 
 

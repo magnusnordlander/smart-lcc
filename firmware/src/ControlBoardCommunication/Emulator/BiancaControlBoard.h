@@ -30,8 +30,13 @@ public:
     double coffeeLevelMl();
     double serviceLevelMl();
 private:
-    WaterBoiler coffeeBoiler = WaterBoiler(800000, 25, 0.0008, 25, 14);
-    WaterBoiler serviceBoiler = WaterBoiler(1400000, 25, 0.0008, 25, 14);
+    WaterBoiler coffeeBoiler = WaterBoiler(800000, 90, 0.0008, 25, 14);
+    WaterBoiler serviceBoiler = WaterBoiler(1400000, 110, 0.0008, 25, 14);
+
+    void updateSwitches();
+
+    mbed::DigitalIn brewInput = mbed::DigitalIn(digitalPinToPinName(4), PullUp);
+    mbed::DigitalIn tapInput = mbed::DigitalIn(digitalPinToPinName(14), PullUp);
 
     bool pumpState = false;
     bool serviceBoilerSolenoidState = false;
