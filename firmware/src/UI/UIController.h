@@ -5,9 +5,8 @@
 #ifndef FIRMWARE_UICONTROLLER_H
 #define FIRMWARE_UICONTROLLER_H
 
-
-#include <ssd1309/Adafruit_SSD1306.h>
 #include <SystemStatus.h>
+#include <Adafruit_SSD1306.h>
 
 class UIController {
 public:

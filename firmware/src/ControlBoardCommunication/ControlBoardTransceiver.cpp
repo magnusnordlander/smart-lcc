@@ -65,7 +65,7 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
 
         rtos::Kernel::Clock::time_point nextPacketAt = lastPacketSentAt + 100ms;
 
-        if (rtos::Kernel::Clock::now() > (nextPacketAt + 70ms)) {
+        if (rtos::Kernel::Clock::now() > (nextPacketAt + 500ms)) {
             printf("We're too far behind on packets, bailing.\n");
             bailForever();
         }

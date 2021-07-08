@@ -17,7 +17,10 @@ void SystemController::run() {
     }
 }
 
-SystemController::SystemController(SystemStatus *status) : status(status) {}
+SystemController::SystemController(SystemStatus *status) :
+status(status) {
+
+}
 
 LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPacket latestParsedPacket) {
     LccParsedPacket lcc;

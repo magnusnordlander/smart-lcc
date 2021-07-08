@@ -7,13 +7,7 @@
 
 #include <cstdint>
 
-typedef enum {
-    UNDETERMINED,
-    COLD_BOOT,
-    WARM_BOOT,
-    RUNNING,
-    SLEEPING,
-} SystemState;
+
 
 struct PidParameters {
     double Kp;
@@ -23,18 +17,11 @@ struct PidParameters {
 
 class PIDController {
 public:
-    bool ecoMode = false;
 
-    float targetBrewTemperature;
-    float targetServiceTemperature;
-
-    float brewTemperatureOffset = -10.0f;
 
     PidParameters pidParameters;
 
     void updateState(uint32_t time_passed, float brew_temperature, float service_temperature);
-protected:
-    SystemState systemState = UNDETERMINED;
 };
 
 
