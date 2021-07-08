@@ -4,20 +4,21 @@
 #include <USB/PluggableUSBSerial.h>
 #include <UI/UIController.h>
 #include <SystemController/SystemController.h>
-#include "ssd1309/Adafruit_SSD1306.h"
+#include <Adafruit_SSD1306.h>
 
 REDIRECT_STDOUT_TO(SerialUSB);
 
 using namespace std::chrono_literals;
 mbed::DigitalOut led(LED1);
 
+/*
 SystemStatus* systemStatus = new SystemStatus;
 
 rtos::Thread controlBoardCommunicationThread;
 ControlBoardTransceiver trx(SERIAL1_TX, SERIAL1_RX, systemStatus);
 
 void mbed_error_hook(const mbed_error_ctx *error_context) {
-    led = true;
+    //led = true;
 }
 
 class SPIPreInit : public mbed::SPI
@@ -38,8 +39,8 @@ SPIPreInit gSpi(
 
 Adafruit_SSD1306_Spi gOled1(
         gSpi,
-        digitalPinToPinName(19),
-        digitalPinToPinName(18),
+        digitalPinToPinName(2),
+        digitalPinToPinName(3),
         digitalPinToPinName(PIN_SPI_SS),
         64
         );
@@ -49,9 +50,10 @@ UIController uiController(systemStatus, &gOled1);
 
 rtos::Thread systemControllerThread;
 SystemController systemController(systemStatus);
-
+*/
 int main()
 {
+    /*
 #ifdef SERIAL_DEBUG
 #if defined(SERIAL_CDC)
     PluggableUSBD().begin();
@@ -66,11 +68,9 @@ int main()
 
     controlBoardCommunicationThread.start([] { trx.run(); });
     systemControllerThread.start([] { systemController.run(); });
-
+*/
     while(true) {
-#ifdef SERIAL_DEBUG
-        printf("Main loop\n");
-#endif
+        led = !led;
         rtos::ThisThread::sleep_for(1000ms);
     }
 }

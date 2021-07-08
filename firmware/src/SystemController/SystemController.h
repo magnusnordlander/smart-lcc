@@ -9,7 +9,6 @@
 #include <SystemStatus.h>
 #include "TimedLatch.h"
 #include "HysteresisController.h"
-#include <PID.h>
 
 typedef enum {
     UNDETERMINED,
