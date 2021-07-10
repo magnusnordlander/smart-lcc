@@ -12,8 +12,8 @@ using namespace std::chrono_literals;
 ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemStatus* status)
         : serial(tx, rx, 9600), status(status) {
     serial.set_flow_control(mbed::SerialBase::Disabled);
-    gpio_set_inover(1, GPIO_OVERRIDE_INVERT);
-    gpio_set_outover(0, GPIO_OVERRIDE_INVERT);
+    gpio_set_inover(29, GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(28, GPIO_OVERRIDE_INVERT);
     serial.set_blocking(false);
     serial.attach([this] { handleRxIrq(); });
 }
