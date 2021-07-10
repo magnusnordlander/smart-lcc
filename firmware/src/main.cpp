@@ -11,11 +11,10 @@ REDIRECT_STDOUT_TO(SerialUSB);
 using namespace std::chrono_literals;
 mbed::DigitalOut led(LED1);
 
-/*
 SystemStatus* systemStatus = new SystemStatus;
 
 rtos::Thread controlBoardCommunicationThread;
-ControlBoardTransceiver trx(SERIAL1_TX, SERIAL1_RX, systemStatus);
+ControlBoardTransceiver trx(digitalPinToPinName(16), digitalPinToPinName(17), systemStatus);
 
 void mbed_error_hook(const mbed_error_ctx *error_context) {
     //led = true;
@@ -50,27 +49,15 @@ UIController uiController(systemStatus, &gOled1);
 
 rtos::Thread systemControllerThread;
 SystemController systemController(systemStatus);
-*/
+
 int main()
 {
-    /*
-#ifdef SERIAL_DEBUG
-#if defined(SERIAL_CDC)
-    PluggableUSBD().begin();
-    _SerialUSB.begin(9600);
-#endif
-#endif
     uiThread.start([] { uiController.run(); });
-
-#ifdef SERIAL_DEBUG
-    rtos::ThisThread::sleep_for(10000ms);
-#endif
 
     controlBoardCommunicationThread.start([] { trx.run(); });
     systemControllerThread.start([] { systemController.run(); });
-*/
     while(true) {
         led = !led;
-        rtos::ThisThread::sleep_for(1000ms);
+        rtos::ThisThread::sleep_for(2000ms);
     }
 }
