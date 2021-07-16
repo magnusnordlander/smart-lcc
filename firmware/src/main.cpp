@@ -14,8 +14,8 @@
 #define OLED_RST digitalPinToPinName(3)
 #define OLED_CS digitalPinToPinName(PIN_SPI_SS)
 
-#define CB_TX digitalPinToPinName(16)
-#define CB_RX digitalPinToPinName(17)
+#define CB_TX SERIAL1_TX
+#define CB_RX SERIAL1_RX
 
 #define AUX_TX digitalPinToPinName(8)
 #define AUX_RX digitalPinToPinName(9)
@@ -61,7 +61,7 @@ int main()
     uiThread.start([] { uiController.run(); });
 
     controlBoardCommunicationThread.start([] { trx.run(); });
-//    auxLccCommunicationThread.start([] { auxTrx.run(); });
+    auxLccCommunicationThread.start([] { auxTrx.run(); });
 //    auxLccCommunicationThread.set_priority(osPriorityRealtime);
     systemControllerThread.start([] { systemController.run(); });
 
