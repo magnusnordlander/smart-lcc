@@ -6,7 +6,7 @@
 #define LCC_RELAY_CONTROL_BOARD_PROTOCOL_H
 
 #include <cstdint>
-#include "../utils/triplet.h"
+#include "utils/triplet.h"
 
 typedef enum : uint16_t {
     NONE = 0,

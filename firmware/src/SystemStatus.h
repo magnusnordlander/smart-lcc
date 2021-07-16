@@ -6,8 +6,8 @@
 #define FIRMWARE_SYSTEMSTATUS_H
 
 #include <mbed.h>
-#include <ControlBoardCommunication/lcc_protocol.h>
-#include <ControlBoardCommunication/control_board_protocol.h>
+#include <lcc_protocol.h>
+#include <control_board_protocol.h>
 
 class SystemStatus {
 public:

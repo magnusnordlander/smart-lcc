@@ -13,10 +13,10 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         : serial(tx, rx, 9600), backupSerial(digitalPinToPinName(8), digitalPinToPinName(9), 9600), status(status) {
     serial.set_flow_control(mbed::SerialBase::Disabled);
     backupSerial.set_flow_control(mbed::SerialBase::Disabled);
-    gpio_set_inover(29, GPIO_OVERRIDE_INVERT);
-    gpio_set_outover(28, GPIO_OVERRIDE_INVERT);
-    gpio_set_inover(21, GPIO_OVERRIDE_INVERT);
-    gpio_set_outover(20, GPIO_OVERRIDE_INVERT);
+    gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(tx, GPIO_OVERRIDE_INVERT);
+    gpio_set_inover(digitalPinToPinName(9), GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(digitalPinToPinName(8), GPIO_OVERRIDE_INVERT);
     serial.set_blocking(false);
     serial.attach([this] { handleRxIrq(); });
 }
@@ -47,18 +47,18 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         awaitingPacket = false;
 
         if (t.elapsed_time() >= 100ms) {
-            printf("Getting a packet from CB took too long (%u ms), bailing.\n", t.read_ms());
+            printf("Getting a packet from CB took too long (%lld ms), bailing.\n", std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
             bailForever();
         }
 
         rtos::Kernel::Clock::time_point receivedAt = rtos::Kernel::Clock::now();
 
-        printf("CB packet received (took %u ms): ", t.read_ms());
+        printf("CB packet received (took %lld ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
         printhex(reinterpret_cast<uint8_t*>(&currentPacket), sizeof(currentPacket));
         printf("\n");
 
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
-        memset(&currentPacket, 0, sizeof(currentPacket));
+        currentPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
         t.reset();
 

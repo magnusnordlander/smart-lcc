@@ -3,7 +3,7 @@
 //
 
 #include "lcc_protocol.h"
-#include "../utils/checksum.h"
+#include "utils/checksum.h"
 
 LccRawPacket convert_lcc_parsed_to_raw(LccParsedPacket parsed) {
     LccRawPacket packet = LccRawPacket();

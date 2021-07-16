@@ -5,8 +5,8 @@
 #include <cstdio>
 #include <cmath>
 #include "control_board_protocol.h"
-#include "../utils/polymath.h"
-#include "../utils/checksum.h"
+#include "utils/polymath.h"
+#include "utils/checksum.h"
 
 float high_gain_adc_to_float(uint16_t adcValue) {
     double a = 2.80075E-07;
