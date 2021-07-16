@@ -20,6 +20,8 @@ public:
     bool hasReceivedControlBoardPacket = false;
     rtos::Kernel::Clock::time_point lastControlBoardPacketReceivedAt;
     ControlBoardParsedPacket controlBoardPacket;
+    ControlBoardRawPacket controlBoardRawPacket;
+
 
     bool has_bailed;
 };

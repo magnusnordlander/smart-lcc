@@ -152,6 +152,7 @@ class Adafruit_GFX : public mbed::Stream
 
     /// Set the text cursor location, based on the size of the text
     inline void setTextCursor(int16_t x, int16_t y) { cursor_x = x; cursor_y = y; };
+    inline void setTextXOffset(int16_t x) { x_offset = x; }
 #if defined(GFX_WANT_ABSTRACTS) || defined(GFX_SIZEABLE_TEXT)
     /** Set the size of the text to be drawn
      * @note Make sure to enable either GFX_SIZEABLE_TEXT or GFX_WANT_ABSTRACTS
@@ -174,6 +175,7 @@ protected:
     int16_t  _rawWidth, _rawHeight;   // this is the 'raw' display w/h - never changes
     int16_t  _width, _height; // dependent on rotation
     int16_t  cursor_x, cursor_y;
+    int16_t  x_offset = 0;
     uint16_t textcolor, textbgcolor;
     uint8_t  textsize;
     uint8_t  rotation;

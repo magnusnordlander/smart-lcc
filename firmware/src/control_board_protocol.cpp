@@ -118,8 +118,8 @@ ControlBoardRawPacket convert_parsed_control_board_packet(ControlBoardParsedPack
     rawPacket.service_boiler_temperature_low_gain = int_to_triplet(smallService);
     rawPacket.service_boiler_temperature_high_gain = int_to_triplet(largeService);
 
-    rawPacket.service_boiler_level = int_to_triplet(parsed_packet.service_boiler_low ? 128 : 650);
-    rawPacket.checksum = calculate_checksum(reinterpret_cast<uint8_t*>(&rawPacket), 17, 0x1);
+    rawPacket.service_boiler_level = int_to_triplet(parsed_packet.service_boiler_low ? 650 : 90);
+    rawPacket.checksum = calculate_checksum(reinterpret_cast<uint8_t*>(&rawPacket), 17, 0x0);
 
     return rawPacket;
 }

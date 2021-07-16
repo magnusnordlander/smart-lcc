@@ -44,17 +44,19 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         awaitingPacket = false;
 
         if (t.elapsed_time() >= 100ms) {
-            printf("Getting a packet from CB took too long (%lld ms), bailing.\n", std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
+            printf("Getting a packet from CB took too long (%u ms), bailing.\n", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
             bailForever();
         }
 
         rtos::Kernel::Clock::time_point receivedAt = rtos::Kernel::Clock::now();
 
-        printf("CB packet received (took %lld ms): ", std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
+        printf("CB packet received (took %u ms): ", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
         printhex(reinterpret_cast<uint8_t*>(&currentPacket), sizeof(currentPacket));
         printf("\n");
 
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
+        status->controlBoardRawPacket = currentPacket;
+
         currentPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
         t.reset();

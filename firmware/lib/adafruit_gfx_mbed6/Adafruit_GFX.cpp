@@ -368,10 +368,10 @@ size_t Adafruit_GFX::writeChar(uint8_t c)
     if (c == '\n')
     {
         cursor_y += textsize*8;
-        cursor_x = 0;
+        cursor_x = x_offset;
     }
     else if (c == '\r')
-        cursor_x = 0;
+        cursor_x = x_offset;
     else
     {
         drawChar(cursor_x, cursor_y, c, textcolor, textbgcolor, textsize);
@@ -379,7 +379,7 @@ size_t Adafruit_GFX::writeChar(uint8_t c)
         if (wrap && (cursor_x > (_width - textsize*6)))
         {
             cursor_y += textsize*8;
-            cursor_x = 0;
+            cursor_x = x_offset;
         }
     }
     return 1;

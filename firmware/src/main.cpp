@@ -6,6 +6,7 @@
 #include <SystemController/SystemController.h>
 #include <Adafruit_SSD1306.h>
 #include <Debug/AuxLccTransceiver.h>
+#include <ExternalComms/WifiTransceiver.h>
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -56,17 +57,26 @@ UIController uiController(systemStatus, &gOled1);
 rtos::Thread systemControllerThread;
 SystemController systemController(systemStatus);
 
+rtos::Thread wifiThread;
+WifiTransceiver wifiTransceiver;
+
 int main()
 {
+    PluggableUSBD().begin();
+    _SerialUSB.begin(9600);
+
     uiThread.start([] { uiController.run(); });
 
     controlBoardCommunicationThread.start([] { trx.run(); });
     auxLccCommunicationThread.start([] { auxTrx.run(); });
-//    auxLccCommunicationThread.set_priority(osPriorityRealtime);
     systemControllerThread.start([] { systemController.run(); });
+    wifiThread.start([] { wifiTransceiver.run(); });
+
+//    systemStatus->controlBoardPacket.brew_boiler_temperature = 10;
 
     while(true) {
         led = !led;
-        rtos::ThisThread::sleep_for(2000ms);
+
+        rtos::ThisThread::sleep_for(1000ms);
     }
 }

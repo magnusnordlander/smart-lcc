@@ -2,6 +2,7 @@
 // Created by Magnus Nordlander on 2021-07-16.
 //
 
+#include <utils/hex_format.h>
 #include "AuxLccTransceiver.h"
 
 using namespace std::chrono_literals;
@@ -18,8 +19,12 @@ AuxLccTransceiver::AuxLccTransceiver(PinName tx, PinName rx, SystemStatus *statu
 void AuxLccTransceiver::run() {
     while (true) {
         if (currentPacketIdx >= sizeof(LccRawPacket)) {
-            ControlBoardRawPacket packet = convert_parsed_control_board_packet(status->controlBoardPacket);
-
+            rtos::ThisThread::sleep_for(40ms);
+//            ControlBoardRawPacket packet = convert_parsed_control_board_packet(status->controlBoardPacket);
+            ControlBoardRawPacket packet = status->controlBoardRawPacket;
+            printf("Sending to Aux: ");
+            printhex(reinterpret_cast<uint8_t*>(&packet), sizeof(packet));
+            printf("\n");
             serial.write((uint8_t *)&packet, sizeof(packet));
 
             currentPacket = LccRawPacket();
@@ -35,7 +40,7 @@ void AuxLccTransceiver::handleRxIrq() {
     serial.read(&buf, 1);
 
     if (currentPacketIdx < sizeof(currentPacket)) {
-        if (currentPacketIdx > 0 || buf == 0x81) {
+        if (currentPacketIdx > 0 || buf == 0x80) {
             auto* currentPacketBuf = reinterpret_cast<uint8_t*>(&currentPacket);
             currentPacketBuf[currentPacketIdx++] = buf;
         }
