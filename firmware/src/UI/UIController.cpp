@@ -28,6 +28,9 @@ void UIController::run() {
             display->printf("P: %s SBS: %s\r\n", status->lccPacket.pump_on ? "Y" : "N", status->lccPacket.service_boiler_solenoid_open ? "Y" : "N");
         }
 
+        display->setTextCursor(80, 56);
+        display->printf("%u", (uint16_t)get_ms_count());
+
         display->display();
         rtos::ThisThread::sleep_for(1ms);
     }
