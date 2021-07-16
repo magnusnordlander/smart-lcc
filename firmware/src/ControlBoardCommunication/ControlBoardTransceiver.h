@@ -22,6 +22,7 @@ private:
     BiancaControlBoard emulatedControlBoard = BiancaControlBoard();
 #endif
     mbed::UnbufferedSerial serial;
+    mbed::UnbufferedSerial backupSerial;
     SystemStatus* status;
 
     rtos::Kernel::Clock::time_point lastPacketSentAt;
