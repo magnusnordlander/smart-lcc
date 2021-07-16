@@ -10,13 +10,10 @@
 using namespace std::chrono_literals;
 
 ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemStatus* status)
-        : serial(tx, rx, 9600), backupSerial(digitalPinToPinName(8), digitalPinToPinName(9), 9600), status(status) {
+        : serial(tx, rx, 9600), status(status) {
     serial.set_flow_control(mbed::SerialBase::Disabled);
-    backupSerial.set_flow_control(mbed::SerialBase::Disabled);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
     gpio_set_outover(tx, GPIO_OVERRIDE_INVERT);
-    gpio_set_inover(digitalPinToPinName(9), GPIO_OVERRIDE_INVERT);
-    gpio_set_outover(digitalPinToPinName(8), GPIO_OVERRIDE_INVERT);
     serial.set_blocking(false);
     serial.attach([this] { handleRxIrq(); });
 }
@@ -65,8 +62,6 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         status->controlBoardPacket = cbPacket;
         status->lastControlBoardPacketReceivedAt = receivedAt;
         status->hasReceivedControlBoardPacket = true;
-
-        backupSerial.write((uint8_t *)&currentPacket, sizeof(currentPacket));
 
         rtos::Kernel::Clock::time_point nextPacketAt = lastPacketSentAt + 100ms;
 

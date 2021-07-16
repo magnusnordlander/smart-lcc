@@ -13,7 +13,7 @@ void UIController::run() {
     while(true)
     {
         display->clearDisplay();
-        display->setTextCursor(0,0);
+        display->setTextCursor(22,18);
 
         display->printf("TX: %s RX: %s\r\n", status->hasSentLccPacket ? "Yes" : "No", status->hasReceivedControlBoardPacket ? "Yes" : "No");
         display->printf("Bailed: %s\r\n", status->has_bailed ? "Yes" : "No");

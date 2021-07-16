@@ -61,7 +61,8 @@ int main()
     uiThread.start([] { uiController.run(); });
 
     controlBoardCommunicationThread.start([] { trx.run(); });
-    auxLccCommunicationThread.start([] { auxTrx.run(); });
+//    auxLccCommunicationThread.start([] { auxTrx.run(); });
+//    auxLccCommunicationThread.set_priority(osPriorityRealtime);
     systemControllerThread.start([] { systemController.run(); });
 
     while(true) {
