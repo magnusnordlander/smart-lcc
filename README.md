@@ -15,7 +15,7 @@ This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ boa
 
 A custom PCB has been designed (see `pcb/`) that is designed to fit in the original LCC enclosure. A BOM for components is also available. Aside from the Arduino RP2040 Connect, the PCB has push buttons for + and -, a resistor divider for the 5V Control Board UART signal, and a flat flex connector for a SSD1309 based OLED. The PCB has been designed with surface mount components, but uses relatively large 1206 caps and resistors, which are somewhat simple to hand solder.
 
-A first manufacturing run of the rev A PCB has been ordered, but not yet received or tested. As such, it's *highly* recommended to *not* order any PCBs at this time.
+A first manufacturing run of the rev A PCB has been ordered, and preliminary testing shows that it kinda works. That being said, I have already fried two sets of GPIOs on an Arduino by futzing around with the chip, so I am planning a rev B with some protection for the GPIOs. As such, manufacturing the rev A board is not recommended (I do have some spares though, so contact me if you're interested in helping with the project, and I'll send you one).
 
 ### Firmware
 The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Preliminarily, this project will use the RTOS capabilities of Mbed OS, and run the processes as different threads.
@@ -34,6 +34,11 @@ It's currently undecided whether the Nina W102 will be running the "regular" Wif
   * Basically bakes the LCC Packets for the control board
 * UI controller
 * External communication
+
+#### Reference material
+(In no particular order)
+
+* https://github.com/improv-wifi/sdk-cpp
 
 ## Status
 
