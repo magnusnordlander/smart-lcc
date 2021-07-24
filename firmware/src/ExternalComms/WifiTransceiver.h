@@ -6,14 +6,26 @@
 #define FIRMWARE_WIFITRANSCEIVER_H
 
 #include <WiFi.h>
+#include <PubSubClient.h>
+#include <SystemStatus.h>
 
 class WifiTransceiver {
 public:
-    WifiTransceiver();
-    [[noreturn]] void run();
+    explicit WifiTransceiver(SystemStatus *systemStatus);
 
+    [[noreturn]] void run();
 private:
+    SystemStatus* systemStatus;
+
     WiFiClass wifi;
+    WiFiClient wifiClient;
+    PubSubClient pubSubClient;
+
+    void ensureConnectedToWifi();
+    void ensureConnectedToMqtt();
+    void publishStatus();
+
+    void callback(char* topic, byte* payload, unsigned int length);
 };
 
 

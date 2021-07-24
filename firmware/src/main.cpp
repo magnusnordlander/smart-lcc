@@ -28,7 +28,7 @@ mbed::DigitalOut led(LED1);
 
 SystemStatus* systemStatus = new SystemStatus;
 
-rtos::Thread controlBoardCommunicationThread;
+rtos::Thread controlBoardCommunicationThread(osPriorityRealtime);
 ControlBoardTransceiver trx(CB_TX, CB_RX, systemStatus);
 
 rtos::Thread auxLccCommunicationThread;
@@ -54,11 +54,11 @@ Adafruit_SSD1306_Spi gOled1(gSpi, OLED_DC, OLED_RST, OLED_CS,64);
 rtos::Thread uiThread;
 UIController uiController(systemStatus, &gOled1);
 
-rtos::Thread systemControllerThread;
+rtos::Thread systemControllerThread(osPriorityAboveNormal);
 SystemController systemController(systemStatus);
 
-rtos::Thread wifiThread;
-WifiTransceiver wifiTransceiver;
+rtos::Thread wifiThread(osPriorityBelowNormal);
+WifiTransceiver wifiTransceiver(systemStatus);
 
 int main()
 {
@@ -71,8 +71,6 @@ int main()
     auxLccCommunicationThread.start([] { auxTrx.run(); });
     systemControllerThread.start([] { systemController.run(); });
     wifiThread.start([] { wifiTransceiver.run(); });
-
-//    systemStatus->controlBoardPacket.brew_boiler_temperature = 10;
 
     while(true) {
         led = !led;
