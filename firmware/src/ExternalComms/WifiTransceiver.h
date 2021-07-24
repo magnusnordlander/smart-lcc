@@ -26,6 +26,11 @@ private:
     void publishStatus();
 
     void callback(char* topic, byte* payload, unsigned int length);
+
+    void publish(const char* topic, bool payload);
+    void publish(const char* topic, float payload);
+
+    void handleYield();
 };
 
 

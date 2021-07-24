@@ -31,6 +31,9 @@ public:
 
     float brewTemperatureOffset = -10.0f;
 
+    bool wifiConnected = false;
+    bool mqttConnected = false;
+
     inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
 };
 

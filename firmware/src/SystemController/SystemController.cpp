@@ -32,7 +32,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     waterTankEmptyLatch.set(latestParsedPacket.water_tank_empty);
     serviceBoilerLowLatch.set(latestParsedPacket.service_boiler_low);
 
-    if (brewBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature)) {
+    if (brewBoilerController.getControlSignal(latestParsedPacket.brew_boiler_temperature)) {
         lcc.brew_boiler_ssr_on = true;
     }
 
