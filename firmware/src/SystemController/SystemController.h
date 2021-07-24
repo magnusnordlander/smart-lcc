@@ -23,23 +23,14 @@ public:
     explicit SystemController(SystemStatus *status);
 
     [[noreturn]] void run();
-    float latestBrewTemperature = 0.f;
 private:
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
+    void updateFromSystemStatus();
 
     SystemStatus* status;
 
-    bool ecoMode = false;
-
-    float targetBrewTemperature;
-    float targetServiceTemperature;
-
-    float brewTemperatureOffset = -10.0f;
-
-
-    float targetBrewPIDValue = 0.f;
-
-    HysteresisController serviceBoilerController = HysteresisController(124.f, 126.f);
+    HysteresisController brewBoilerController;
+    HysteresisController serviceBoilerController;
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);

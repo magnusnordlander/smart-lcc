@@ -22,8 +22,16 @@ public:
     ControlBoardParsedPacket controlBoardPacket;
     ControlBoardRawPacket controlBoardRawPacket;
 
-
     bool has_bailed;
+
+    bool ecoMode = false;
+
+    float targetBrewTemperature = 0.0f;
+    float targetServiceTemperature = 0.0f;
+
+    float brewTemperatureOffset = -10.0f;
+
+    inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
 };
 
 

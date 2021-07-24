@@ -6,8 +6,17 @@
 
 using namespace std::chrono_literals;
 
+SystemController::SystemController(SystemStatus *status) :
+        status(status),
+        brewBoilerController(status->getOffsetTargetBrewTemperature(), 2.0f),
+        serviceBoilerController(status->targetServiceTemperature, 2.0f){
+
+}
+
 void SystemController::run() {
     while (true) {
+        updateFromSystemStatus();
+
         if (status->hasReceivedControlBoardPacket) {
             status->lccPacket = handleControlBoardPacket(status->controlBoardPacket);
         }
@@ -17,22 +26,17 @@ void SystemController::run() {
     }
 }
 
-SystemController::SystemController(SystemStatus *status) :
-status(status) {
-
-}
-
 LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPacket latestParsedPacket) {
     LccParsedPacket lcc;
 
     waterTankEmptyLatch.set(latestParsedPacket.water_tank_empty);
     serviceBoilerLowLatch.set(latestParsedPacket.service_boiler_low);
 
-    if (latestParsedPacket.brew_boiler_temperature < 94) {
+    if (brewBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature)) {
         lcc.brew_boiler_ssr_on = true;
     }
 
-    if (!lcc.brew_boiler_ssr_on && serviceBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature)) {
+    if (!lcc.brew_boiler_ssr_on && serviceBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature) && !status->ecoMode) {
         lcc.service_boiler_ssr_on = true;
     }
 
@@ -46,4 +50,9 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     }
 
     return lcc;
+}
+
+void SystemController::updateFromSystemStatus() {
+    brewBoilerController.updateSetPoint(status->getOffsetTargetBrewTemperature());
+    serviceBoilerController.updateSetPoint(status->targetServiceTemperature);
 }

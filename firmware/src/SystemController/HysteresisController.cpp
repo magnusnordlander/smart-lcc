@@ -4,8 +4,9 @@
 
 #include "HysteresisController.h"
 
-HysteresisController::HysteresisController(float lowerBound, float upperBound) : lowerBound(lowerBound),
-                                                                                 upperBound(upperBound) {}
+HysteresisController::HysteresisController(float setPoint, float delta) : delta(delta),
+                                                                          lowerBound(setPoint - delta),
+                                                                          upperBound(setPoint + delta) {}
 
 bool HysteresisController::getControlSignal(float value) {
     if (state == HYSTERESIS_STATE_ASCENDING) {
@@ -23,4 +24,9 @@ bool HysteresisController::getControlSignal(float value) {
             return true;
         }
     }
+}
+
+void HysteresisController::updateSetPoint(float setPoint) {
+    lowerBound = setPoint - delta;
+    upperBound = setPoint + delta;
 }

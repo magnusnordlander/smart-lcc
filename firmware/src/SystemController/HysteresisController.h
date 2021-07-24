@@ -12,11 +12,15 @@ typedef enum {
 
 class HysteresisController {
 public:
-    HysteresisController(float lowerBound, float upperBound);
+    HysteresisController(float setPoint, float delta);
+
+    void updateSetPoint(float setPoint);
 
     bool getControlSignal(float value);
 
 private:
+    float delta;
+
     float lowerBound;
     float upperBound;
 
