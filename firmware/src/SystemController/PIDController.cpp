@@ -29,18 +29,23 @@ PIDController::PIDController(const PidParameters &pidParameters, float setPoint)
 
 bool PIDController::getControlSignal(float pv) {
     auto now = rtos::Kernel::Clock::now();
-    double diffS = (double)(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastPvAt).count()) / 1000.0;
-    updatePidSignal(pv, diffS);
-    lastPvAt = now;
 
     if (!onCycleEnds.has_value() && !offCycleEnds.has_value()) {
+        double diffS = (double)(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastPvAt).count()) / 1000.0;
+        updatePidSignal(pv, diffS);
+        lastPvAt = now;
+
         // pidSignal is always 0-1000, which works nicely as a millisecond on-cycle time
         auto onTime = std::chrono::milliseconds(pidSignal);
 
         onCycleEnds = now + onTime;
         offCycleEnds = now + (1s - onTime);
 
-        printf("Setting new duty cycle, %u ms on, %u ms off\n", (unsigned int)pidSignal, (unsigned int)(1000 - pidSignal));
+        if (setPoint > 1) {
+            printf("Setting new duty cycle, %u ms on, %u ms off\n", (unsigned int)pidSignal, (unsigned int)(1000 - pidSignal));
+            printf("P: %02f I: %02f D:%02f PID: %u\n", Pout, Iout, Dout, (unsigned int)pidSignal);
+            printf("PV: %.02f SP: %.02f\n", pv, setPoint);
+        }
     }
 
     if (now < onCycleEnds) {

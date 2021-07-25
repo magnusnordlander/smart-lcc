@@ -53,6 +53,6 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 }
 
 void SystemController::updateFromSystemStatus() {
-    brewBoilerController.updateSetPoint(status->getOffsetTargetBrewTemperature());
+    brewBoilerController.updateSetPoint(status->targetBrewTemperature);
     serviceBoilerController.updateSetPoint(status->targetServiceTemperature);
 }
