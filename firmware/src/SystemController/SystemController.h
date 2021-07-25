@@ -9,6 +9,7 @@
 #include <SystemStatus.h>
 #include "TimedLatch.h"
 #include "HysteresisController.h"
+#include "HybridController.h"
 
 typedef enum {
     UNDETERMINED,
@@ -29,8 +30,8 @@ private:
 
     SystemStatus* status;
 
-    HysteresisController brewBoilerController;
-    HysteresisController serviceBoilerController;
+    HybridController brewBoilerController;
+    HybridController serviceBoilerController;
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);

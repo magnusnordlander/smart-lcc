@@ -7,6 +7,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Debug/AuxLccTransceiver.h>
 #include <ExternalComms/WifiTransceiver.h>
+#include <utils/SPIPreInit.h>
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -24,7 +25,6 @@
 REDIRECT_STDOUT_TO(SerialUSB);
 
 using namespace std::chrono_literals;
-mbed::DigitalOut led(LED1);
 
 SystemStatus* systemStatus = new SystemStatus;
 
@@ -37,16 +37,6 @@ AuxLccTransceiver auxTrx(AUX_TX, AUX_RX, systemStatus);
 void mbed_error_hook(const mbed_error_ctx *error_context) {
     //led = true;
 }
-
-class SPIPreInit : public mbed::SPI
-{
-public:
-    SPIPreInit(PinName mosi, PinName miso, PinName clk) : SPI(mosi,miso,clk)
-    {
-        format(8,3);
-        frequency(2000000);
-    };
-};
 
 SPIPreInit gSpi(OLED_MOSI, OLED_MISO, OLED_SCK);
 Adafruit_SSD1306_Spi gOled1(gSpi, OLED_DC, OLED_RST, OLED_CS,64);
@@ -67,14 +57,14 @@ int main()
 
     uiThread.start([] { uiController.run(); });
 
+    mbed::Watchdog::get_instance().start(2000);
+
     controlBoardCommunicationThread.start([] { trx.run(); });
     auxLccCommunicationThread.start([] { auxTrx.run(); });
     systemControllerThread.start([] { systemController.run(); });
     wifiThread.start([] { wifiTransceiver.run(); });
 
     while(true) {
-        led = !led;
-
         rtos::ThisThread::sleep_for(1000ms);
     }
 }

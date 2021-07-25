@@ -22,6 +22,8 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
     printf("Running\n");
     mbed::Timer t;
     while (true) {
+        mbed::Watchdog::get_instance().kick();
+
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(status->lccPacket);
 
         printf("Sending LCC packet: ");
@@ -85,6 +87,8 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         LccRawPacket safePacket = {0x80, 0, 0, 0, 0};
         printf("Bailed, sending safe packet\n");
         serial.write((uint8_t *)&safePacket, sizeof(safePacket));
+
+        mbed::Watchdog::get_instance().kick();
     }
 }
 
