@@ -34,11 +34,13 @@ bool PIDController::getControlSignal(float pv) {
     lastPvAt = now;
 
     if (!onCycleEnds.has_value() && !offCycleEnds.has_value()) {
-        // pidSignal is always 0-100, which works nicely as a millisecond on-cycle time
-        auto onTime = std::chrono::duration<long long>(pidSignal);
+        // pidSignal is always 0-1000, which works nicely as a millisecond on-cycle time
+        auto onTime = std::chrono::milliseconds(pidSignal);
 
         onCycleEnds = now + onTime;
         offCycleEnds = now + (1s - onTime);
+
+        printf("Setting new duty cycle, %u ms on, %u ms off\n", (unsigned int)pidSignal, (unsigned int)(1000 - pidSignal));
     }
 
     if (now < onCycleEnds) {

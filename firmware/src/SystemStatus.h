@@ -26,7 +26,7 @@ public:
 
     bool ecoMode = false;
 
-    float targetBrewTemperature = 0.0f;
+    float targetBrewTemperature = 90.0f;
     float targetServiceTemperature = 0.0f;
 
     float brewTemperatureOffset = -10.0f;
@@ -35,6 +35,7 @@ public:
     bool mqttConnected = false;
 
     inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
+    inline float getOffsetBrewTemperature() const { return controlBoardPacket.brew_boiler_temperature + brewTemperatureOffset; }
 };
 
 

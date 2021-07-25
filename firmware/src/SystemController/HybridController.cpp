@@ -26,8 +26,10 @@ bool HybridController::getControlSignal(float value) {
     bool pidValue = pidController.getControlSignal(value);
 
     if (value > lowerPidBound && value < upperPidBound) {
+        printf("Using PID. P: %02f I: %02f D:%02f PID: %u C: %s\n", pidController.Pout, pidController.Iout, pidController.Dout, (unsigned int)pidController.pidSignal, pidValue ? "Y": "N");
         return pidValue;
     }
 
+    //printf("Using Hysteresis\n");
     return hysteresisValue;
 }

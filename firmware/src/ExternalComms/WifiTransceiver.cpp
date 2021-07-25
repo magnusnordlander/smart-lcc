@@ -88,7 +88,7 @@ void WifiTransceiver::ensureConnectedToWifi() {
         rtos::ThisThread::sleep_for(5s);
     }
 
-    printf("Connected to WiFi\n");
+    //printf("Connected to WiFi\n");
     systemStatus->wifiConnected = true;
 }
 

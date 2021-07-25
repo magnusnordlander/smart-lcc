@@ -26,9 +26,9 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
 
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(status->lccPacket);
 
-        printf("Sending LCC packet: ");
+     /*   printf("Sending LCC packet: ");
         printhex(reinterpret_cast<uint8_t*>(&rawLccPacket), sizeof(rawLccPacket));
-        printf("\n");
+        printf("\n"); */
         lastPacketSentAt = rtos::Kernel::Clock::now();
         status->lastLccPacketSentAt = lastPacketSentAt;
         status->hasSentLccPacket = true;
@@ -52,9 +52,9 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
 
         rtos::Kernel::Clock::time_point receivedAt = rtos::Kernel::Clock::now();
 
-        printf("CB packet received (took %u ms): ", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
+       /* printf("CB packet received (took %u ms): ", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
         printhex(reinterpret_cast<uint8_t*>(&currentPacket), sizeof(currentPacket));
-        printf("\n");
+        printf("\n");*/
 
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
         status->controlBoardRawPacket = currentPacket;
@@ -85,7 +85,7 @@ ControlBoardTransceiver::ControlBoardTransceiver(PinName tx, PinName rx, SystemS
         rtos::ThisThread::sleep_for(100ms);
 
         LccRawPacket safePacket = {0x80, 0, 0, 0, 0};
-        printf("Bailed, sending safe packet\n");
+        //printf("Bailed, sending safe packet\n");
         serial.write((uint8_t *)&safePacket, sizeof(safePacket));
 
         mbed::Watchdog::get_instance().kick();

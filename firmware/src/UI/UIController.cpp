@@ -33,7 +33,7 @@ void UIController::run() {
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB: %d SB: %d\r\n", (int)round(status->controlBoardPacket.brew_boiler_temperature), (int)round(status->controlBoardPacket.service_boiler_temperature));
+            display->printf("CB: %d SB: %d\r\n", (int)round(status->getOffsetBrewTemperature()), (int)round(status->controlBoardPacket.service_boiler_temperature));
             display->printf("Br: %s SL: %s WT: %s\r\n", status->controlBoardPacket.brew_switch ? "Y" : "N", status->controlBoardPacket.service_boiler_low ? "Y" : "N", status->controlBoardPacket.water_tank_empty ? "Y" : "N");
         }
 
