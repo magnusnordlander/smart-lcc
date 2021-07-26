@@ -4,6 +4,12 @@ A smarter LCC for the Lelit Bianca, with Wi-Fi and stuff.
 
 Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-protocol](https://github.com/magnusnordlander/lelit-bianca-protocol).
 
+## Status
+
+Consider this project pre-alpha. There is a revision A PCB, of which I plan to make a revision B. The firmware has been function tested with an actual machine, but it still needs parameter tweaking to actually be able to control water temperatures in a meaningful way. The UI has a long way to go. An alpha release, which is functional, but not particularly polished will probably happen during the summer of 2021. Expect a rev B board and a beta release some time during fall/winter.
+
+Also, considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. This is not the stage to get on board with this project if you aren't willing to deal with possibly having to buy spare parts for and repair your machine.
+
 ## Project goals
 
 Create a smart replacement for the "LCC" PID module used in the Lelit Bianca with open source hardware and software.
@@ -40,6 +46,6 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
 
 * https://github.com/improv-wifi/sdk-cpp
 
-## Status
+## Licensing
 
-This is not yet ready. At all.
+The firmware is MIT licensed (excepting dependencies, which have their own, compatible licenses), and the hardware is CERN-OHL-P.
