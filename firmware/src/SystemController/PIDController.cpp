@@ -24,7 +24,7 @@
 
 using namespace std::chrono_literals;
 
-PIDController::PIDController(const PidParameters &pidParameters, float setPoint) : pidParameters(pidParameters),
+PIDController::PIDController(const PidParameters &pidParameters, float setPoint, uint16_t cycleTime) : pidParameters(pidParameters), cycleTime(cycleTime), 
                                                                                    setPoint(setPoint) {}
 
 bool PIDController::getControlSignal(float pv) {
@@ -35,15 +35,14 @@ bool PIDController::getControlSignal(float pv) {
         updatePidSignal(pv, diffS);
         lastPvAt = now;
 
-        // pidSignal is always 0-1000, which works nicely as a millisecond on-cycle time
-        auto onTime = std::chrono::milliseconds(pidSignal);
+        auto onTime = std::chrono::milliseconds(pidSignal*cycleTime);
 
         onCycleEnds = now + onTime;
-        offCycleEnds = now + (1s - onTime);
+        offCycleEnds = now + (std::chrono::milliseconds(cycleTime*((uint16_t)_max)) - onTime);
 
         if (setPoint > 1) {
-            printf("Setting new duty cycle, %u ms on, %u ms off\n", (unsigned int)pidSignal, (unsigned int)(1000 - pidSignal));
-            printf("P: %02f I: %02f D:%02f PID: %u\n", Pout, Iout, Dout, (unsigned int)pidSignal);
+            printf("Setting new duty cycle, %u ms on, %u ms off\n", (unsigned int)pidSignal*200, (unsigned int)(2000 - pidSignal*200));
+            printf("P: %02f I: %02f D:%02f Int: %02f PID: %u\n", Pout, Iout, Dout, _integral, (unsigned int)pidSignal);
             printf("PV: %.02f SP: %.02f\n", pv, setPoint);
         }
     }
@@ -69,6 +68,13 @@ void PIDController::updatePidSignal(float pv, double dT) {
 
     // Integral term
     _integral += error * dT;
+
+    // Prevent integral wind-up
+    if( _integral > _integral_max )
+        _integral = _integral_max;
+    else if( _integral < _integral_min )
+        _integral = _integral_min;
+
     Iout = pidParameters.Ki * _integral;
 
     // Derivative term

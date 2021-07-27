@@ -17,15 +17,20 @@ struct PidParameters {
 
 class PIDController {
 public:
-    PIDController(const PidParameters &pidParameters, float setPoint);
+    PIDController(const PidParameters &pidParameters, float setPoint, uint16_t cycleTime);
 
     PidParameters pidParameters;
 
     void updateSetPoint(float setPoint);
     bool getControlSignal(float value);
 
-    const double _max = 1000;
+    uint16_t cycleTime = 200;
+
+    const double _max = 10;
     const double _min = 0;
+
+    const double _integral_max = 10;
+    const double _integral_min = -10;
 
     double _pre_error = 0;
     double _integral = 0;

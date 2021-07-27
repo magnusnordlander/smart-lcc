@@ -93,8 +93,8 @@ ControlBoardRawPacket BiancaControlBoard::latestPacket() {
 }
 
 void BiancaControlBoard::updateSwitches() {
-    printf("Brew: %s, Tap: %s\n", !brewInput ? "Y" : "N", !tapInput ? "Y" : "N");
-    brewSwitch = !brewInput;
-    serviceTapOpen = !tapInput;
+    //printf("Brew: %s, Tap: %s\n", brewInput ? "Y" : "N", tapInput ? "Y" : "N");
+    brewSwitch = brewInput;
+    serviceTapOpen = tapInput;
 }
 
