@@ -36,9 +36,9 @@ public:
 
     double integral = 0;
 
-    double p;
-    double i;
-    double d;
+    double p = 0;
+    double i = 0;
+    double d = 0;
 
     inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
     inline float getOffsetBrewTemperature() const { return controlBoardPacket.brew_boiler_temperature + brewTemperatureOffset; }

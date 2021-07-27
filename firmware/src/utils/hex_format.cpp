@@ -14,6 +14,15 @@ void printhex(unsigned char * in, size_t insz)
     printf("%s", str);
 }
 
+void printlnhex(unsigned char * in, size_t insz)
+{
+    size_t outsz = 3*insz;
+    char str[outsz];
+    hex_format(in, insz, str, outsz);
+
+    printf("%s\n", str);
+}
+
 void hex_format(unsigned char * in, size_t insz, char * out, size_t outsz)
 {
     unsigned char * pin = in;

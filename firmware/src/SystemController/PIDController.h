@@ -35,9 +35,9 @@ public:
     double _pre_error = 0;
     double _integral = 0;
 
-    double Pout;
-    double Iout;
-    double Dout;
+    double Pout = 0;
+    double Iout = 0;
+    double Dout = 0;
 
     long long pidSignal = 0;
 private:

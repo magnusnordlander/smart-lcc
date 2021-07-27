@@ -17,9 +17,11 @@ void SystemController::run() {
     while (true) {
         updateFromSystemStatus();
 
+#ifndef LCC_RELAY
         if (status->hasReceivedControlBoardPacket) {
             status->lccPacket = handleControlBoardPacket(status->controlBoardPacket);
         }
+#endif
 
         // TODO: Align this to the control board thread timing
         rtos::ThisThread::sleep_for(90ms);
