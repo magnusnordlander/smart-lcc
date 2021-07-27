@@ -8,6 +8,7 @@
 #include <Debug/AuxLccTransceiver.h>
 #include <ExternalComms/WifiTransceiver.h>
 #include <utils/SPIPreInit.h>
+#include <Debug/LccMasterTransceiver.h>
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -28,11 +29,13 @@ using namespace std::chrono_literals;
 
 SystemStatus* systemStatus = new SystemStatus;
 
+#ifndef LCC_RELAY
 rtos::Thread controlBoardCommunicationThread(osPriorityRealtime);
 ControlBoardTransceiver trx(CB_TX, CB_RX, systemStatus);
-
-rtos::Thread auxLccCommunicationThread;
-AuxLccTransceiver auxTrx(AUX_TX, AUX_RX, systemStatus);
+#else
+rtos::Thread lccAndCbTransceiverThread(osPriorityRealtime);
+LccMasterTransceiver trx(CB_TX, CB_RX, AUX_TX, AUX_RX, systemStatus);
+#endif
 
 void mbed_error_hook(const mbed_error_ctx *error_context) {
     //led = true;
@@ -59,10 +62,13 @@ int main()
 
     uiThread.start([] { uiController.run(); });
 
-    mbed::Watchdog::get_instance().start(2000);
+    mbed::Watchdog::get_instance().start(8000);
 
+#ifndef LCC_RELAY
     controlBoardCommunicationThread.start([] { trx.run(); });
-    auxLccCommunicationThread.start([] { auxTrx.run(); });
+#else
+    lccAndCbTransceiverThread.start([] { trx.run(); });
+#endif
     systemControllerThread.start([] { systemController.run(); });
     wifiThread.start([] { wifiTransceiver.run(); });
 
