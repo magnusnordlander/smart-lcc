@@ -46,6 +46,22 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
 
 * https://github.com/improv-wifi/sdk-cpp
 * Random facts about the stock implementation:
+  * Some implementation details are available in https://www.1st-line.com/wp-content/uploads/2018/12/Parameter-settings-technical-menu-Bianca-PL162T.pdf
+    * Original parameters (not necessarily applicable since PID parameters are hightly implementation dependent):
+      * Brew boiler
+        * Kp: 0.8
+        * Ki: 0.04
+        * Kd: 12
+        * On/off delta: 15°C
+      * Service boiler
+        * Kp: 20
+        * Ki: 0
+        * Kd: 20
+        * On/off delta: 0
+      * Brew boiler offset: 10°C
+    * A "full" heatup cycle goes to 130°C first, then drops to set temperature
+      * Triggered when the temperature on power on is less than 70°C
+    * Service boiler is not PID controlled (even though it can be). Even if it *were*, having a Ki of 0, means it's a PD controller. It's a simple on/off controller.
   * Minimum on/off-time seems to be around 100-120 ms
   * When in eco mode, a warmup consists of running the coffee boiler full blast, holding the temperature around 130°C for 4 minutes, then dropping to the set point
   * When in regular mode, there is a kind of time slot system for which boiler is used. The time slots are 1 second wide.
