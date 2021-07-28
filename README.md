@@ -45,6 +45,10 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
 (In no particular order)
 
 * https://github.com/improv-wifi/sdk-cpp
+* Random facts about the stock implementation:
+  * Minimum on/off-time seems to be around 100-120 ms
+  * When in eco mode, a warmup consists of running the coffee boiler full blast, holding the temperature around 130°C for 4 minutes, then dropping to the set point
+  * When in regular mode, there is a kind of time slot system for which boiler is used. The time slots are 1 second wide.
 
 ## Licensing
 
