@@ -8,7 +8,7 @@ using namespace std::chrono_literals;
 
 SystemController::SystemController(SystemStatus *status) :
         status(status),
-        brewBoilerController(status->targetBrewTemperature, 20.0f, PidParameters{.Kp = 2.5, .Ki = 0.3, .Kd = 4.0}, 2.0f, 200),
+        brewBoilerController(status->targetBrewTemperature, 20.0f, PidParameters{.Kp = 0.8, .Ki = 0.3, .Kd = 20.0}, 2.0f, 200),
         serviceBoilerController(status->targetServiceTemperature, 20.0f, PidParameters{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0}, 2.0f, 800){
 
 }

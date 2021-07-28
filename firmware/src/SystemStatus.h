@@ -26,7 +26,7 @@ public:
 
     bool ecoMode = true;
 
-    float targetBrewTemperature = 0.0f;
+    float targetBrewTemperature = 105.0f;
     float targetServiceTemperature = 0.0f;
 
     float brewTemperatureOffset = -10.0f;
@@ -39,6 +39,13 @@ public:
     double p = 0;
     double i = 0;
     double d = 0;
+
+    uint16_t lastBssrCycleMs = 0;
+    uint16_t lastSssrCycleMs = 0;
+    uint16_t minBssrOnCycleMs = 0;
+    uint16_t minBssrOffCycleMs = 0;
+    uint16_t minSssrOnCycleMs = 0;
+    uint16_t minSssrOffCycleMs = 0;
 
     inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
     inline float getOffsetBrewTemperature() const { return controlBoardPacket.brew_boiler_temperature + brewTemperatureOffset; }

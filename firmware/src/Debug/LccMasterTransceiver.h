@@ -31,6 +31,16 @@ private:
     LccRawPacket currentLccPacket;
     uint8_t currentLccPacketIdx = 0;
 
+    bool lastBssrState = false;
+    bool lastSssrState = false;
+    rtos::Kernel::Clock::time_point bssrStateChangedAt;
+    rtos::Kernel::Clock::time_point sssrStateChangedAt;
+
+    rtos::Kernel::Clock::duration minBssrOnTime = std::chrono::milliseconds(10000);
+    rtos::Kernel::Clock::duration minBssrOffTime = std::chrono::milliseconds(10000);
+    rtos::Kernel::Clock::duration minSssrOnTime = std::chrono::milliseconds(10000);
+    rtos::Kernel::Clock::duration minSssrOffTime = std::chrono::milliseconds(10000);
+
     [[noreturn]] void bailForever();
 };
 

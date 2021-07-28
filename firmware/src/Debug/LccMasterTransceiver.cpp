@@ -43,14 +43,43 @@ LccMasterTransceiver::LccMasterTransceiver(PinName cbTx, PinName cbRx, PinName l
             bailForever();
         }
 
-/*        printf("Got packet from LCC\n");
-        printlnhex((uint8_t *)&currentLccPacket, sizeof(currentLccPacket));*/
-
         t.reset();
 
         status->lastLccPacketSentAt = rtos::Kernel::Clock::now();
         status->hasSentLccPacket = true;
         status->lccPacket = convert_lcc_raw_to_parsed(currentLccPacket);
+
+        if (status->lccPacket.brew_boiler_ssr_on != lastBssrState) {
+            rtos::Kernel::Clock::duration dur = status->lastLccPacketSentAt - bssrStateChangedAt;
+
+            if (lastBssrState && dur < minBssrOnTime) {
+                minBssrOnTime = dur;
+                status->minBssrOnCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+            } else if (!lastBssrState && dur < minBssrOffTime) {
+                minBssrOffTime = dur;
+                status->minBssrOffCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+            }
+
+            bssrStateChangedAt = status->lastLccPacketSentAt;
+            lastBssrState = status->lccPacket.brew_boiler_ssr_on;
+            status->lastBssrCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+        }
+
+        if (status->lccPacket.service_boiler_ssr_on != lastSssrState) {
+            rtos::Kernel::Clock::duration dur = status->lastLccPacketSentAt - sssrStateChangedAt;
+
+            if (lastSssrState && dur < minSssrOnTime) {
+                minSssrOnTime = dur;
+                status->minSssrOnCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+            } else if (!lastSssrState && dur < minSssrOffTime) {
+                minSssrOffTime = dur;
+                status->minSssrOffCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+            }
+
+            sssrStateChangedAt = status->lastLccPacketSentAt;
+            lastSssrState = status->lccPacket.service_boiler_ssr_on;
+            status->lastSssrCycleMs = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+        }
 
         cbSerial.write((uint8_t *)&currentLccPacket, sizeof(currentLccPacket));
         t.start();

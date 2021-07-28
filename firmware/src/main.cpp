@@ -58,7 +58,7 @@ int main()
     PluggableUSBD().begin();
     _SerialUSB.begin(9600);
 
-    rtos::ThisThread::sleep_for(5000ms);
+//    rtos::ThisThread::sleep_for(5000ms);
 
     uiThread.start([] { uiController.run(); });
 

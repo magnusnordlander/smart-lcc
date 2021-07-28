@@ -12,7 +12,7 @@
 #define MQTT_HOST 192,168,10,66
 #define MQTT_PORT 1883
 
-#define FLOAT_MAX_LEN 6
+#define FLOAT_MAX_LEN 7
 
 #define TOPIC_PREFIX "lcc/"
 

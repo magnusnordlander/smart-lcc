@@ -29,7 +29,9 @@ void UIController::run() {
                         status->wifiConnected ? "W" : "w",
                         status->mqttConnected ? "M" : "m");
 
+#ifndef LCC_RELAY
         display->printf("CT: %d ST: %d\r\n", (int)round(status->getOffsetTargetBrewTemperature()), (int)round(status->targetServiceTemperature));
+#endif
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
@@ -41,7 +43,14 @@ void UIController::run() {
             display->printf("%s %s %s %s\r\n", status->lccPacket.brew_boiler_ssr_on ? "BSSR" : "bssr", status->lccPacket.service_boiler_ssr_on ? "SSSR" : "sssr", status->lccPacket.pump_on ? "P" : "p", status->lccPacket.service_boiler_solenoid_open ? "BS" : "bs");
         }
 
+#ifndef LCC_RELAY
         display->printf("P%.1f I%.1f D%.1f S%.1f\r\n", status->p, status->i, status->d, status->integral);
+#endif
+
+#ifdef LCC_RELAY
+        display->printf("LB %u LS %u\r\n", status->lastBssrCycleMs, status->lastSssrCycleMs);
+        display->printf("BOn %u BOf %u\r\n", status->minBssrOnCycleMs, status->minBssrOffCycleMs);
+#endif
 
         display->setTextCursor(100, 18);
         display->printf("%s", blip < 5 ? "o" : " ");
