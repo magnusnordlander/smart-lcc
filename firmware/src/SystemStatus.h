@@ -8,6 +8,7 @@
 #include <mbed.h>
 #include <lcc_protocol.h>
 #include <control_board_protocol.h>
+#include <SystemController/PIDController.h>
 
 class SystemStatus {
 public:
@@ -39,6 +40,9 @@ public:
     double p = 0;
     double i = 0;
     double d = 0;
+
+    PidParameters brewPidParameters = PidParameters{.Kp = 0.8, .Ki = 0.04, .Kd = 20.0};
+    PidParameters servicePidParameters = PidParameters{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0};
 
     uint16_t lastBssrCycleMs = 0;
     uint16_t lastSssrCycleMs = 0;

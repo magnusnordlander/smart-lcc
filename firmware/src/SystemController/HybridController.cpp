@@ -32,3 +32,7 @@ bool HybridController::getControlSignal(float value) {
     //printf("Using Hysteresis\n");
     return hysteresisValue;
 }
+
+void HybridController::setPidParameters(PidParameters pidParameters) {
+    pidController.pidParameters = pidParameters;
+}

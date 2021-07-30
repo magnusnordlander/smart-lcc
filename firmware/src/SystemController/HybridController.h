@@ -16,6 +16,8 @@ public:
     void updateSetPoint(float setPoint);
     bool getControlSignal(float value);
 
+    void setPidParameters(PidParameters pidParameters);
+
     PIDController pidController;
 private:
     HysteresisController hysteresisController;
