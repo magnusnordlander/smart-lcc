@@ -14,7 +14,7 @@ public:
     explicit HybridController(float setPoint, float hybridDelta, const PidParameters &pidParameters, float hysteresisDelta, uint16_t cycleTime);
 
     void updateSetPoint(float setPoint);
-    bool getControlSignal(float value);
+    uint8_t getControlSignal(float value);
 
     void setPidParameters(PidParameters pidParameters);
 

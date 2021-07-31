@@ -22,7 +22,7 @@ public:
     PidParameters pidParameters;
 
     void updateSetPoint(float setPoint);
-    bool getControlSignal(float value);
+    uint8_t getControlSignal(float value);
 
     uint16_t cycleTime = 200;
 

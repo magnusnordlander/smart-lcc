@@ -44,6 +44,8 @@ int main()
     PluggableUSBD().begin();
     _SerialUSB.begin(9600);
 
+    //rtos::ThisThread::sleep_for(5000ms);
+
     mbed::Watchdog::get_instance().start(1000);
     systemControllerThread.start([] { systemController.run(); });
 

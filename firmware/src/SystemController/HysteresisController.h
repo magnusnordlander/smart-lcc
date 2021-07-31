@@ -5,6 +5,8 @@
 #ifndef FIRMWARE_HYSTERESISCONTROLLER_H
 #define FIRMWARE_HYSTERESISCONTROLLER_H
 
+#include <cstdint>
+
 typedef enum {
     HYSTERESIS_STATE_ASCENDING,
     HYSTERESIS_STATE_DESCENDING,
@@ -16,7 +18,7 @@ public:
 
     void updateSetPoint(float setPoint);
 
-    bool getControlSignal(float value);
+    uint8_t getControlSignal(float value);
 
 private:
     float delta;

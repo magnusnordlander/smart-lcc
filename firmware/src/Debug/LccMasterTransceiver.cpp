@@ -100,13 +100,11 @@ LccMasterTransceiver::LccMasterTransceiver(PinName cbTx, PinName cbRx, PinName l
             printf("Getting a packet from CB took too long (%u ms), bailing.\n", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
             bailForever();
         }
-        rtos::Kernel::Clock::time_point cbReceivedAt = rtos::Kernel::Clock::now();
 
         lccSerial.write((uint8_t*)&currentCbPacket, sizeof(currentCbPacket));
 
         status->controlBoardRawPacket = currentCbPacket;
         status->controlBoardPacket = convert_raw_control_board_packet(currentCbPacket);
-        status->lastControlBoardPacketReceivedAt = cbReceivedAt;
         status->hasReceivedControlBoardPacket = true;
 
         // Reset CB Packet

@@ -30,13 +30,23 @@ void UIController::run() {
                         status->mqttConnected ? "M" : "m");
 
 #ifndef LCC_RELAY
-        display->printf("CT: %d ST: %d\r\n", (int)round(status->getOffsetTargetBrewTemperature()), (int)round(status->targetServiceTemperature));
+        display->printf("CT:%d ST:%d\r\n", (int)round(status->getOffsetTargetBrewTemperature()), (int)round(status->targetServiceTemperature));
 #endif
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB: %d SB: %d\r\n", (int)round(status->getOffsetBrewTemperature()), (int)round(status->controlBoardPacket.service_boiler_temperature));
+            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->controlBoardPacket.service_boiler_temperature);
             display->printf("Br:%s SL:%s WT:%s\r\n", status->controlBoardPacket.brew_switch ? "Y" : "N", status->controlBoardPacket.service_boiler_low ? "Y" : "N", status->controlBoardPacket.water_tank_empty ? "Y" : "N");
+        }
+
+        if (status->lastBrewStartedAt.has_value()) {
+            if (status->lastBrewEndedAt.has_value()) {
+                auto millis = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(status->lastBrewEndedAt.value() - status->lastBrewStartedAt.value()).count();
+                display->printf("Brewed: %u s\r\n", (uint8_t)round((float)millis / 1000.f));
+            } else {
+                auto millis = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(rtos::Kernel::Clock::now() - status->lastBrewStartedAt.value()).count();
+                display->printf("Brewing: %u s\r\n", (uint8_t)round((float)millis / 1000.f));
+            }
         }
 
         if (status->hasSentLccPacket) {
@@ -44,7 +54,7 @@ void UIController::run() {
         }
 
 #ifndef LCC_RELAY
-        display->printf("P%.1f I%.1f D%.1f S%.1f\r\n", status->p, status->i, status->d, status->integral);
+//        display->printf("P%.1f I%.1f D%.1f S%.1f\r\n", status->p, status->i, status->d, status->integral);
 #endif
 
 #ifdef LCC_RELAY

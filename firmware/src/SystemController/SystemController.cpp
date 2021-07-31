@@ -48,8 +48,6 @@ void SystemController::run() {
             bailForever();
         }
 
-        rtos::Kernel::Clock::time_point receivedAt = rtos::Kernel::Clock::now();
-
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
         status->controlBoardRawPacket = currentPacket;
 
@@ -58,7 +56,6 @@ void SystemController::run() {
         t.reset();
 
         status->controlBoardPacket = cbPacket;
-        status->lastControlBoardPacketReceivedAt = receivedAt;
         status->hasReceivedControlBoardPacket = true;
 
         rtos::Kernel::Clock::time_point nextPacketAt = lastPacketSentAt + 100ms;
@@ -80,26 +77,129 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     waterTankEmptyLatch.set(latestParsedPacket.water_tank_empty);
     serviceBoilerLowLatch.set(latestParsedPacket.service_boiler_low);
 
-    if (brewBoilerController.getControlSignal(latestParsedPacket.brew_boiler_temperature)) {
-        lcc.brew_boiler_ssr_on = true;
+    auto now = rtos::Kernel::Clock::now();
+    nonstd::optional<SsrStateQueueItem*> foundItem;
+
+    while (!ssrStateQueue.empty()) {
+        SsrStateQueueItem* item;
+        bool success = ssrStateQueue.try_get(&item);
+        if (success && item->expiresAt > now) {
+            foundItem = item;
+            break;
+        }
+        printf("Skipping queue item\n");
+        delete item;
     }
+
+    /*
+     * New algorithm:
+     *
+     * Cap BB and SB at 25 respectively. Divide time into 25 x 100 ms slots.
+     *
+     * If BB + SB < 25: Both get what they want.
+     * Else: They get a proportional share of what they want.
+     *   I.e. if BB = 17 and SB = 13, BB gets round((17/(17+13))*25) = 14 and SB gets round((13/(17+13))*25) = 11.
+     *
+     * Each slot allocation is stamped with an expiration timestamp. That way any delay in popping the queue won't
+     * result in old values being used.
+     */
+    if (ssrStateQueue.empty()) {
+        uint8_t bbSignal = brewBoilerController.getControlSignal(latestParsedPacket.brew_boiler_temperature);
+        uint8_t sbSignal = serviceBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature);
+
+        printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
+
+        if (status->ecoMode) {
+            sbSignal = 0;
+        }
+
+        if (bbSignal + sbSignal > 25) {
+            auto newBbSignal = (uint8_t)round(((float)bbSignal / (float)(bbSignal + sbSignal)) * 25.f);
+            auto newSbSignal = (uint8_t)round(((float)sbSignal / (float)(bbSignal + sbSignal)) * 25.f);
+            bbSignal = newBbSignal;
+            sbSignal = newSbSignal;
+
+            if (bbSignal + sbSignal == 26) {
+                sbSignal--;
+            }
+        }
+
+        uint8_t noSignal = 25 - bbSignal - sbSignal;
+
+        printf("Adding new controls to the queue. BB: %u SB: %u NB: %u\n", bbSignal, sbSignal, noSignal);
+
+        auto slotExpiration = now + 200ms;
+
+        for (uint8_t i = 0; i < bbSignal; ++i) {
+            auto* newItem = new SsrStateQueueItem;
+            newItem->state = BREW_BOILER_SSR_ON;
+            newItem->expiresAt = slotExpiration;
+            slotExpiration += 100ms;
+            ssrStateQueue.try_put(newItem);
+        }
+
+        for (uint8_t i = 0; i < sbSignal; ++i) {
+            auto* newItem = new SsrStateQueueItem;
+            newItem->state = SERVICE_BOILER_SSR_ON;
+            newItem->expiresAt = slotExpiration;
+            slotExpiration += 100ms;
+            ssrStateQueue.try_put(newItem);
+        }
+
+        for (uint8_t i = 0; i < noSignal; ++i) {
+            auto* newItem = new SsrStateQueueItem;
+            newItem->state = BOTH_SSRS_OFF;
+            newItem->expiresAt = slotExpiration;
+            slotExpiration += 100ms;
+            ssrStateQueue.try_put(newItem);
+        }
+
+        if (!foundItem.has_value()) {
+            SsrStateQueueItem* item;
+            bool success = ssrStateQueue.try_get(&item);
+            if (success) {
+                foundItem = item;
+            }
+        }
+    }
+
+    if (!foundItem.has_value()) {
+        printf("No Queue item found\n");
+        bailForever();
+    }
+
+    if (foundItem.value()->state == BREW_BOILER_SSR_ON) {
+        lcc.brew_boiler_ssr_on = true;
+    } else if (foundItem.value()->state == SERVICE_BOILER_SSR_ON) {
+        lcc.service_boiler_ssr_on = true;
+    }
+
+    delete foundItem.value();
+    foundItem.reset();
 
     status->p = brewBoilerController.pidController.Pout;
     status->i = brewBoilerController.pidController.Iout;
     status->d = brewBoilerController.pidController.Dout;
     status->integral = brewBoilerController.pidController._integral;
 
-    if (!lcc.brew_boiler_ssr_on && serviceBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature) && !status->ecoMode) {
-        lcc.service_boiler_ssr_on = true;
-    }
-
     if (!waterTankEmptyLatch.get()) {
         if (latestParsedPacket.brew_switch) {
             lcc.pump_on = true;
+
+            if (!status->currentlyBrewing) {
+                status->currentlyBrewing = true;
+                status->lastBrewStartedAt = rtos::Kernel::Clock::now();
+                status->lastBrewEndedAt.reset();
+            }
         } else if (serviceBoilerLowLatch.get()) {
             lcc.pump_on = true;
             lcc.service_boiler_solenoid_open = true;
         }
+    }
+
+    if (!lcc.pump_on && status->currentlyBrewing) {
+        status->currentlyBrewing = false;
+        status->lastBrewEndedAt = rtos::Kernel::Clock::now();
     }
 
     return lcc;

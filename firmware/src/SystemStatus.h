@@ -19,16 +19,19 @@ public:
     LccParsedPacket lccPacket;
 
     bool hasReceivedControlBoardPacket = false;
-    rtos::Kernel::Clock::time_point lastControlBoardPacketReceivedAt;
     ControlBoardParsedPacket controlBoardPacket;
     ControlBoardRawPacket controlBoardRawPacket;
 
     bool has_bailed;
 
+    bool currentlyBrewing = false;
+    nonstd::optional<rtos::Kernel::Clock::time_point> lastBrewStartedAt;
+    nonstd::optional<rtos::Kernel::Clock::time_point> lastBrewEndedAt;
+
     bool ecoMode = true;
 
     float targetBrewTemperature = 105.0f;
-    float targetServiceTemperature = 0.0f;
+    float targetServiceTemperature = 140.0f;
 
     float brewTemperatureOffset = -10.0f;
 

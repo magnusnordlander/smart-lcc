@@ -21,15 +21,14 @@ void HybridController::updateSetPoint(float setPoint) {
     pidController.updateSetPoint(setPoint);
 }
 
-bool HybridController::getControlSignal(float value) {
-    bool hysteresisValue = hysteresisController.getControlSignal(value);
-    bool pidValue = pidController.getControlSignal(value);
+uint8_t HybridController::getControlSignal(float value) {
+    uint8_t hysteresisValue = hysteresisController.getControlSignal(value);
+    uint8_t pidValue = pidController.getControlSignal(value);
 
     if (value > lowerPidBound && value < upperPidBound) {
         return pidValue;
     }
 
-    //printf("Using Hysteresis\n");
     return hysteresisValue;
 }
 

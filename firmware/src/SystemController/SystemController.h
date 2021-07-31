@@ -19,6 +19,18 @@ typedef enum {
     SLEEPING,
 } SystemState;
 
+typedef enum {
+    BOTH_SSRS_OFF = 0,
+    BREW_BOILER_SSR_ON,
+    SERVICE_BOILER_SSR_ON,
+} SsrState;
+
+class SsrStateQueueItem {
+public:
+    SsrState state = BOTH_SSRS_OFF;
+    rtos::Kernel::Clock::time_point expiresAt;
+};
+
 class SystemController {
 public:
     explicit SystemController(PinName tx, PinName rx, SystemStatus *status);
@@ -44,6 +56,8 @@ private:
 
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
+
+    rtos::Queue<SsrStateQueueItem, 50> ssrStateQueue;
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);
