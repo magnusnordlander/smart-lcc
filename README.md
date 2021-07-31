@@ -6,7 +6,7 @@ Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-pro
 
 ## Status
 
-Consider this project pre-alpha. There is a revision A PCB, of which I plan to make a revision B. The firmware has been function tested with an actual machine, but it still needs parameter tweaking to actually be able to control water temperatures in a meaningful way. The UI has a long way to go. An alpha release, which is functional, but not particularly polished will probably happen during the summer of 2021. Expect a rev B board and a beta release some time during fall/winter.
+Consider this project pre-alpha. There are two PCB revisions. Revision A has been manufactured, and mostly works. Revision B has been designed and sent out for manufacturing. The firmware has been function tested with an actual machine, and mostly works, but still needs tweaks. The UI has a long way to go. An alpha release, which is functional, but not particularly polished will probably happen during the summer of 2021. Expect a beta release some time during fall/winter.
 
 Also, considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. This is not the stage to get on board with this project if you aren't willing to deal with possibly having to buy spare parts for and repair your machine.
 
