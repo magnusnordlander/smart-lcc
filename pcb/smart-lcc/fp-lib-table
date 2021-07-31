@@ -1,3 +1,4 @@
 (fp_lib_table
   (lib (name SW_Push_ADTSMW65)(type KiCad)(uri ${KIPRJMOD}/SW_Push_ADTSMW65.pretty)(options "")(descr ""))
+  (lib (name 2N7002)(type KiCad)(uri ${KIPRJMOD}/2N7002.pretty)(options "")(descr ""))
 )
