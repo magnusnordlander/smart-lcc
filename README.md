@@ -27,16 +27,12 @@ A first manufacturing run of the rev A PCB has been ordered, and preliminary tes
 The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Preliminarily, this project will use the RTOS capabilities of Mbed OS, and run the processes as different threads. Currently, only one of the cores is utilized, since mbed doesn't use multiple cores.
 
 #### Threads on RP2040
-* Control Board communication
-  * Safety critical, runs at `osPriorityRealtime`, defensively coded
+* System controller
+  * Safety critical, runs at `osPriorityRealtime`
+  * Communicates with the Control Board
   * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
   * Responsible for kicking the watchdog
-* System controller
-  * Runs at `osPriorityAboveNormal`
   * Responsible for PID, keeping water in the boiler, running pumps etc.
-    * Includes set points for boilers, PID parameters etc
-    * Also includes Wifi authentication settings
-  * Basically bakes the LCC Packets for the control board
 * UI controller
 * External communication
   * Runs at `osPriorityBelowNormal`

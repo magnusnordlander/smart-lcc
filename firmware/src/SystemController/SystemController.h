@@ -21,14 +21,26 @@ typedef enum {
 
 class SystemController {
 public:
-    explicit SystemController(SystemStatus *status);
+    explicit SystemController(PinName tx, PinName rx, SystemStatus *status);
 
     [[noreturn]] void run();
+    void handleRxIrq();
 private:
+    mbed::UnbufferedSerial serial;
+    SystemStatus* status;
+
+    rtos::Kernel::Clock::time_point lastPacketSentAt;
+
+    bool awaitingPacket = false;
+    ControlBoardRawPacket currentPacket;
+    uint8_t currentPacketIdx = 0;
+
+    [[noreturn]] void bailForever();
+    void sendPacket(LccRawPacket packet);
+    void awaitReceipt();
+
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
     void updateFromSystemStatus();
-
-    SystemStatus* status;
 
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
