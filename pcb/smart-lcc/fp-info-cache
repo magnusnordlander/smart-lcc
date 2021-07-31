@@ -1,4 +1,11 @@
-19094678012362281
+19099561198626610
+2N7002
+SOT-23_copy_copy
+SOT-23, Standard
+SOT-23
+0
+3
+3
 ABX00027
 MODULE_ABX00027
 
@@ -70345,6 +70352,20 @@ SOT-23W for handsoldering
 Package_TO_SOT_SMD
 SOT-23_Handsoldering
 SOT-23, Handsoldering
+SOT-23
+0
+3
+3
+Package_TO_SOT_SMD
+SOT-23_copy
+SOT-23, Standard
+SOT-23
+0
+3
+3
+Package_TO_SOT_SMD
+SOT-23_copy_copy
+SOT-23, Standard
 SOT-23
 0
 3
