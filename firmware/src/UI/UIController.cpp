@@ -25,12 +25,12 @@ void UIController::run() {
                         status->hasSentLccPacket ? "TX" : "tx",
                         status->hasReceivedControlBoardPacket ? "RX" : "rx",
                         status->has_bailed ? "Bail " : "",
-                        status->ecoMode ? "E" : "e",
+                        status->isInEcoMode() ? "E" : "e",
                         status->wifiConnected ? "W" : "w",
                         status->mqttConnected ? "M" : "m");
 
 #ifndef LCC_RELAY
-        display->printf("CT:%d ST:%d\r\n", (int)round(status->getOffsetTargetBrewTemperature()), (int)round(status->targetServiceTemperature));
+        display->printf("CT:%d ST:%d\r\n", (int)round(status->getOffsetTargetBrewTemperature()), (int)round(status->getTargetServiceTemp()));
 #endif
 
         if (status->hasReceivedControlBoardPacket) {

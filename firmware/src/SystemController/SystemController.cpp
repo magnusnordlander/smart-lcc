@@ -9,8 +9,8 @@ using namespace std::chrono_literals;
 SystemController::SystemController(PinName tx, PinName rx, SystemStatus *status) :
         serial(tx, rx, 9600),
         status(status),
-        brewBoilerController(status->targetBrewTemperature, 20.0f, status->brewPidParameters, 2.0f, 200),
-        serviceBoilerController(status->targetServiceTemperature, 20.0f, status->servicePidParameters, 2.0f, 800){
+        brewBoilerController(status->getTargetBrewTemp(), 20.0f, status->getBrewPidParameters(), 2.0f, 200),
+        serviceBoilerController(status->getTargetServiceTemp(), 20.0f, status->getServicePidParameters(), 2.0f, 800){
     serial.set_flow_control(mbed::SerialBase::Disabled);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
     gpio_set_outover(tx, GPIO_OVERRIDE_INVERT);
@@ -28,7 +28,6 @@ void SystemController::run() {
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(status->lccPacket);
 
         lastPacketSentAt = rtos::Kernel::Clock::now();
-        status->lastLccPacketSentAt = lastPacketSentAt;
         status->hasSentLccPacket = true;
 
         sendPacket(rawLccPacket);
@@ -49,7 +48,6 @@ void SystemController::run() {
         }
 
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
-        status->controlBoardRawPacket = currentPacket;
 
         currentPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
@@ -109,7 +107,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
         printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
 
-        if (status->ecoMode) {
+        if (status->isInEcoMode()) {
             sbSignal = 0;
         }
 
@@ -206,9 +204,9 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 }
 
 void SystemController::updateFromSystemStatus() {
-    brewBoilerController.updateSetPoint(status->targetBrewTemperature);
-    serviceBoilerController.updateSetPoint(status->targetServiceTemperature);
-    brewBoilerController.setPidParameters(status->brewPidParameters);
+    brewBoilerController.updateSetPoint(status->getTargetBrewTemp());
+    serviceBoilerController.updateSetPoint(status->getTargetServiceTemp());
+    brewBoilerController.setPidParameters(status->getBrewPidParameters());
 }
 
 [[noreturn]] void SystemController::bailForever() {

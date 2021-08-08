@@ -161,73 +161,79 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
     printf("Data: %s\n", payloadZero);
 
     if (!strcmp(topic_names[TOPIC_SET_CONF_ECO_MODE], topic)) {
-        systemStatus->ecoMode = !strcmp("true", reinterpret_cast<const char *>(payloadZero));
+        systemStatus->setEcoMode(!strcmp("true", reinterpret_cast<const char *>(payloadZero)));
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_TARGET], topic)) {
         float target = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
-        if (target > 10.0f && target < 130.0f) {
-            systemStatus->targetBrewTemperature = target;
+        if (target > 10.0f && target < 120.0f) {
+            systemStatus->setOffsetTargetBrewTemperature(target);
         }
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_TEMP_TARGET], topic)) {
         float target = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
         if (target > 10.0f && target < 150.0f) {
-            systemStatus->targetServiceTemperature = target;
+            systemStatus->setTargetServiceTemp(target);
         }
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_OFFSET], topic)) {
         float offset = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
         if (offset > -30.0f && offset < 30.0f) {
-            systemStatus->brewTemperatureOffset = offset;
+            systemStatus->setBrewTemperatureOffset(offset);
         }
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KP], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getBrewPidParameters();
         PidParameters newParams = PidParameters();
         newParams.Kp = param;
-        newParams.Ki = systemStatus->brewPidParameters.Ki;
-        newParams.Kd = systemStatus->brewPidParameters.Kd;
-        systemStatus->brewPidParameters = newParams;
+        newParams.Ki = oldParams.Ki;
+        newParams.Kd = oldParams.Kd;
+        systemStatus->setBrewPidParameters(newParams);
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KI], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getBrewPidParameters();
         PidParameters newParams = PidParameters();
-        newParams.Kp = systemStatus->brewPidParameters.Kp;
+        newParams.Kp = oldParams.Kp;
         newParams.Ki = param;
-        newParams.Kd = systemStatus->brewPidParameters.Kd;
-        systemStatus->brewPidParameters = newParams;
+        newParams.Kd = oldParams.Kd;
+        systemStatus->setBrewPidParameters(newParams);
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KD], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getBrewPidParameters();
         PidParameters newParams = PidParameters();
-        newParams.Kp = systemStatus->brewPidParameters.Kp;
-        newParams.Ki = systemStatus->brewPidParameters.Ki;
+        newParams.Kp = oldParams.Kp;
+        newParams.Ki = oldParams.Ki;
         newParams.Kd = param;
-        systemStatus->brewPidParameters = newParams;
+        systemStatus->setBrewPidParameters(newParams);
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KP], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getServicePidParameters();
         PidParameters newParams = PidParameters();
         newParams.Kp = param;
-        newParams.Ki = systemStatus->servicePidParameters.Ki;
-        newParams.Kd = systemStatus->servicePidParameters.Kd;
-        systemStatus->servicePidParameters = newParams;
+        newParams.Ki = oldParams.Ki;
+        newParams.Kd = oldParams.Kd;
+        systemStatus->setServicePidParameters(newParams);
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KI], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getServicePidParameters();
         PidParameters newParams = PidParameters();
-        newParams.Kp = systemStatus->servicePidParameters.Kp;
+        newParams.Kp = oldParams.Kp;
         newParams.Ki = param;
-        newParams.Kd = systemStatus->servicePidParameters.Kd;
-        systemStatus->servicePidParameters = newParams;
+        newParams.Kd = oldParams.Kd;
+        systemStatus->setServicePidParameters(newParams);
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KD], topic)) {
         float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
+        PidParameters oldParams = systemStatus->getServicePidParameters();
         PidParameters newParams = PidParameters();
-        newParams.Kp = systemStatus->servicePidParameters.Kp;
-        newParams.Ki = systemStatus->servicePidParameters.Ki;
+        newParams.Kp = oldParams.Kp;
+        newParams.Ki = oldParams.Ki;
         newParams.Kd = param;
-        systemStatus->servicePidParameters = newParams;
+        systemStatus->setServicePidParameters(newParams);
     }
 
     free(payloadZero);
@@ -239,16 +245,18 @@ void WifiTransceiver::publishStatus() {
 
     publish(topic_names[TOPIC_STAT_TX], systemStatus->hasSentLccPacket);
 
-    publish(topic_names[TOPIC_CONF_ECO_MODE], systemStatus->ecoMode);
-    publish(topic_names[TOPIC_CONF_BREW_TEMP_TARGET], systemStatus->targetBrewTemperature);
-    publish(topic_names[TOPIC_CONF_SERVICE_TEMP_TARGET], systemStatus->targetServiceTemperature);
-    publish(topic_names[TOPIC_CONF_BREW_TEMP_OFFSET], systemStatus->brewTemperatureOffset);
-    publish(topic_names[TOPIC_CONF_BREW_PID_KP], systemStatus->brewPidParameters.Kp);
-    publish(topic_names[TOPIC_CONF_BREW_PID_KI], systemStatus->brewPidParameters.Ki);
-    publish(topic_names[TOPIC_CONF_BREW_PID_KD], systemStatus->brewPidParameters.Kd);
-    publish(topic_names[TOPIC_CONF_SERVICE_PID_KP], systemStatus->servicePidParameters.Kp);
-    publish(topic_names[TOPIC_CONF_SERVICE_PID_KI], systemStatus->servicePidParameters.Ki);
-    publish(topic_names[TOPIC_CONF_SERVICE_PID_KD], systemStatus->servicePidParameters.Kd);
+    publish(topic_names[TOPIC_CONF_ECO_MODE], systemStatus->isInEcoMode());
+    publish(topic_names[TOPIC_CONF_BREW_TEMP_TARGET], systemStatus->getOffsetTargetBrewTemperature());
+    publish(topic_names[TOPIC_CONF_SERVICE_TEMP_TARGET], systemStatus->getTargetServiceTemp());
+    publish(topic_names[TOPIC_CONF_BREW_TEMP_OFFSET], systemStatus->getBrewTempOffset());
+    auto brewPidParams = systemStatus->getBrewPidParameters();
+    publish(topic_names[TOPIC_CONF_BREW_PID_KP], brewPidParams.Kp);
+    publish(topic_names[TOPIC_CONF_BREW_PID_KI], brewPidParams.Ki);
+    publish(topic_names[TOPIC_CONF_BREW_PID_KD], brewPidParams.Kd);
+    auto servicePidParams = systemStatus->getServicePidParameters();
+    publish(topic_names[TOPIC_CONF_SERVICE_PID_KP], servicePidParams.Kp);
+    publish(topic_names[TOPIC_CONF_SERVICE_PID_KI], servicePidParams.Ki);
+    publish(topic_names[TOPIC_CONF_SERVICE_PID_KD], servicePidParams.Kd);
 
     publish(topic_names[TOPIC_STAT_BREW_PID_P], systemStatus->p);
     publish(topic_names[TOPIC_STAT_BREW_PID_I], systemStatus->i);

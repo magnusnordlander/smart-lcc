@@ -4,10 +4,9 @@
 #include <UI/UIController.h>
 #include <SystemController/SystemController.h>
 #include <Adafruit_SSD1306.h>
-#include <Debug/AuxLccTransceiver.h>
 #include <ExternalComms/WifiTransceiver.h>
 #include <utils/SPIPreInit.h>
-#include <Debug/LccMasterTransceiver.h>
+
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -45,6 +44,7 @@ int main()
     _SerialUSB.begin(9600);
 
     //rtos::ThisThread::sleep_for(5000ms);
+    systemStatus->readSettingsFromKV();
 
     mbed::Watchdog::get_instance().start(1000);
     systemControllerThread.start([] { systemController.run(); });
