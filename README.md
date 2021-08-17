@@ -24,7 +24,7 @@ This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ boa
 A custom PCB has been designed (see `pcb/`) that is designed to fit in the original LCC enclosure. A BOM for components is also available. Aside from the Arduino RP2040 Connect, the PCB has push buttons for + and -, a resistor divider for the 5V Control Board UART signal, and a flat flex connector for a SSD1309 based OLED. The PCB has been designed with surface mount components, but uses relatively large 1206 caps and resistors, which are somewhat simple to hand solder.
 
 ### Firmware
-The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Since Mbed OS doesn't support running the RTOS Kernel (at all) on Core 1, this is where the system controller will reside (since that doesn't use anything that requires Mbed RTOS). Core 0 will run UI and external communications, and will communicate with core 1 through `pico_util/queue`.
+The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Since Mbed OS doesn't support running the RTOS Kernel (at all) on Core 1, this is where the system controller will reside (since that doesn't require anything that requires Mbed RTOS). Core 0 will run UI and external communications, and will communicate with core 1 through `pico_util/queue`.
 
 #### (Planned) Threads on RP2040 Core 0
 * UI controller
