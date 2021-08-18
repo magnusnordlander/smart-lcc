@@ -62,12 +62,15 @@ void UIController::run() {
         display->printf("BOn %u BOf %u\r\n", status->minBssrOnCycleMs, status->minBssrOffCycleMs);
 #endif
 
+        display->printf("%lu", (unsigned long)start.time_since_epoch().count());
+
         display->setTextCursor(100, 18);
         display->printf("%s", blip < 5 ? "o" : " ");
         blip = (blip + 1) % 10;
 
         display->display();
 
+        //sleep_ms(30);
         // Cap at 25 fps
         rtos::ThisThread::sleep_until(start + 40ms);
     }

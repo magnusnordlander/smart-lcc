@@ -22,6 +22,7 @@ public:
     ControlBoardParsedPacket controlBoardPacket;
 
     bool has_bailed = false;
+    uint8_t bail_reason = 0x00;
 
     bool currentlyBrewing = false;
     nonstd::optional<rtos::Kernel::Clock::time_point> lastBrewStartedAt;

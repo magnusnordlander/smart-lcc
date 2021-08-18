@@ -54,7 +54,7 @@ uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
     static_assert(sizeof(packet) > 2);
     uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01);
     if (calculated_checksum != packet.checksum) {
-        printf("Calculated: %hu Actual %hu \n", calculated_checksum, packet.checksum);
+        //printf("Calculated: %hu Actual %hu \n", calculated_checksum, packet.checksum);
 
         error |= INVALID_CHECKSUM;
     }

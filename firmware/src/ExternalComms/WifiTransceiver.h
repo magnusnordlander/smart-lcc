@@ -29,6 +29,7 @@ private:
 
     void publish(const char* topic, bool payload);
     void publish(const char* topic, float payload);
+    void publish(const char* topic, uint8_t payload);
     void publish(const char *topic, double payload);
 
     void handleYield();

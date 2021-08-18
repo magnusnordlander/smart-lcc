@@ -19,6 +19,7 @@
 enum topics {
     TOPIC_ONLINE,
     TOPIC_BAILED,
+    TOPIC_BAIL_REASON,
     TOPIC_STAT_TX,
     TOPIC_CONF_ECO_MODE,
     TOPIC_CONF_BREW_TEMP_TARGET,
@@ -57,6 +58,7 @@ enum topics {
 static const char * const topic_names[] = {
     [TOPIC_ONLINE] = TOPIC_PREFIX "online",
     [TOPIC_BAILED] = TOPIC_PREFIX "stat/bailed",
+    [TOPIC_BAIL_REASON] = TOPIC_PREFIX "stat/bail_reason",
     [TOPIC_STAT_TX] = TOPIC_PREFIX  "stat/tx",
     [TOPIC_CONF_ECO_MODE] = TOPIC_PREFIX  "conf/eco_mode",
     [TOPIC_CONF_BREW_TEMP_TARGET] = TOPIC_PREFIX  "conf/brew_temp_target",
@@ -118,7 +120,7 @@ void WifiTransceiver::ensureConnectedToWifi() {
     auto status = wifi.status();
     while (status != WL_CONNECTED) {
         systemStatus->wifiConnected = false;
-        printf("Attempting to connect to WiFi, status: %u\n", status);
+        //printf("Attempting to connect to WiFi, status: %u\n", status);
         status = wifi.begin(WIFI_SSID, WIFI_PASS);
 
         rtos::ThisThread::sleep_for(5s);
@@ -131,7 +133,7 @@ void WifiTransceiver::ensureConnectedToWifi() {
 void WifiTransceiver::ensureConnectedToMqtt() {
     while (!pubSubClient.connected()) {
         systemStatus->mqttConnected = false;
-        printf("Attempting to connect to MQTT\n");
+        //printf("Attempting to connect to MQTT\n");
         if (pubSubClient.connect("lcc", topic_names[TOPIC_ONLINE], 0, true, "false")) {
             systemStatus->mqttConnected = true;
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_ECO_MODE]);
@@ -152,13 +154,13 @@ void WifiTransceiver::ensureConnectedToMqtt() {
 }
 
 void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) {
-    printf("Received callback. Topic %s\n", topic);
+    //printf("Received callback. Topic %s\n", topic);
 
     auto payloadZero = (uint8_t*)malloc((length+1)*sizeof(char));
     memcpy(payloadZero, payload, length);
     payloadZero[length] = '\0';
 
-    printf("Data: %s\n", payloadZero);
+    //printf("Data: %s\n", payloadZero);
 
     if (!strcmp(topic_names[TOPIC_SET_CONF_ECO_MODE], topic)) {
         systemStatus->setEcoMode(!strcmp("true", reinterpret_cast<const char *>(payloadZero)));
@@ -242,6 +244,7 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
 void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_ONLINE], true);
     publish(topic_names[TOPIC_BAILED], systemStatus->has_bailed);
+    publish(topic_names[TOPIC_BAIL_REASON], systemStatus->bail_reason);
 
     publish(topic_names[TOPIC_STAT_TX], systemStatus->hasSentLccPacket);
 
@@ -267,7 +270,7 @@ void WifiTransceiver::publishStatus() {
         publish(topic_names[TOPIC_STAT_RX], true);
 
         publish(topic_names[TOPIC_STAT_WATER_TANK_EMPTY], systemStatus->controlBoardPacket.water_tank_empty);
-        publish(topic_names[TOPIC_TEMP_BREW], systemStatus->controlBoardPacket.brew_boiler_temperature);
+        publish(topic_names[TOPIC_TEMP_BREW], systemStatus->getOffsetBrewTemperature());
         publish(topic_names[TOPIC_TEMP_SERVICE], systemStatus->controlBoardPacket.service_boiler_temperature);
     } else {
         publish(topic_names[TOPIC_STAT_RX],false);
@@ -276,6 +279,13 @@ void WifiTransceiver::publishStatus() {
 
 void WifiTransceiver::publish(const char *topic, bool payload) {
     pubSubClient.publish(topic,payload ? "true" : "false");
+    handleYield();
+}
+
+void WifiTransceiver::publish(const char *topic, uint8_t payload) {
+    uint8_t intString[4];
+    unsigned int len = snprintf(reinterpret_cast<char *>(intString), 4, "%u", payload);
+    pubSubClient.publish(topic, intString, len);
     handleYield();
 }
 

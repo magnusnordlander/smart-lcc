@@ -3,69 +3,80 @@
 //
 
 #include "SystemController.h"
+#include "hardware/watchdog.h"
+#include "pico/timeout_helper.h"
 
 using namespace std::chrono_literals;
 
-SystemController::SystemController(PinName tx, PinName rx, SystemStatus *status) :
-        serial(tx, rx, 9600),
+static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, check_timeout_fn timeout_check, struct timeout_state *ts) {
+    for (size_t i = 0; i < len; ++i) {
+        while (!uart_is_readable(uart)) {
+            if (timeout_check(ts)) {
+                return false;
+            }
+
+            tight_loop_contents();
+        }
+        *dst++ = uart_get_hw(uart)->dr;
+    }
+
+    return true;
+}
+
+SystemController::SystemController(uart_inst_t * _uart, PinName tx, PinName rx, SystemStatus *status) :
         status(status),
+        uart(_uart),
         brewBoilerController(status->getTargetBrewTemp(), 20.0f, status->getBrewPidParameters(), 2.0f, 200),
         serviceBoilerController(status->getTargetServiceTemp(), 20.0f, status->getServicePidParameters(), 2.0f, 800){
-    serial.set_flow_control(mbed::SerialBase::Disabled);
+    // hardware/uart
+    gpio_set_function(rx, GPIO_FUNC_UART);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
+    gpio_set_function(tx, GPIO_FUNC_UART);
     gpio_set_outover(tx, GPIO_OVERRIDE_INVERT);
-    serial.set_blocking(false);
-    serial.attach([this] { handleRxIrq(); });
+
+    uart_init(uart, 9600);
 }
 
 void SystemController::run() {
     printf("Running\n");
-    mbed::Timer t;
+    //watchdog_enable(1000, true);
+
+    //mbed::Timer t;
     while (true) {
-        mbed::Watchdog::get_instance().kick();
+        // hardware/watchdog
+        // RTOS on Core0 doesn't like us entering critical sections on Core1,
+        // so we can't use mbed::Watchdog.
+        hal_watchdog_kick();
         updateFromSystemStatus();
 
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(status->lccPacket);
 
-        lastPacketSentAt = rtos::Kernel::Clock::now();
         status->hasSentLccPacket = true;
 
-        sendPacket(rawLccPacket);
+        uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
 
-        t.start();
-        awaitingPacket = true;
+        auto timeout = make_timeout_time_ms(100);
 
-        do {
-            awaitReceipt();
-        } while (currentPacketIdx < sizeof(currentPacket) && t.elapsed_time() < 100ms);
+        timeout_state_t ts;
+        bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentPacket), sizeof(currentPacket), init_single_timeout_until(&ts, timeout), &ts);
 
-        t.stop();
-        awaitingPacket = false;
-
-        if (t.elapsed_time() >= 100ms) {
-            printf("Getting a packet from CB took too long (%u ms), bailing.\n", (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(t.elapsed_time()).count());
+        if (!success) {
+            status->bail_reason = (uint8_t)BAIL_REASON_CB_UNRESPONSIVE;
             bailForever();
         }
 
+        printf("Got package\n");
         ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
 
         currentPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
-        t.reset();
 
         status->controlBoardPacket = cbPacket;
         status->hasReceivedControlBoardPacket = true;
 
-        rtos::Kernel::Clock::time_point nextPacketAt = lastPacketSentAt + 100ms;
-
-        if (rtos::Kernel::Clock::now() > (nextPacketAt + 500ms)) {
-            printf("We're too far behind on packets, bailing.\n");
-            bailForever();
-        }
-
         status->lccPacket = handleControlBoardPacket(status->controlBoardPacket);
 
-        rtos::ThisThread::sleep_until(nextPacketAt);
+        sleep_until(timeout);
     }
 }
 
@@ -75,18 +86,16 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     waterTankEmptyLatch.set(latestParsedPacket.water_tank_empty);
     serviceBoilerLowLatch.set(latestParsedPacket.service_boiler_low);
 
-    auto now = rtos::Kernel::Clock::now();
-    nonstd::optional<SsrStateQueueItem*> foundItem;
+    auto now = get_absolute_time();
+    nonstd::optional<SsrStateQueueItem> foundItem;
 
     while (!ssrStateQueue.empty()) {
-        SsrStateQueueItem* item;
-        bool success = ssrStateQueue.try_get(&item);
-        if (success && item->expiresAt > now) {
+        SsrStateQueueItem item = ssrStateQueue.front();
+        if (absolute_time_diff_us(item.expiresAt, now) > 0) {
             foundItem = item;
             break;
         }
         printf("Skipping queue item\n");
-        delete item;
     }
 
     /*
@@ -126,53 +135,50 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
         printf("Adding new controls to the queue. BB: %u SB: %u NB: %u\n", bbSignal, sbSignal, noSignal);
 
-        auto slotExpiration = now + 200ms;
+        auto slotExpiration = delayed_by_ms(now, 200);
 
         for (uint8_t i = 0; i < bbSignal; ++i) {
-            auto* newItem = new SsrStateQueueItem;
-            newItem->state = BREW_BOILER_SSR_ON;
-            newItem->expiresAt = slotExpiration;
-            slotExpiration += 100ms;
-            ssrStateQueue.try_put(newItem);
+            auto newItem = SsrStateQueueItem();
+            newItem.state = BREW_BOILER_SSR_ON;
+            newItem.expiresAt = slotExpiration;
+            slotExpiration = delayed_by_ms(slotExpiration, 100);
+            ssrStateQueue.push(newItem);
         }
 
         for (uint8_t i = 0; i < sbSignal; ++i) {
-            auto* newItem = new SsrStateQueueItem;
-            newItem->state = SERVICE_BOILER_SSR_ON;
-            newItem->expiresAt = slotExpiration;
-            slotExpiration += 100ms;
-            ssrStateQueue.try_put(newItem);
+            auto newItem = SsrStateQueueItem();
+            newItem.state = SERVICE_BOILER_SSR_ON;
+            newItem.expiresAt = slotExpiration;
+            slotExpiration = delayed_by_ms(slotExpiration, 100);
+            ssrStateQueue.push(newItem);
         }
 
         for (uint8_t i = 0; i < noSignal; ++i) {
-            auto* newItem = new SsrStateQueueItem;
-            newItem->state = BOTH_SSRS_OFF;
-            newItem->expiresAt = slotExpiration;
-            slotExpiration += 100ms;
-            ssrStateQueue.try_put(newItem);
+            auto newItem = SsrStateQueueItem();
+            newItem.state = BOTH_SSRS_OFF;
+            newItem.expiresAt = slotExpiration;
+            slotExpiration = delayed_by_ms(slotExpiration, 100);
+            ssrStateQueue.push(newItem);
         }
 
         if (!foundItem.has_value()) {
-            SsrStateQueueItem* item;
-            bool success = ssrStateQueue.try_get(&item);
-            if (success) {
-                foundItem = item;
-            }
+            SsrStateQueueItem item = ssrStateQueue.front();
+            foundItem = item;
         }
     }
 
     if (!foundItem.has_value()) {
         printf("No Queue item found\n");
+        status->bail_reason = (uint8_t)BAIL_REASON_SSR_QUEUE_EMPTY;
         bailForever();
     }
 
-    if (foundItem.value()->state == BREW_BOILER_SSR_ON) {
+    if (foundItem.value().state == BREW_BOILER_SSR_ON) {
         lcc.brew_boiler_ssr_on = true;
-    } else if (foundItem.value()->state == SERVICE_BOILER_SSR_ON) {
+    } else if (foundItem.value().state == SERVICE_BOILER_SSR_ON) {
         lcc.service_boiler_ssr_on = true;
     }
 
-    delete foundItem.value();
     foundItem.reset();
 
     status->p = brewBoilerController.pidController.Pout;
@@ -184,21 +190,21 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
         if (latestParsedPacket.brew_switch) {
             lcc.pump_on = true;
 
-            if (!status->currentlyBrewing) {
+/*            if (!status->currentlyBrewing) {
                 status->currentlyBrewing = true;
                 status->lastBrewStartedAt = rtos::Kernel::Clock::now();
                 status->lastBrewEndedAt.reset();
-            }
+            }*/
         } else if (serviceBoilerLowLatch.get()) {
             lcc.pump_on = true;
             lcc.service_boiler_solenoid_open = true;
         }
     }
 
-    if (!lcc.pump_on && status->currentlyBrewing) {
+/*    if (!lcc.pump_on && status->currentlyBrewing) {
         status->currentlyBrewing = false;
         status->lastBrewEndedAt = rtos::Kernel::Clock::now();
-    }
+    }*/
 
     return lcc;
 }
@@ -213,16 +219,17 @@ void SystemController::updateFromSystemStatus() {
     status->has_bailed = true;
 
     while (true) {
-        rtos::ThisThread::sleep_for(100ms);
+        sleep_ms(100);
 
         LccRawPacket safePacket = {0x80, 0, 0, 0, 0};
-        //printf("Bailed, sending safe packet\n");
-        serial.write((uint8_t *)&safePacket, sizeof(safePacket));
+        printf("Bailed, sending safe packet\n");
+        uart_write_blocking(uart, (uint8_t *)&safePacket, sizeof(safePacket));
 
-        mbed::Watchdog::get_instance().kick();
+        hal_watchdog_kick();
     }
 }
 
+/*
 void SystemController::handleRxIrq() {
     if (!awaitingPacket || currentPacketIdx >= sizeof(currentPacket)) {
         // Just clear the IRQ
@@ -233,21 +240,4 @@ void SystemController::handleRxIrq() {
         serial.read(buf+currentPacketIdx++, 1);
     }
 }
-
-void SystemController::sendPacket(LccRawPacket rawLccPacket) {
-#ifndef EMULATED
-    serial.write((uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
-#else
-    emulatedControlBoard.update(rtos::Kernel::Clock::now(), rawLccPacket);
-#endif
-}
-
-void SystemController::awaitReceipt() {
-#ifndef EMULATED
-    rtos::ThisThread::sleep_for(5ms);
-#else
-    rtos::ThisThread::sleep_for(60ms);
-    currentPacket = emulatedControlBoard.latestPacket();
-    currentPacketIdx = 18;
-#endif
-}
+*/

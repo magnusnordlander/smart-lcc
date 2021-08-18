@@ -62,28 +62,28 @@ void SystemStatus::readSettingsFromKV() {
 void SystemStatus::writeKv(const char *key, bool value) {
     int res = kv_set(key, &value, sizeof(value), 0);
     if (res != MBED_SUCCESS) {
-        printf("Error writing bool %u to %s: %d\n", value, key, res);
+        //printf("Error writing bool %u to %s: %d\n", value, key, res);
     }
 }
 
 void SystemStatus::writeKv(const char *key, float value) {
     int res = kv_set(key, &value, sizeof(value), 0);
     if (res != MBED_SUCCESS) {
-        printf("Error writing float %f to %s: %d\n", value, key, res);
+        //printf("Error writing float %f to %s: %d\n", value, key, res);
     }
 }
 
 void SystemStatus::writeKv(const char *key, uint8_t value) {
     int res = kv_set(key, &value, sizeof(value), 0);
     if (res != MBED_SUCCESS) {
-        printf("Error writing uint8 %u to %s: %d\n", value, key, res);
+        //printf("Error writing uint8 %u to %s: %d\n", value, key, res);
     }
 }
 
 void SystemStatus::writeKv(const char *key, PidParameters value) {
     int res = kv_set(key, &value, sizeof(value), 0);
     if (res != MBED_SUCCESS) {
-        printf("Error writing pid parameters to %s: %d\n", key, res);
+        ///printf("Error writing pid parameters to %s: %d\n", key, res);
     }
 }
 
@@ -96,7 +96,7 @@ bool SystemStatus::readKvBool(const char *key, bool defaultValue) {
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv bool %s was not set, defaulting to %u\n", key, defaultValue);
+        //printf("Kv bool %s was not set, defaulting to %u\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -111,12 +111,12 @@ float SystemStatus::readKvFloat(const char *key, float defaultValue, float lower
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv float %s was not set, defaulting to %f\n", key, defaultValue);
+        //printf("Kv float %s was not set, defaulting to %f\n", key, defaultValue);
         value = defaultValue;
     }
 
     if (value > upperBound || value < lowerBound) {
-        printf("Kv float %s was outside bounds, defaulting to %f\n", key, defaultValue);
+        //printf("Kv float %s was outside bounds, defaulting to %f\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -131,7 +131,7 @@ uint8_t SystemStatus::readKvUint8(const char *key, uint8_t defaultValue) {
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv uint8 %s was not set, defaulting to %u\n", key, defaultValue);
+        //printf("Kv uint8 %s was not set, defaulting to %u\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -146,7 +146,7 @@ PidParameters SystemStatus::readKvPidParameters(const char *key, PidParameters d
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv pid parameters %s was not set, defaulting\n", key);
+        //printf("Kv pid parameters %s was not set, defaulting\n", key);
         value = defaultValue;
     }
 

@@ -6,7 +6,8 @@
 #include <Adafruit_SSD1306.h>
 #include <ExternalComms/WifiTransceiver.h>
 #include <utils/SPIPreInit.h>
-
+#include "pico/multicore.h"
+#include "hardware/gpio.h"
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -21,36 +22,55 @@
 #define AUX_TX digitalPinToPinName(8)
 #define AUX_RX digitalPinToPinName(9)
 
-REDIRECT_STDOUT_TO(SerialUSB);
+UART SerialAux(AUX_TX, AUX_RX);
+
+REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
 
-SystemStatus* systemStatus = new SystemStatus;
+SystemStatus* systemStatus0 = new SystemStatus;
+SystemStatus* systemStatus1 = new SystemStatus;
 
-rtos::Thread systemControllerThread(osPriorityRealtime);
-SystemController systemController(CB_TX, CB_RX, systemStatus);
+SystemController systemController(uart0, CB_TX, CB_RX, systemStatus1);
 
 SPIPreInit gSpi(OLED_MOSI, OLED_MISO, OLED_SCK);
 Adafruit_SSD1306_Spi gOled1(gSpi, OLED_DC, OLED_RST, OLED_CS,64);
 rtos::Thread uiThread;
-UIController uiController(systemStatus, &gOled1);
+UIController uiController(systemStatus0, &gOled1);
 
 rtos::Thread wifiThread(osPriorityBelowNormal);
-WifiTransceiver wifiTransceiver(systemStatus);
+WifiTransceiver wifiTransceiver(systemStatus0);
+
+[[noreturn]] void launchCore1() {
+    mbed::Watchdog::get_instance().start(3000);
+    systemController.run();
+}
 
 int main()
 {
+#ifdef USB_DEBUG
     PluggableUSBD().begin();
     _SerialUSB.begin(9600);
 
+    // No idea why this is needed, but without it core1 stalls
+    rtos::ThisThread::sleep_for(3000ms);
+#else
+    SerialAux.begin(9600);
+#endif
+
     //rtos::ThisThread::sleep_for(5000ms);
-    systemStatus->readSettingsFromKV();
+    //systemStatus0->readSettingsFromKV();
 
-    mbed::Watchdog::get_instance().start(1000);
-    systemControllerThread.start([] { systemController.run(); });
+    //mbed::Watchdog::get_instance().start(3000);
+    //systemControllerThread.start([] { systemController.run(); });
+    multicore_launch_core1(launchCore1);
 
-    uiThread.start([] { uiController.run(); });
-    wifiThread.start([] { wifiTransceiver.run(); });
+    //uiThread.start([] {  });
+    //wifiThread.start([] { wifiTransceiver.run(); });
+
+    //launchCore1();
+
+    uiController.run();
 
     while(true) {
         rtos::ThisThread::sleep_for(1000ms);

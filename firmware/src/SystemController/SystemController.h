@@ -10,6 +10,7 @@
 #include "TimedLatch.h"
 #include "HysteresisController.h"
 #include "HybridController.h"
+#include <queue>
 
 typedef enum {
     UNDETERMINED,
@@ -25,31 +26,33 @@ typedef enum {
     SERVICE_BOILER_SSR_ON,
 } SsrState;
 
+typedef enum {
+    BAIL_REASON_NONE = 0,
+    BAIL_REASON_CB_UNRESPONSIVE,
+    BAIL_REASON_TOO_FAR_BEHIND_ON_RESPONSE,
+    BAIL_REASON_TOO_FAR_BEHIND_BETWEEN_PACKETS,
+    BAIL_REASON_SSR_QUEUE_EMPTY,
+} BailReason;
+
 class SsrStateQueueItem {
 public:
     SsrState state = BOTH_SSRS_OFF;
-    rtos::Kernel::Clock::time_point expiresAt;
+    absolute_time_t expiresAt;
 };
 
 class SystemController {
 public:
-    explicit SystemController(PinName tx, PinName rx, SystemStatus *status);
+    explicit SystemController(uart_inst_t * _uart, PinName tx, PinName rx, SystemStatus *status);
 
     [[noreturn]] void run();
-    void handleRxIrq();
 private:
-    mbed::UnbufferedSerial serial;
     SystemStatus* status;
+    uart_inst_t* uart;
 
-    rtos::Kernel::Clock::time_point lastPacketSentAt;
-
-    bool awaitingPacket = false;
     ControlBoardRawPacket currentPacket;
     uint8_t currentPacketIdx = 0;
 
     [[noreturn]] void bailForever();
-    void sendPacket(LccRawPacket packet);
-    void awaitReceipt();
 
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
     void updateFromSystemStatus();
@@ -57,7 +60,7 @@ private:
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
 
-    rtos::Queue<SsrStateQueueItem, 50> ssrStateQueue;
+    std::queue<SsrStateQueueItem> ssrStateQueue;
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);
