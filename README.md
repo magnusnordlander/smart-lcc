@@ -26,6 +26,9 @@ A custom PCB has been designed (see `pcb/`) that is designed to fit in the origi
 ### Firmware
 The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Since Mbed OS doesn't support running the RTOS Kernel (at all) on Core 1, this is where the system controller will reside (since that doesn't require anything that requires Mbed RTOS). Core 0 will run UI and external communications, and will communicate with core 1 through `pico_util/queue`.
 
+#### Things to avoid in Core 1
+* The Mbed RTOS Kernel really doesn't like it if Core 1 enters an *mbed* critical section, so that needs to be avoided as far as possible. This pretty much means that Core 1 needs to be pure pico-sdk.
+
 #### (Planned) Threads on RP2040 Core 0
 * UI controller
 * External communication
