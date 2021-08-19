@@ -91,11 +91,12 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     while (!ssrStateQueue.empty()) {
         SsrStateQueueItem item = ssrStateQueue.front();
-        if (absolute_time_diff_us(item.expiresAt, now) > 0) {
+        ssrStateQueue.pop();
+        if (absolute_time_diff_us(now, item.expiresAt) > 0) {
             foundItem = item;
             break;
         }
-        printf("Skipping queue item\n");
+        printf("Skipping queue item, expires at %lu, current %lu, diff %lu\n", (unsigned long)to_ms_since_boot(item.expiresAt), (unsigned long)to_ms_since_boot(now), (unsigned long)absolute_time_diff_us(now, item.expiresAt));
     }
 
     /*

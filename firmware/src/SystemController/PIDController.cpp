@@ -28,9 +28,10 @@ PIDController::PIDController(const PidParameters &pidParameters, float setPoint,
                                                                                    setPoint(setPoint) {}
 
 uint8_t PIDController::getControlSignal(float pv) {
-    auto now = rtos::Kernel::Clock::now();
+    auto now = get_absolute_time();
 
-    double diffS = (double)(std::chrono::duration_cast<std::chrono::milliseconds>(now - lastPvAt).count()) / 1000.0;
+    double diffS = (double)absolute_time_diff_us(lastPvAt, now)/1000000;
+
     updatePidSignal(pv, diffS);
     lastPvAt = now;
 

@@ -43,10 +43,10 @@ public:
 private:
     float setPoint;
 
-    rtos::Kernel::Clock::time_point lastPvAt;
+    absolute_time_t lastPvAt;
 
-    nonstd::optional<rtos::Kernel::Clock::time_point> onCycleEnds;
-    nonstd::optional<rtos::Kernel::Clock::time_point> offCycleEnds;
+    nonstd::optional<absolute_time_t> onCycleEnds;
+    nonstd::optional<absolute_time_t> offCycleEnds;
 
     void updatePidSignal(float pv, double dT);
 };
