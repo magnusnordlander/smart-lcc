@@ -41,6 +41,29 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
   * Responsible for kicking the watchdog
   * Responsible for PID, keeping water in the boiler, running pumps etc.
 
+#### Core communication protocol
+
+##### Core1 to Core0
+
+* One message type
+  * Brew temperature
+  * Brew set point
+  * Brew PID settings
+  * Brew PID parameters
+  * Service temperature
+  * Service set point
+  * Service PID settings
+  * Service PID parameters
+  * Eco mode
+  * System state
+    * Heatup
+    * Warm
+    * Sleeping
+    * Bailed
+  * Bail reason
+  * Brewing
+  * Water low
+
 #### Reference material
 (In no particular order)
 
