@@ -46,6 +46,7 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
 ##### Core1 to Core0
 
 * One message type
+  * Timestamp (absolute_time_t) 
   * Brew temperature
   * Brew set point
   * Brew PID settings
@@ -63,6 +64,29 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
   * Bail reason
   * Brewing
   * Water low
+
+##### Core0 to Core1
+
+* Multiple message types
+  * Set Brew Set Point (Non compensated)
+  * Set Brew PID Parameters
+  * Set Service Set Point
+  * Set Service PID Parameters
+  * Set Eco Mode (on/off)
+  * Set Sleep mode (on/off)
+  * Unbail
+* Payloads
+  * Float 1
+    * Brew set point
+    * Service boiler set point
+    * Kp
+  * Float 2
+    * Ki
+  * Float 3
+    * Kd
+  * Bool
+    * Eco mode
+    * Sleep mode
 
 #### Reference material
 (In no particular order)
