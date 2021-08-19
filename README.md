@@ -57,12 +57,15 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
   * Service PID parameters
   * Eco mode
   * System state
+    * Idle
     * Heatup
     * Warm
     * Sleeping
     * Bailed
+    * First run (fill all the boilers before heating them)
   * Bail reason
   * Brewing
+  * Filling service boiler
   * Water low
 
 ##### Core0 to Core1
@@ -75,6 +78,7 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
   * Set Eco Mode (on/off)
   * Set Sleep mode (on/off)
   * Unbail
+  * Trigger first run
 * Payloads
   * Float 1
     * Brew set point
