@@ -48,40 +48,35 @@ void SystemController::run() {
     printf("Running\n");
     //watchdog_enable(1000, true);
 
+    currentLccParsedPacket = LccParsedPacket();
+
     //mbed::Timer t;
     while (true) {
         // hardware/watchdog
         // RTOS on Core0 doesn't like us entering critical sections on Core1,
         // so we can't use mbed::Watchdog.
         hal_watchdog_kick();
-        updateFromSystemStatus();
 
-        LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(status->lccPacket);
-
-        status->hasSentLccPacket = true;
-
+        LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
         uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
 
         auto timeout = make_timeout_time_ms(100);
 
         timeout_state_t ts;
-        bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentPacket), sizeof(currentPacket), init_single_timeout_until(&ts, timeout), &ts);
+        bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentControlBoardRawPacket), sizeof(currentControlBoardRawPacket), init_single_timeout_until(&ts, timeout), &ts);
 
         if (!success) {
-            status->bail_reason = (uint8_t)BAIL_REASON_CB_UNRESPONSIVE;
+            bail_reason = BAIL_REASON_CB_UNRESPONSIVE;
             bailForever();
         }
 
         printf("Got package\n");
-        ControlBoardParsedPacket cbPacket = convert_raw_control_board_packet(currentPacket);
+        currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
 
-        currentPacket = ControlBoardRawPacket();
+        currentControlBoardRawPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
 
-        status->controlBoardPacket = cbPacket;
-        status->hasReceivedControlBoardPacket = true;
-
-        status->lccPacket = handleControlBoardPacket(status->controlBoardPacket);
+        currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
 
         sleep_until(timeout);
     }
@@ -124,7 +119,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
         printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
 
-        if (status->isInEcoMode()) {
+        if (ecoMode) {
             sbSignal = 0;
         }
 
@@ -177,7 +172,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     if (!foundItem.has_value()) {
         printf("No Queue item found\n");
-        status->bail_reason = (uint8_t)BAIL_REASON_SSR_QUEUE_EMPTY;
+        bail_reason = BAIL_REASON_SSR_QUEUE_EMPTY;
         bailForever();
     }
 
@@ -189,10 +184,10 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     foundItem.reset();
 
-    status->p = brewBoilerController.pidController.Pout;
-    status->i = brewBoilerController.pidController.Iout;
-    status->d = brewBoilerController.pidController.Dout;
-    status->integral = brewBoilerController.pidController._integral;
+    brewPidRuntimeParameters.p = brewBoilerController.pidController.Pout;
+    brewPidRuntimeParameters.i = brewBoilerController.pidController.Iout;
+    brewPidRuntimeParameters.d = brewBoilerController.pidController.Dout;
+    brewPidRuntimeParameters.integral = brewBoilerController.pidController._integral;
 
     if (!waterTankEmptyLatch.get()) {
         if (latestParsedPacket.brew_switch) {
@@ -217,14 +212,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     return lcc;
 }
 
-void SystemController::updateFromSystemStatus() {
-    brewBoilerController.updateSetPoint(status->getTargetBrewTemp());
-    serviceBoilerController.updateSetPoint(status->getTargetServiceTemp());
-    brewBoilerController.setPidParameters(status->getBrewPidParameters());
-}
-
 [[noreturn]] void SystemController::bailForever() {
-    status->has_bailed = true;
+    has_bailed = true;
 
     while (true) {
         sleep_ms(100);
@@ -236,16 +225,3 @@ void SystemController::updateFromSystemStatus() {
         hal_watchdog_kick();
     }
 }
-
-/*
-void SystemController::handleRxIrq() {
-    if (!awaitingPacket || currentPacketIdx >= sizeof(currentPacket)) {
-        // Just clear the IRQ
-        uint8_t buf;
-        serial.read(&buf, 1);
-    } else {
-        auto* buf = reinterpret_cast<uint8_t*>(&currentPacket);
-        serial.read(buf+currentPacketIdx++, 1);
-    }
-}
-*/

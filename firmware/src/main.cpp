@@ -35,7 +35,7 @@ PicoQueue<SystemControllerStatusMessage> queue1(100, 0xCB);
 SystemStatus* systemStatus0 = new SystemStatus;
 SystemStatus* systemStatus1 = new SystemStatus;
 
-SystemController systemController(uart0, CB_TX, CB_RX, systemStatus1);
+SystemController systemController(uart0, CB_TX, CB_RX, &queue1, &queue0);
 
 SPIPreInit gSpi(OLED_MOSI, OLED_MISO, OLED_SCK);
 Adafruit_SSD1306_Spi gOled1(gSpi, OLED_DC, OLED_RST, OLED_CS,64);

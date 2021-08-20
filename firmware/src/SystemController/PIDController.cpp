@@ -24,7 +24,7 @@
 
 using namespace std::chrono_literals;
 
-PIDController::PIDController(const PidParameters &pidParameters, float setPoint, uint16_t cycleTime) : pidParameters(pidParameters), cycleTime(cycleTime), 
+PIDController::PIDController(const PidSettings &pidParameters, float setPoint, uint16_t cycleTime) : pidParameters(pidParameters), cycleTime(cycleTime),
                                                                                    setPoint(setPoint) {}
 
 uint8_t PIDController::getControlSignal(float pv) {

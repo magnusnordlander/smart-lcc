@@ -14,12 +14,13 @@ struct PidParameters {
     double Ki;
     double Kd;
 };
+#include <types.h>
 
 class PIDController {
 public:
-    PIDController(const PidParameters &pidParameters, float setPoint, uint16_t cycleTime);
+    PIDController(const PidSettings &pidParameters, float setPoint, uint16_t cycleTime);
 
-    PidParameters pidParameters;
+    PidSettings pidParameters;
 
     void updateSetPoint(float setPoint);
     uint8_t getControlSignal(float value);

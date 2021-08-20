@@ -4,7 +4,7 @@
 
 #include "HybridController.h"
 
-HybridController::HybridController(float setPoint, float hybridDelta, const PidParameters &pidParameters,
+HybridController::HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters,
                                    float hysteresisDelta, uint16_t cycleTime):
                                    pidController(pidParameters, setPoint, cycleTime),
                                    hysteresisController(setPoint, hysteresisDelta),
@@ -32,6 +32,6 @@ uint8_t HybridController::getControlSignal(float value) {
     return hysteresisValue;
 }
 
-void HybridController::setPidParameters(PidParameters pidParameters) {
+void HybridController::setPidParameters(PidSettings pidParameters) {
     pidController.pidParameters = pidParameters;
 }

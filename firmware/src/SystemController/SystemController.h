@@ -55,17 +55,23 @@ private:
     PidSettings brewPidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
     PidSettings servicePidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
 
+    PidRuntimeParameters brewPidRuntimeParameters{};
+    PidRuntimeParameters servicePidRuntimeParameters{};
+
     PicoQueue<SystemControllerStatusMessage> *outgoingQueue;
     PicoQueue<SystemControllerCommand> *incomingQueue;
     uart_inst_t* uart;
 
-    ControlBoardRawPacket currentPacket;
+
+    LccParsedPacket currentLccParsedPacket;
+    ControlBoardParsedPacket currentControlBoardParsedPacket;
+    LccRawPacket currentLccRawPacket;
+    ControlBoardRawPacket currentControlBoardRawPacket;
     uint8_t currentPacketIdx = 0;
 
     [[noreturn]] void bailForever();
 
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
-    void updateFromSystemStatus();
 
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
