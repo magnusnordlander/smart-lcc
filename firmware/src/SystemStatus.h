@@ -16,10 +16,10 @@ public:
 
     // Status
     bool hasSentLccPacket = false;
-    LccParsedPacket lccPacket;
+    LccParsedPacket lccPacket{};
 
     bool hasReceivedControlBoardPacket = false;
-    ControlBoardParsedPacket controlBoardPacket;
+    ControlBoardParsedPacket controlBoardPacket{};
 
     bool has_bailed = false;
     uint8_t bail_reason = 0x00;

@@ -33,7 +33,6 @@ PicoQueue<SystemControllerCommand> queue0(100, 0xCA);
 PicoQueue<SystemControllerStatusMessage> queue1(100, 0xCB);
 
 SystemStatus* systemStatus0 = new SystemStatus;
-SystemStatus* systemStatus1 = new SystemStatus;
 
 SystemController systemController(uart0, CB_TX, CB_RX, &queue1, &queue0);
 
@@ -61,7 +60,6 @@ int main()
 #else
     SerialAux.begin(9600);
 #endif
-    queue1.getLevelUnsafe();
 
     //rtos::ThisThread::sleep_for(5000ms);
     //systemStatus0->readSettingsFromKV();
@@ -70,14 +68,22 @@ int main()
     //systemControllerThread.start([] { systemController.run(); });
     multicore_launch_core1(launchCore1);
 
-    //uiThread.start([] {  });
+    uiThread.start([] { uiController.run(); });
     //wifiThread.start([] { wifiTransceiver.run(); });
 
     //launchCore1();
 
-    uiController.run();
+    SystemControllerStatusMessage message;
 
     while(true) {
-        rtos::ThisThread::sleep_for(1000ms);
+        if (!queue1.isEmpty()) {
+            queue1.tryRemove(&message);
+
+            systemStatus0->hasReceivedControlBoardPacket = true;
+            systemStatus0->hasSentLccPacket = true;
+
+        }
+
+        rtos::ThisThread::sleep_for(10ms);
     }
 }

@@ -78,6 +78,28 @@ void SystemController::run() {
 
         currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
 
+        SystemControllerStatusMessage message = {
+                .timestamp = get_absolute_time(),
+                .brewTemperature = currentControlBoardParsedPacket.brew_boiler_temperature,
+                .brewSetPoint = targetBrewTemperature,
+                .brewPidSettings = brewPidParameters,
+                .brewPidParameters = brewPidRuntimeParameters,
+                .serviceTemperature = currentControlBoardParsedPacket.service_boiler_temperature,
+                .serviceSetPoint = targetServiceTemperature,
+                .servicePidSettings = servicePidParameters,
+                .servicePidParameters = servicePidRuntimeParameters,
+                .ecoMode = ecoMode,
+                .state = SYSTEM_CONTROLLER_STATE_WARM,
+                .bailReason = bail_reason,
+                .currentlyBrewing = currentControlBoardParsedPacket.brew_switch,
+                .currentlyFillingServiceBoiler = false,
+                .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
+        };
+
+        if (!outgoingQueue->isFull()) {
+            outgoingQueue->tryAdd(&message);
+        }
+
         sleep_until(timeout);
     }
 }
