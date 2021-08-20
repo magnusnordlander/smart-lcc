@@ -8,6 +8,7 @@
 #include <utils/SPIPreInit.h>
 #include "pico/multicore.h"
 #include "utils/PicoQueue.h"
+#include "types.h"
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -28,8 +29,8 @@ REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
 
-PicoQueue<int> queue0(100, 0xCA);
-PicoQueue<int> queue1(100, 0xCB);
+PicoQueue<SystemControllerCommand> queue0(100, 0xCA);
+PicoQueue<SystemControllerStatusMessage> queue1(100, 0xCB);
 
 SystemStatus* systemStatus0 = new SystemStatus;
 SystemStatus* systemStatus1 = new SystemStatus;

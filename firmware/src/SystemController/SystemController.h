@@ -11,6 +11,7 @@
 #include "HysteresisController.h"
 #include "HybridController.h"
 #include <queue>
+#include "../types.h"
 
 typedef enum {
     UNDETERMINED,
@@ -25,14 +26,6 @@ typedef enum {
     BREW_BOILER_SSR_ON,
     SERVICE_BOILER_SSR_ON,
 } SsrState;
-
-typedef enum {
-    BAIL_REASON_NONE = 0,
-    BAIL_REASON_CB_UNRESPONSIVE,
-    BAIL_REASON_TOO_FAR_BEHIND_ON_RESPONSE,
-    BAIL_REASON_TOO_FAR_BEHIND_BETWEEN_PACKETS,
-    BAIL_REASON_SSR_QUEUE_EMPTY,
-} BailReason;
 
 class SsrStateQueueItem {
 public:
