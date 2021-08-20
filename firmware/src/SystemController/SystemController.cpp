@@ -2,6 +2,7 @@
 // Created by Magnus Nordlander on 2021-07-06.
 //
 
+#include <utils/hex_format.h>
 #include "SystemController.h"
 #include "hardware/watchdog.h"
 #include "pico/timeout_helper.h"
@@ -30,11 +31,11 @@ SystemController::SystemController(
         PicoQueue<SystemControllerStatusMessage> *outgoingQueue,
         PicoQueue<SystemControllerCommand> *incomingQueue)
         :
-        brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f, 200),
-        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f, 800),
         outgoingQueue(outgoingQueue),
         incomingQueue(incomingQueue),
-        uart(_uart) {
+        uart(_uart),
+        brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f, 200),
+        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f, 800){
     // hardware/uart
     gpio_set_function(rx, GPIO_FUNC_UART);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
@@ -45,12 +46,13 @@ SystemController::SystemController(
 }
 
 void SystemController::run() {
-    printf("Running\n");
+    //printf("Running\n");
     //watchdog_enable(1000, true);
 
     currentLccParsedPacket = LccParsedPacket();
 
-    //mbed::Timer t;
+    handleCommands();
+
     while (true) {
         // hardware/watchdog
         // RTOS on Core0 doesn't like us entering critical sections on Core1,
@@ -70,29 +72,33 @@ void SystemController::run() {
             bailForever();
         }
 
-        printf("Got package\n");
+//        printf("Got package\n");
+//        printlnhex((uint8_t*)&currentControlBoardRawPacket, sizeof(currentControlBoardRawPacket));
         currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
 
         currentControlBoardRawPacket = ControlBoardRawPacket();
         currentPacketIdx = 0;
 
+        handleCommands();
         currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
 
         SystemControllerStatusMessage message = {
                 .timestamp = get_absolute_time(),
-                .brewTemperature = currentControlBoardParsedPacket.brew_boiler_temperature,
+                .brewTemperature = static_cast<float>(brewTempAverage.average()),
                 .brewSetPoint = targetBrewTemperature,
                 .brewPidSettings = brewPidParameters,
                 .brewPidParameters = brewPidRuntimeParameters,
-                .serviceTemperature = currentControlBoardParsedPacket.service_boiler_temperature,
+                .serviceTemperature = static_cast<float>(serviceTempAverage.average()),
                 .serviceSetPoint = targetServiceTemperature,
                 .servicePidSettings = servicePidParameters,
                 .servicePidParameters = servicePidRuntimeParameters,
+                .brewSSRActive = currentLccParsedPacket.brew_boiler_ssr_on,
+                .serviceSSRActive = currentLccParsedPacket.service_boiler_ssr_on,
                 .ecoMode = ecoMode,
                 .state = SYSTEM_CONTROLLER_STATE_WARM,
                 .bailReason = bail_reason,
-                .currentlyBrewing = currentControlBoardParsedPacket.brew_switch,
-                .currentlyFillingServiceBoiler = false,
+                .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,
+                .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on && currentLccParsedPacket.service_boiler_solenoid_open,
                 .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
         };
 
@@ -110,18 +116,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     waterTankEmptyLatch.set(latestParsedPacket.water_tank_empty);
     serviceBoilerLowLatch.set(latestParsedPacket.service_boiler_low);
 
-    auto now = get_absolute_time();
-    nonstd::optional<SsrStateQueueItem> foundItem;
-
-    while (!ssrStateQueue.empty()) {
-        SsrStateQueueItem item = ssrStateQueue.front();
-        ssrStateQueue.pop();
-        if (absolute_time_diff_us(now, item.expiresAt) > 0) {
-            foundItem = item;
-            break;
-        }
-        printf("Skipping queue item, expires at %lu, current %lu, diff %lu\n", (unsigned long)to_ms_since_boot(item.expiresAt), (unsigned long)to_ms_since_boot(now), (unsigned long)absolute_time_diff_us(now, item.expiresAt));
-    }
+    brewTempAverage.addValue(latestParsedPacket.brew_boiler_temperature);
+    serviceTempAverage.addValue(latestParsedPacket.service_boiler_temperature);
 
     /*
      * New algorithm:
@@ -135,11 +131,11 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
      * Each slot allocation is stamped with an expiration timestamp. That way any delay in popping the queue won't
      * result in old values being used.
      */
-    if (ssrStateQueue.empty()) {
-        uint8_t bbSignal = brewBoilerController.getControlSignal(latestParsedPacket.brew_boiler_temperature);
-        uint8_t sbSignal = serviceBoilerController.getControlSignal(latestParsedPacket.service_boiler_temperature);
+    if (ssrStateQueue.isEmpty()) {
+        uint8_t bbSignal = brewBoilerController.getControlSignal(brewTempAverage.average());
+        uint8_t sbSignal = serviceBoilerController.getControlSignal(serviceTempAverage.average());
 
-        printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
+        //printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
 
         if (ecoMode) {
             sbSignal = 0;
@@ -158,53 +154,36 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
         uint8_t noSignal = 25 - bbSignal - sbSignal;
 
-        printf("Adding new controls to the queue. BB: %u SB: %u NB: %u\n", bbSignal, sbSignal, noSignal);
-
-        auto slotExpiration = delayed_by_ms(now, 200);
+        //printf("Adding new controls to the queue. BB: %u SB: %u NB: %u\n", bbSignal, sbSignal, noSignal);
 
         for (uint8_t i = 0; i < bbSignal; ++i) {
-            auto newItem = SsrStateQueueItem();
-            newItem.state = BREW_BOILER_SSR_ON;
-            newItem.expiresAt = slotExpiration;
-            slotExpiration = delayed_by_ms(slotExpiration, 100);
-            ssrStateQueue.push(newItem);
+            SsrState state = BREW_BOILER_SSR_ON;
+            ssrStateQueue.tryAdd(&state);
         }
 
         for (uint8_t i = 0; i < sbSignal; ++i) {
-            auto newItem = SsrStateQueueItem();
-            newItem.state = SERVICE_BOILER_SSR_ON;
-            newItem.expiresAt = slotExpiration;
-            slotExpiration = delayed_by_ms(slotExpiration, 100);
-            ssrStateQueue.push(newItem);
+            SsrState state = SERVICE_BOILER_SSR_ON;
+            ssrStateQueue.tryAdd(&state);
         }
 
         for (uint8_t i = 0; i < noSignal; ++i) {
-            auto newItem = SsrStateQueueItem();
-            newItem.state = BOTH_SSRS_OFF;
-            newItem.expiresAt = slotExpiration;
-            slotExpiration = delayed_by_ms(slotExpiration, 100);
-            ssrStateQueue.push(newItem);
-        }
-
-        if (!foundItem.has_value()) {
-            SsrStateQueueItem item = ssrStateQueue.front();
-            foundItem = item;
+            SsrState state = BOTH_SSRS_OFF;
+            ssrStateQueue.tryAdd(&state);
         }
     }
 
-    if (!foundItem.has_value()) {
-        printf("No Queue item found\n");
+    SsrState state;
+    if (!ssrStateQueue.tryRemove(&state)) {
+        //printf("No Queue item found\n");
         bail_reason = BAIL_REASON_SSR_QUEUE_EMPTY;
         bailForever();
     }
 
-    if (foundItem.value().state == BREW_BOILER_SSR_ON) {
+    if (state == BREW_BOILER_SSR_ON) {
         lcc.brew_boiler_ssr_on = true;
-    } else if (foundItem.value().state == SERVICE_BOILER_SSR_ON) {
+    } else if (state == SERVICE_BOILER_SSR_ON) {
         lcc.service_boiler_ssr_on = true;
     }
-
-    foundItem.reset();
 
     brewPidRuntimeParameters.p = brewBoilerController.pidController.Pout;
     brewPidRuntimeParameters.i = brewBoilerController.pidController.Iout;
@@ -214,22 +193,11 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     if (!waterTankEmptyLatch.get()) {
         if (latestParsedPacket.brew_switch) {
             lcc.pump_on = true;
-
-/*            if (!status->currentlyBrewing) {
-                status->currentlyBrewing = true;
-                status->lastBrewStartedAt = rtos::Kernel::Clock::now();
-                status->lastBrewEndedAt.reset();
-            }*/
         } else if (serviceBoilerLowLatch.get()) {
             lcc.pump_on = true;
             lcc.service_boiler_solenoid_open = true;
         }
     }
-
-/*    if (!lcc.pump_on && status->currentlyBrewing) {
-        status->currentlyBrewing = false;
-        status->lastBrewEndedAt = rtos::Kernel::Clock::now();
-    }*/
 
     return lcc;
 }
@@ -241,9 +209,55 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
         sleep_ms(100);
 
         LccRawPacket safePacket = {0x80, 0, 0, 0, 0};
-        printf("Bailed, sending safe packet\n");
+        //printf("Bailed, sending safe packet\n");
         uart_write_blocking(uart, (uint8_t *)&safePacket, sizeof(safePacket));
 
         hal_watchdog_kick();
     }
+}
+
+void SystemController::handleCommands() {
+    SystemControllerCommand command;
+    while (!incomingQueue->isEmpty()) {
+        incomingQueue->removeBlocking(&command);
+
+        //printf("Handling command of type %u. F1: %.1f F2 %.1f F3 %.1f B1: %u\n", (uint8_t)command.type, command.float1, command.float2, command.float3, command.bool1);
+
+        switch (command.type) {
+            case COMMAND_SET_BREW_SET_POINT:
+                targetBrewTemperature = command.float1;
+                break;
+            case COMMAND_SET_BREW_PID_PARAMETERS:
+                brewPidParameters.Kp = command.float1;
+                brewPidParameters.Ki = command.float2;
+                brewPidParameters.Kd = command.float3;
+                break;
+            case COMMAND_SET_SERVICE_SET_POINT:
+                targetServiceTemperature = command.float1;
+                break;
+            case COMMAND_SET_SERVICE_PID_PARAMETERS:
+                servicePidParameters.Kp = command.float1;
+                servicePidParameters.Ki = command.float2;
+                servicePidParameters.Kd = command.float3;
+                break;
+            case COMMAND_SET_ECO_MODE:
+                ecoMode = command.bool1;
+                break;
+            case COMMAND_SET_SLEEP_MODE:
+                break;
+            case COMMAND_UNBAIL:
+                break;
+            case COMMAND_TRIGGER_FIRST_RUN:
+                break;
+        }
+    }
+
+    updateControllerSettings();
+}
+
+void SystemController::updateControllerSettings() {
+    brewBoilerController.setPidParameters(brewPidParameters);
+    brewBoilerController.updateSetPoint(targetBrewTemperature);
+    serviceBoilerController.setPidParameters(servicePidParameters);
+    serviceBoilerController.updateSetPoint(targetServiceTemperature);
 }

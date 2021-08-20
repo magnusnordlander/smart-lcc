@@ -8,8 +8,6 @@
 #define SETTING_VERSION ((uint8_t)1)
 
 SystemStatus::SystemStatus():
-    lccPacket(LccParsedPacket()),
-    controlBoardPacket(ControlBoardParsedPacket()),
     has_bailed(false) {
 }
 

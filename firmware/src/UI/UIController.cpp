@@ -35,8 +35,8 @@ void UIController::run() {
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->controlBoardPacket.service_boiler_temperature);
-            display->printf("Br:%s SL:%s WT:%s\r\n", status->controlBoardPacket.brew_switch ? "Y" : "N", status->controlBoardPacket.service_boiler_low ? "Y" : "N", status->controlBoardPacket.water_tank_empty ? "Y" : "N");
+            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->serviceBoilerTemperature);
+            display->printf("Br:%s SL:%s WT:%s\r\n", status->brewing ? "Y" : "N", status->filling ? "Y" : "N", status->waterTankEmpty ? "Y" : "N");
         }
 
         if (status->lastBrewStartedAt.has_value()) {
@@ -50,7 +50,7 @@ void UIController::run() {
         }
 
         if (status->hasSentLccPacket) {
-            display->printf("%s %s %s %s\r\n", status->lccPacket.brew_boiler_ssr_on ? "BSSR" : "bssr", status->lccPacket.service_boiler_ssr_on ? "SSSR" : "sssr", status->lccPacket.pump_on ? "P" : "p", status->lccPacket.service_boiler_solenoid_open ? "BS" : "bs");
+            display->printf("%s %s\r\n", status->brewSsr ? "BSSR" : "bssr", status->serviceSsr? "SSSR" : "sssr");
         }
 
 #ifndef LCC_RELAY

@@ -25,16 +25,16 @@ typedef enum {
 } SystemControllerBailReason;
 
 struct PidSettings {
-    double Kp{};
-    double Ki{};
-    double Kd{};
+    float Kp{};
+    float Ki{};
+    float Kd{};
 };
 
 struct PidRuntimeParameters {
-    double integral = 0;
-    double p = 0;
-    double i = 0;
-    double d = 0;
+    float integral = 0;
+    float p = 0;
+    float i = 0;
+    float d = 0;
 };
 
 struct SystemControllerStatusMessage{
@@ -47,6 +47,8 @@ struct SystemControllerStatusMessage{
     float serviceSetPoint{};
     PidSettings servicePidSettings{};
     PidRuntimeParameters servicePidParameters{};
+    bool brewSSRActive{};
+    bool serviceSSRActive{};
     bool ecoMode{};
     SystemControllerState state{};
     SystemControllerBailReason bailReason{};

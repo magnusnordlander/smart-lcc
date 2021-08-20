@@ -13,6 +13,7 @@
 #include <queue>
 #include "../types.h"
 #include <utils/PicoQueue.h>
+#include <utils/MovingAverage.h>
 
 typedef enum {
     UNDETERMINED,
@@ -31,7 +32,6 @@ typedef enum {
 class SsrStateQueueItem {
 public:
     SsrState state = BOTH_SSRS_OFF;
-    absolute_time_t expiresAt{};
 };
 
 class SystemController {
@@ -62,6 +62,8 @@ private:
     PicoQueue<SystemControllerCommand> *incomingQueue;
     uart_inst_t* uart;
 
+    MovingAverage<float> brewTempAverage = MovingAverage<float>(5);
+    MovingAverage<float> serviceTempAverage = MovingAverage<float>(5);
 
     LccParsedPacket currentLccParsedPacket;
     ControlBoardParsedPacket currentControlBoardParsedPacket;
@@ -76,10 +78,13 @@ private:
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
 
-    std::queue<SsrStateQueueItem> ssrStateQueue;
+    PicoQueue<SsrState> ssrStateQueue = PicoQueue<SsrState>(25);
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);
+
+    void handleCommands();
+    void updateControllerSettings();
 };
 
 

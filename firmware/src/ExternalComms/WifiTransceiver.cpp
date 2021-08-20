@@ -269,9 +269,9 @@ void WifiTransceiver::publishStatus() {
     if (systemStatus->hasReceivedControlBoardPacket) {
         publish(topic_names[TOPIC_STAT_RX], true);
 
-        publish(topic_names[TOPIC_STAT_WATER_TANK_EMPTY], systemStatus->controlBoardPacket.water_tank_empty);
+        publish(topic_names[TOPIC_STAT_WATER_TANK_EMPTY], systemStatus->waterTankEmpty);
         publish(topic_names[TOPIC_TEMP_BREW], systemStatus->getOffsetBrewTemperature());
-        publish(topic_names[TOPIC_TEMP_SERVICE], systemStatus->controlBoardPacket.service_boiler_temperature);
+        publish(topic_names[TOPIC_TEMP_SERVICE], systemStatus->serviceBoilerTemperature);
     } else {
         publish(topic_names[TOPIC_STAT_RX],false);
     }

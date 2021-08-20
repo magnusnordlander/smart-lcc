@@ -16,15 +16,19 @@ public:
 
     // Status
     bool hasSentLccPacket = false;
-    LccParsedPacket lccPacket{};
-
     bool hasReceivedControlBoardPacket = false;
-    ControlBoardParsedPacket controlBoardPacket{};
+
+    bool brewSsr = false;
+    bool serviceSsr = false;
+    bool waterTankEmpty = false;
+    bool brewing = false;
+    bool filling = false;
+    float serviceBoilerTemperature = 0.f;
+    float brewBoilerTemperature = 0.f;
 
     bool has_bailed = false;
     uint8_t bail_reason = 0x00;
 
-    bool currentlyBrewing = false;
     nonstd::optional<rtos::Kernel::Clock::time_point> lastBrewStartedAt;
     nonstd::optional<rtos::Kernel::Clock::time_point> lastBrewEndedAt;
 
@@ -38,7 +42,7 @@ public:
     double d = 0;
 
     inline float getOffsetTargetBrewTemperature() const { return targetBrewTemperature + brewTemperatureOffset; }
-    inline float getOffsetBrewTemperature() const { return controlBoardPacket.brew_boiler_temperature + brewTemperatureOffset; }
+    inline float getOffsetBrewTemperature() const { return brewBoilerTemperature + brewTemperatureOffset; }
     inline void setOffsetTargetBrewTemperature(float target) { setTargetBrewTemp(target - brewTemperatureOffset); }
 
     void setEcoMode(bool ecoMode);

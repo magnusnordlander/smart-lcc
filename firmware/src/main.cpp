@@ -9,6 +9,7 @@
 #include "pico/multicore.h"
 #include "utils/PicoQueue.h"
 #include "types.h"
+#include "SystemSettings.h"
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -29,23 +30,24 @@ REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
 
-PicoQueue<SystemControllerCommand> queue0(100, 0xCA);
-PicoQueue<SystemControllerStatusMessage> queue1(100, 0xCB);
+PicoQueue<SystemControllerCommand> *queue0 = new PicoQueue<SystemControllerCommand>(100);
+PicoQueue<SystemControllerStatusMessage> *queue1 = new PicoQueue<SystemControllerStatusMessage>(100);
 
-SystemStatus* systemStatus0 = new SystemStatus;
+SystemStatus* systemStatus = new SystemStatus;
+SystemSettings* systemSettings = new SystemSettings(queue0);
 
-SystemController systemController(uart0, CB_TX, CB_RX, &queue1, &queue0);
+SystemController systemController(uart0, CB_TX, CB_RX, queue1, queue0);
 
 SPIPreInit gSpi(OLED_MOSI, OLED_MISO, OLED_SCK);
 Adafruit_SSD1306_Spi gOled1(gSpi, OLED_DC, OLED_RST, OLED_CS,64);
 rtos::Thread uiThread;
-UIController uiController(systemStatus0, &gOled1);
+UIController uiController(systemStatus, &gOled1);
 
 rtos::Thread wifiThread(osPriorityBelowNormal);
-WifiTransceiver wifiTransceiver(systemStatus0);
+WifiTransceiver wifiTransceiver(systemStatus);
 
 [[noreturn]] void launchCore1() {
-    mbed::Watchdog::get_instance().start(3000);
+    //mbed::Watchdog::get_instance().start(3000);
     systemController.run();
 }
 
@@ -58,11 +60,12 @@ int main()
     // No idea why this is needed, but without it core1 stalls
     rtos::ThisThread::sleep_for(3000ms);
 #else
-    SerialAux.begin(9600);
+    SerialAux.begin(115200);
 #endif
+    systemSettings->initialize();
 
     //rtos::ThisThread::sleep_for(5000ms);
-    //systemStatus0->readSettingsFromKV();
+    //systemStatus->readSettingsFromKV();
 
     //mbed::Watchdog::get_instance().start(3000);
     //systemControllerThread.start([] { systemController.run(); });
@@ -75,15 +78,32 @@ int main()
 
     SystemControllerStatusMessage message;
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
     while(true) {
-        if (!queue1.isEmpty()) {
-            queue1.tryRemove(&message);
+        while (!queue1->isEmpty()) {
+            queue1->removeBlocking(&message);
 
-            systemStatus0->hasReceivedControlBoardPacket = true;
-            systemStatus0->hasSentLccPacket = true;
+            systemStatus->hasReceivedControlBoardPacket = true;
+            systemStatus->hasSentLccPacket = true;
+            systemStatus->brewBoilerTemperature = message.brewTemperature;
+            systemStatus->serviceBoilerTemperature = message.serviceTemperature;
+            systemStatus->brewing = message.currentlyBrewing;
+            systemStatus->filling = message.currentlyFillingServiceBoiler;
+            systemStatus->waterTankEmpty = message.waterTankLow;
+            systemStatus->brewSsr = message.brewSSRActive;
+            systemStatus->serviceSsr = message.serviceSSRActive;
 
+            printf("BT: %.1f SSR: %u P: %.2f BI: %.2f BD: %.2f BInt: %.2f\n",
+               message.brewTemperature,
+               message.brewSSRActive,
+               message.brewPidParameters.p,
+               message.brewPidParameters.i,
+               message.brewPidParameters.d,
+               message.brewPidParameters.integral);
         }
 
         rtos::ThisThread::sleep_for(10ms);
     }
+#pragma clang diagnostic pop
 }
