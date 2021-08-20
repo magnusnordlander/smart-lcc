@@ -7,7 +7,7 @@
 #include <ExternalComms/WifiTransceiver.h>
 #include <utils/SPIPreInit.h>
 #include "pico/multicore.h"
-#include "hardware/gpio.h"
+#include "utils/PicoQueue.h"
 
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
@@ -27,6 +27,9 @@ UART SerialAux(AUX_TX, AUX_RX);
 REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
+
+PicoQueue<int> queue0(100, 0xCA);
+PicoQueue<int> queue1(100, 0xCB);
 
 SystemStatus* systemStatus0 = new SystemStatus;
 SystemStatus* systemStatus1 = new SystemStatus;
@@ -57,6 +60,7 @@ int main()
 #else
     SerialAux.begin(9600);
 #endif
+    queue1.getLevelUnsafe();
 
     //rtos::ThisThread::sleep_for(5000ms);
     //systemStatus0->readSettingsFromKV();
