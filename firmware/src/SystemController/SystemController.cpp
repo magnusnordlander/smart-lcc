@@ -23,11 +23,18 @@ static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, s
     return true;
 }
 
-SystemController::SystemController(uart_inst_t * _uart, PinName tx, PinName rx, SystemStatus *status) :
-        status(status),
-        uart(_uart),
-        brewBoilerController(status->getTargetBrewTemp(), 20.0f, status->getBrewPidParameters(), 2.0f, 200),
-        serviceBoilerController(status->getTargetServiceTemp(), 20.0f, status->getServicePidParameters(), 2.0f, 800){
+SystemController::SystemController(
+        uart_inst_t * _uart,
+        PinName tx,
+        PinName rx,
+        PicoQueue<SystemControllerStatusMessage> *outgoingQueue,
+        PicoQueue<SystemControllerCommand> *incomingQueue)
+        :
+        brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f, 200),
+        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f, 800),
+        outgoingQueue(outgoingQueue),
+        incomingQueue(incomingQueue),
+        uart(_uart) {
     // hardware/uart
     gpio_set_function(rx, GPIO_FUNC_UART);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);

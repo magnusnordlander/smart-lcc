@@ -12,6 +12,7 @@
 #include "HybridController.h"
 #include <queue>
 #include "../types.h"
+#include <utils/PicoQueue.h>
 
 typedef enum {
     UNDETERMINED,
@@ -19,7 +20,7 @@ typedef enum {
     WARM_BOOT,
     RUNNING,
     SLEEPING,
-} SystemState;
+} SystemControllerInternalState;
 
 typedef enum {
     BOTH_SSRS_OFF = 0,
@@ -30,16 +31,32 @@ typedef enum {
 class SsrStateQueueItem {
 public:
     SsrState state = BOTH_SSRS_OFF;
-    absolute_time_t expiresAt;
+    absolute_time_t expiresAt{};
 };
 
 class SystemController {
 public:
-    explicit SystemController(uart_inst_t * _uart, PinName tx, PinName rx, SystemStatus *status);
+    explicit SystemController(
+            uart_inst_t * _uart,
+            PinName tx,
+            PinName rx,
+            PicoQueue<SystemControllerStatusMessage> *outgoingQueue,
+            PicoQueue<SystemControllerCommand> *incomingQueue
+            );
 
     [[noreturn]] void run();
 private:
-    SystemStatus* status;
+    bool has_bailed = false;
+    SystemControllerBailReason bail_reason = BAIL_REASON_NONE;
+
+    bool ecoMode = true;
+    float targetBrewTemperature = 0.f;
+    float targetServiceTemperature = 0.f;
+    PidSettings brewPidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
+    PidSettings servicePidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
+
+    PicoQueue<SystemControllerStatusMessage> *outgoingQueue;
+    PicoQueue<SystemControllerCommand> *incomingQueue;
     uart_inst_t* uart;
 
     ControlBoardRawPacket currentPacket;
