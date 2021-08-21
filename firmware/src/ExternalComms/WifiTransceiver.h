@@ -8,14 +8,16 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <SystemStatus.h>
+#include <SystemSettings.h>
 
 class WifiTransceiver {
 public:
-    explicit WifiTransceiver(SystemStatus *systemStatus);
+    explicit WifiTransceiver(SystemStatus *systemStatus, SystemSettings *systemSettings);
 
     [[noreturn]] void run();
 private:
     SystemStatus* systemStatus;
+    SystemSettings* systemSettings;
 
     WiFiClass wifi;
     WiFiClient wifiClient;

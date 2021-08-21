@@ -26,10 +26,15 @@ private:
     void sendCommand(SystemControllerCommandType commandType, float value);
     void sendCommand(SystemControllerCommandType commandType, PidSettings value);
 
-    static void writeKv(const char* key, bool value);
-    static void writeKv(const char* key, float value);
-    static void writeKv(const char* key, uint8_t value);
-    static void writeKv(const char* key, PidSettings value);
+    void sendLockout();
+    void sendCommandObject(SystemControllerCommand command);
+
+    int kvSetInternal(const char *full_name_key, const void *buffer, size_t size, uint32_t create_flags, bool skip_lockout);
+
+    void writeKv(const char* key, bool value, bool skip_lockout = false);
+    void writeKv(const char* key, float value, bool skip_lockout = false);
+    void writeKv(const char* key, uint8_t value, bool skip_lockout = false);
+    void writeKv(const char* key, PidSettings value, bool skip_lockout = false);
 
     static bool readKvBool(const char* key, bool defaultValue);
     static uint8_t readKvUint8(const char * key, uint8_t defaultValue);

@@ -21,6 +21,8 @@ typedef enum {
     WARM_BOOT,
     RUNNING,
     SLEEPING,
+    SOFT_BAILED,
+    HARD_BAILED,
 } SystemControllerInternalState;
 
 typedef enum {
@@ -46,8 +48,8 @@ public:
 
     [[noreturn]] void run();
 private:
-    bool has_bailed = false;
     SystemControllerBailReason bail_reason = BAIL_REASON_NONE;
+    SystemControllerInternalState internalState = UNDETERMINED;
 
     bool ecoMode = true;
     float targetBrewTemperature = 0.f;
@@ -67,10 +69,12 @@ private:
 
     LccParsedPacket currentLccParsedPacket;
     ControlBoardParsedPacket currentControlBoardParsedPacket;
-    LccRawPacket currentLccRawPacket;
     ControlBoardRawPacket currentControlBoardRawPacket;
-    uint8_t currentPacketIdx = 0;
 
+    SystemControllerState externalState();
+    void softBail(SystemControllerBailReason reason);
+    void hardBail(SystemControllerBailReason reason);
+    inline bool isBailed() { return internalState == SOFT_BAILED || internalState == HARD_BAILED; }
     [[noreturn]] void bailForever();
 
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);

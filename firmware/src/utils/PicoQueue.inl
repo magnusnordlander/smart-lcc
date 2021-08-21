@@ -4,17 +4,22 @@
 
 template<class T>
 PicoQueue<T>::PicoQueue(uint count) {
-    queue_init(&_queue, sizeof(T), count);
+    spinlock_num = spin_lock_claim_unused(true);
+    queue_init_with_spinlock(&_queue, sizeof(T), count, spinlock_num);
 }
 
 template<class T>
-PicoQueue<T>::PicoQueue(uint count, uint spinlock_num) {
-    queue_init_with_spinlock(&_queue, sizeof(T), count, spinlock_num);
+PicoQueue<T>::PicoQueue(uint count, uint _spinlock_num): spinlock_num(-1) {
+    queue_init_with_spinlock(&_queue, sizeof(T), count, _spinlock_num);
 }
 
 template<class T>
 PicoQueue<T>::~PicoQueue() {
     queue_free(&_queue);
+
+    if (spinlock_num != -1) {
+        spin_lock_unclaim(spinlock_num);
+    }
 }
 
 template<class T>

@@ -24,7 +24,7 @@ void UIController::run() {
         display->printf("%s %s %s%s %s %s\r\n",
                         status->hasSentLccPacket ? "TX" : "tx",
                         status->hasReceivedControlBoardPacket ? "RX" : "rx",
-                        status->has_bailed ? "Bail " : "",
+                        status->hasBailed() ? "Bail " : "",
                         status->isInEcoMode() ? "E" : "e",
                         status->wifiConnected ? "W" : "w",
                         status->mqttConnected ? "M" : "m");
@@ -35,8 +35,8 @@ void UIController::run() {
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->serviceBoilerTemperature);
-            display->printf("Br:%s SL:%s WT:%s\r\n", status->brewing ? "Y" : "N", status->filling ? "Y" : "N", status->waterTankEmpty ? "Y" : "N");
+            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->getServiceTemperature());
+            display->printf("Br:%s SL:%s WT:%s\r\n", status->currentlyBrewing() ? "Y" : "N", status->currentlyFillingServiceBoiler() ? "Y" : "N", status->isWaterTankEmpty() ? "Y" : "N");
         }
 
         if (status->lastBrewStartedAt.has_value()) {
@@ -50,7 +50,7 @@ void UIController::run() {
         }
 
         if (status->hasSentLccPacket) {
-            display->printf("%s %s\r\n", status->brewSsr ? "BSSR" : "bssr", status->serviceSsr? "SSSR" : "sssr");
+            display->printf("%s %s\r\n", status->isBrewSsrOn() ? "BSSR" : "bssr", status->isServiceSsrOn() ? "SSSR" : "sssr");
         }
 
 #ifndef LCC_RELAY

@@ -27,6 +27,7 @@ public:
     void peekBlocking(T *element);
 private:
     queue_t _queue{};
+    uint spinlock_num;
 };
 
 #include "PicoQueue.inl"

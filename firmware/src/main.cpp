@@ -1,6 +1,5 @@
 #include "mbed.h"
 #include "SystemStatus.h"
-#include <USB/PluggableUSBSerial.h>
 #include <UI/UIController.h>
 #include <SystemController/SystemController.h>
 #include <Adafruit_SSD1306.h>
@@ -10,7 +9,9 @@
 #include "utils/PicoQueue.h"
 #include "types.h"
 #include "SystemSettings.h"
+#include <kvstore_global_api.h>
 
+#ifndef FOO
 #define OLED_MOSI digitalPinToPinName(PIN_SPI_MOSI)
 #define OLED_MISO digitalPinToPinName(PIN_SPI_MISO)
 #define OLED_SCK digitalPinToPinName(PIN_SPI_SCK)
@@ -23,9 +24,24 @@
 
 #define AUX_TX digitalPinToPinName(8)
 #define AUX_RX digitalPinToPinName(9)
+#else
+#include "PinNames.h"
+#define OLED_MOSI p7
+#define OLED_MISO p4
+#define OLED_SCK p6
+#define OLED_DC p25
+#define OLED_RST p15
+#define OLED_CS p5
+
+#define CB_TX p0
+#define CB_RX p1
+
+#define AUX_TX p20
+#define AUX_RX p21
+#endif
+
 
 UART SerialAux(AUX_TX, AUX_RX);
-
 REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
@@ -44,10 +60,12 @@ rtos::Thread uiThread;
 UIController uiController(systemStatus, &gOled1);
 
 rtos::Thread wifiThread(osPriorityBelowNormal);
-WifiTransceiver wifiTransceiver(systemStatus);
+WifiTransceiver wifiTransceiver(systemStatus, systemSettings);
+
+rtos::Thread otherThread(osPriorityBelowNormal);
 
 [[noreturn]] void launchCore1() {
-    //mbed::Watchdog::get_instance().start(3000);
+    mbed::Watchdog::get_instance().start(3000);
     systemController.run();
 }
 
@@ -62,19 +80,16 @@ int main()
 #else
     SerialAux.begin(115200);
 #endif
+    // This should run before launching core1, since it might write to flash
+    printf("Initialized\n");
     systemSettings->initialize();
 
-    //rtos::ThisThread::sleep_for(5000ms);
-    //systemStatus->readSettingsFromKV();
-
-    //mbed::Watchdog::get_instance().start(3000);
-    //systemControllerThread.start([] { systemController.run(); });
+    printf("Up and running\n");
     multicore_launch_core1(launchCore1);
+    printf("Core 1 launched\n");
 
     uiThread.start([] { uiController.run(); });
-    //wifiThread.start([] { wifiTransceiver.run(); });
-
-    //launchCore1();
+    wifiThread.start([] { wifiTransceiver.run(); });
 
     SystemControllerStatusMessage message;
 
@@ -84,23 +99,10 @@ int main()
         while (!queue1->isEmpty()) {
             queue1->removeBlocking(&message);
 
+            systemStatus->updateStatusMessage(message);
+
             systemStatus->hasReceivedControlBoardPacket = true;
             systemStatus->hasSentLccPacket = true;
-            systemStatus->brewBoilerTemperature = message.brewTemperature;
-            systemStatus->serviceBoilerTemperature = message.serviceTemperature;
-            systemStatus->brewing = message.currentlyBrewing;
-            systemStatus->filling = message.currentlyFillingServiceBoiler;
-            systemStatus->waterTankEmpty = message.waterTankLow;
-            systemStatus->brewSsr = message.brewSSRActive;
-            systemStatus->serviceSsr = message.serviceSSRActive;
-
-            printf("BT: %.1f SSR: %u P: %.2f BI: %.2f BD: %.2f BInt: %.2f\n",
-               message.brewTemperature,
-               message.brewSSRActive,
-               message.brewPidParameters.p,
-               message.brewPidParameters.i,
-               message.brewPidParameters.d,
-               message.brewPidParameters.integral);
         }
 
         rtos::ThisThread::sleep_for(10ms);

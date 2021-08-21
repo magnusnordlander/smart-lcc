@@ -6,6 +6,7 @@
 #include "SystemController.h"
 #include "hardware/watchdog.h"
 #include "pico/timeout_helper.h"
+#include "pico/multicore.h"
 
 using namespace std::chrono_literals;
 
@@ -46,9 +47,7 @@ SystemController::SystemController(
 }
 
 void SystemController::run() {
-    //printf("Running\n");
-    //watchdog_enable(1000, true);
-
+    LccParsedPacket safeLccParsedPacket = LccParsedPacket();
     currentLccParsedPacket = LccParsedPacket();
 
     handleCommands();
@@ -59,8 +58,13 @@ void SystemController::run() {
         // so we can't use mbed::Watchdog.
         hal_watchdog_kick();
 
-        LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
-        uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
+        if (isBailed()) {
+            LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(safeLccParsedPacket);
+            uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
+        } else {
+            LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
+            uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
+        }
 
         auto timeout = make_timeout_time_ms(100);
 
@@ -68,19 +72,19 @@ void SystemController::run() {
         bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentControlBoardRawPacket), sizeof(currentControlBoardRawPacket), init_single_timeout_until(&ts, timeout), &ts);
 
         if (!success) {
-            bail_reason = BAIL_REASON_CB_UNRESPONSIVE;
-            bailForever();
+            softBail(BAIL_REASON_CB_UNRESPONSIVE);
         }
 
-//        printf("Got package\n");
-//        printlnhex((uint8_t*)&currentControlBoardRawPacket, sizeof(currentControlBoardRawPacket));
-        currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
+        if (isBailed()) {
+            handleCommands();
+        } else {
+            currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
+            currentControlBoardRawPacket = ControlBoardRawPacket();
 
-        currentControlBoardRawPacket = ControlBoardRawPacket();
-        currentPacketIdx = 0;
+            handleCommands();
 
-        handleCommands();
-        currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
+            currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
+        }
 
         SystemControllerStatusMessage message = {
                 .timestamp = get_absolute_time(),
@@ -95,7 +99,7 @@ void SystemController::run() {
                 .brewSSRActive = currentLccParsedPacket.brew_boiler_ssr_on,
                 .serviceSSRActive = currentLccParsedPacket.service_boiler_ssr_on,
                 .ecoMode = ecoMode,
-                .state = SYSTEM_CONTROLLER_STATE_WARM,
+                .state = externalState(),
                 .bailReason = bail_reason,
                 .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,
                 .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on && currentLccParsedPacket.service_boiler_solenoid_open,
@@ -135,7 +139,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
         uint8_t bbSignal = brewBoilerController.getControlSignal(brewTempAverage.average());
         uint8_t sbSignal = serviceBoilerController.getControlSignal(serviceTempAverage.average());
 
-        //printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
+        printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
 
         if (ecoMode) {
             sbSignal = 0;
@@ -174,9 +178,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     SsrState state;
     if (!ssrStateQueue.tryRemove(&state)) {
-        //printf("No Queue item found\n");
-        bail_reason = BAIL_REASON_SSR_QUEUE_EMPTY;
-        bailForever();
+        hardBail(BAIL_REASON_SSR_QUEUE_EMPTY);
+        return lcc;
     }
 
     if (state == BREW_BOILER_SSR_ON) {
@@ -202,26 +205,11 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     return lcc;
 }
 
-[[noreturn]] void SystemController::bailForever() {
-    has_bailed = true;
-
-    while (true) {
-        sleep_ms(100);
-
-        LccRawPacket safePacket = {0x80, 0, 0, 0, 0};
-        //printf("Bailed, sending safe packet\n");
-        uart_write_blocking(uart, (uint8_t *)&safePacket, sizeof(safePacket));
-
-        hal_watchdog_kick();
-    }
-}
-
 void SystemController::handleCommands() {
     SystemControllerCommand command;
+    //printf("Q: %u\n", incomingQueue->getLevelUnsafe());
     while (!incomingQueue->isEmpty()) {
         incomingQueue->removeBlocking(&command);
-
-        //printf("Handling command of type %u. F1: %.1f F2 %.1f F3 %.1f B1: %u\n", (uint8_t)command.type, command.float1, command.float2, command.float3, command.bool1);
 
         switch (command.type) {
             case COMMAND_SET_BREW_SET_POINT:
@@ -244,10 +232,15 @@ void SystemController::handleCommands() {
                 ecoMode = command.bool1;
                 break;
             case COMMAND_SET_SLEEP_MODE:
+                internalState = SLEEPING;
                 break;
             case COMMAND_UNBAIL:
+                internalState = UNDETERMINED;
                 break;
             case COMMAND_TRIGGER_FIRST_RUN:
+                break;
+            case COMMAND_ALLOW_LOCKOUT:
+                multicore_lockout_victim_init();
                 break;
         }
     }
@@ -260,4 +253,36 @@ void SystemController::updateControllerSettings() {
     brewBoilerController.updateSetPoint(targetBrewTemperature);
     serviceBoilerController.setPidParameters(servicePidParameters);
     serviceBoilerController.updateSetPoint(targetServiceTemperature);
+}
+
+void SystemController::softBail(SystemControllerBailReason reason) {
+    if (internalState != HARD_BAILED) {
+        internalState = SOFT_BAILED;
+    }
+
+    if (bail_reason == BAIL_REASON_NONE) {
+        bail_reason = reason;
+    }
+}
+
+void SystemController::hardBail(SystemControllerBailReason reason) {
+    internalState = HARD_BAILED;
+    bail_reason = reason;
+}
+
+SystemControllerState SystemController::externalState() {
+    switch (internalState) {
+        case UNDETERMINED:
+            return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
+        case COLD_BOOT:
+            return SYSTEM_CONTROLLER_STATE_HEATUP;
+        case WARM_BOOT:
+        case RUNNING:
+            return SYSTEM_CONTROLLER_STATE_WARM;
+        case SLEEPING:
+            return SYSTEM_CONTROLLER_STATE_SLEEPING;
+        case SOFT_BAILED:
+        case HARD_BAILED:
+            return SYSTEM_CONTROLLER_STATE_BAILED;
+    }
 }
