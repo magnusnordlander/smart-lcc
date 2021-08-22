@@ -16,6 +16,7 @@ public:
 
     void updateSetPoint(float setPoint);
     uint8_t getControlSignal(float value);
+    PidRuntimeParameters getRuntimeParameters() const;
 
     void setPidParameters(PidSettings pidParameters);
 
@@ -27,6 +28,8 @@ private:
 
     float lowerPidBound;
     float upperPidBound;
+
+    bool lastModeWasHysteresis = true;
 };
 
 

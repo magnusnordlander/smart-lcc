@@ -21,10 +21,31 @@ void UIController::run() {
         display->clearDisplay();
         display->setTextCursor(18,18);
 
-        display->printf("%s %s %s%s %s %s\r\n",
-                        status->hasSentLccPacket ? "TX" : "tx",
-                        status->hasReceivedControlBoardPacket ? "RX" : "rx",
-                        status->hasBailed() ? "Bail " : "",
+        switch (status->getState()) {
+            case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
+                display->printf("Unkn");
+                break;
+            case SYSTEM_CONTROLLER_STATE_HEATUP:
+                display->printf("Heating");
+                break;
+            case SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING:
+                display->printf("Norm");
+                break;
+            case SYSTEM_CONTROLLER_STATE_WARM:
+                display->printf("Warm");
+                break;
+            case SYSTEM_CONTROLLER_STATE_SLEEPING:
+                display->printf("Sleep");
+                break;
+            case SYSTEM_CONTROLLER_STATE_BAILED:
+                display->printf("Bailed");
+                break;
+            case SYSTEM_CONTROLLER_STATE_FIRST_RUN:
+                display->printf("First");
+                break;
+        }
+
+        display->printf(" %s %s %s\r\n",
                         status->isInEcoMode() ? "E" : "e",
                         status->wifiConnected ? "W" : "w",
                         status->mqttConnected ? "M" : "m");

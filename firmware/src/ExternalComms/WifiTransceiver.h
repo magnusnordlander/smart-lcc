@@ -38,6 +38,8 @@ private:
     void publish(const char* topic, float payload);
     void publish(const char* topic, uint8_t payload);
     void publish(const char *topic, double payload);
+    void publish(const char *topic, SystemControllerBailReason payload);
+    void publish(const char *topic, SystemControllerState payload);
 
     void handleYield();
 };

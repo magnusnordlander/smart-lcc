@@ -17,8 +17,8 @@
 
 typedef enum {
     UNDETERMINED,
-    COLD_BOOT,
-    WARM_BOOT,
+    HEATUP_STAGE_1, // Bring the Brew boiler up to 130, don't run the service boiler
+    HEATUP_STAGE_2, // Keep the Brew boiler at 130 for 4 minutes, run service boiler as normal
     RUNNING,
     SLEEPING,
     SOFT_BAILED,
@@ -51,6 +51,9 @@ private:
     SystemControllerBailReason bail_reason = BAIL_REASON_NONE;
     SystemControllerInternalState internalState = UNDETERMINED;
 
+    nonstd::optional<absolute_time_t> unbailTimer{};
+    nonstd::optional<absolute_time_t> heatupStage2Timer{};
+
     bool ecoMode = true;
     float targetBrewTemperature = 0.f;
     float targetServiceTemperature = 0.f;
@@ -67,15 +70,30 @@ private:
     MovingAverage<float> brewTempAverage = MovingAverage<float>(5);
     MovingAverage<float> serviceTempAverage = MovingAverage<float>(5);
 
+    bool core0Alive = true;
+
     LccParsedPacket currentLccParsedPacket;
     ControlBoardParsedPacket currentControlBoardParsedPacket;
     ControlBoardRawPacket currentControlBoardRawPacket;
 
     SystemControllerState externalState();
+
     void softBail(SystemControllerBailReason reason);
     void hardBail(SystemControllerBailReason reason);
     inline bool isBailed() { return internalState == SOFT_BAILED || internalState == HARD_BAILED; }
-    [[noreturn]] void bailForever();
+    inline bool isSoftBailed() { return internalState == SOFT_BAILED; };
+    void unbail();
+
+    inline bool onlySendSafePackages() { return isBailed() || internalState == UNDETERMINED; }
+
+    inline bool sleepModeChangePossible() { return !isBailed() && internalState != UNDETERMINED; };
+    void setSleepMode(bool sleepMode);
+
+    bool areTemperaturesAtSetPoint() const;
+
+    void initiateHeatup();
+    void transitionToHeatupStage2();
+    void finishHeatup();
 
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
 

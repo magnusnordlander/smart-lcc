@@ -33,6 +33,7 @@ public:
     inline float getBrewTemperature() const { return latestStatusMessage.brewTemperature; }
     inline float getServiceTemperature() const { return latestStatusMessage.serviceTemperature; }
 
+    inline SystemControllerState getState() const { return latestStatusMessage.state; }
     inline bool isInEcoMode() const { return latestStatusMessage.ecoMode; }
     inline bool isBrewSsrOn() const { return latestStatusMessage.brewSSRActive; }
     inline bool isServiceSsrOn() const { return latestStatusMessage.serviceSSRActive; }

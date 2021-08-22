@@ -35,5 +35,7 @@ struct LccParsedPacket {
 
 LccRawPacket convert_lcc_parsed_to_raw(LccParsedPacket parsed);
 LccParsedPacket convert_lcc_raw_to_parsed(LccRawPacket raw);
+LccRawPacket create_safe_packet();
+uint16_t validate_lcc_raw_packet(LccRawPacket raw);
 
 #endif //LCC_RELAY_LCC_PROTOCOL_H

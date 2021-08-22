@@ -18,6 +18,7 @@
 
 enum topics {
     TOPIC_ONLINE,
+    TOPIC_STATE,
     TOPIC_BAILED,
     TOPIC_BAIL_REASON,
     TOPIC_STAT_TX,
@@ -38,10 +39,12 @@ enum topics {
     TOPIC_STAT_BREW_PID_I,
     TOPIC_STAT_BREW_PID_D,
     TOPIC_STAT_BREW_PID_INTEGRAL,
+    TOPIC_STAT_BREW_PID_HYSTERESIS,
     TOPIC_STAT_SERVICE_PID_P,
     TOPIC_STAT_SERVICE_PID_I,
     TOPIC_STAT_SERVICE_PID_D,
     TOPIC_STAT_SERVICE_PID_INTEGRAL,
+    TOPIC_STAT_SERVICE_PID_HYSTERESIS,
     TOPIC_TEMP_BREW,
     TOPIC_TEMP_SERVICE,
     TOPIC_SET_CONF_ECO_MODE,
@@ -59,6 +62,7 @@ enum topics {
 
 static const char * const topic_names[] = {
     [TOPIC_ONLINE] = TOPIC_PREFIX "online",
+    [TOPIC_STATE] = TOPIC_PREFIX "stat/state",
     [TOPIC_BAILED] = TOPIC_PREFIX "stat/bailed",
     [TOPIC_BAIL_REASON] = TOPIC_PREFIX "stat/bail_reason",
     [TOPIC_STAT_TX] = TOPIC_PREFIX  "stat/tx",
@@ -79,10 +83,12 @@ static const char * const topic_names[] = {
     [TOPIC_STAT_BREW_PID_I] = TOPIC_PREFIX "stat/brew_pid/i",
     [TOPIC_STAT_BREW_PID_D] = TOPIC_PREFIX "stat/brew_pid/d",
     [TOPIC_STAT_BREW_PID_INTEGRAL] = TOPIC_PREFIX "stat/brew_pid/integral",
+    [TOPIC_STAT_BREW_PID_HYSTERESIS] = TOPIC_PREFIX "stat/brew_pid/hysteresis",
     [TOPIC_STAT_SERVICE_PID_P] = TOPIC_PREFIX "stat/service_pid/p",
     [TOPIC_STAT_SERVICE_PID_I] = TOPIC_PREFIX "stat/service_pid/i",
     [TOPIC_STAT_SERVICE_PID_D] = TOPIC_PREFIX "stat/service_pid/d",
     [TOPIC_STAT_SERVICE_PID_INTEGRAL] = TOPIC_PREFIX "stat/service_pid/integral",
+    [TOPIC_STAT_SERVICE_PID_HYSTERESIS] = TOPIC_PREFIX "stat/service_pid/hysteresis",
     [TOPIC_TEMP_BREW] = TOPIC_PREFIX  "temp/brew",
     [TOPIC_TEMP_SERVICE] = TOPIC_PREFIX  "temp/service",
     [TOPIC_SET_CONF_ECO_MODE] = TOPIC_PREFIX "conf/eco_mode/set",
@@ -263,8 +269,10 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
 
 void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_ONLINE], true);
+
+    publish(topic_names[TOPIC_STATE], systemStatus->getState());
     publish(topic_names[TOPIC_BAILED], systemStatus->hasBailed());
-    publish(topic_names[TOPIC_BAIL_REASON], (uint8_t)systemStatus->bailReason());
+    publish(topic_names[TOPIC_BAIL_REASON], systemStatus->bailReason());
 
     publish(topic_names[TOPIC_STAT_TX], systemStatus->hasSentLccPacket);
 
@@ -288,6 +296,7 @@ void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_STAT_BREW_PID_I], brewPidRuntimeParams.i);
     publish(topic_names[TOPIC_STAT_BREW_PID_D], brewPidRuntimeParams.d);
     publish(topic_names[TOPIC_STAT_BREW_PID_INTEGRAL], brewPidRuntimeParams.integral);
+    publish(topic_names[TOPIC_STAT_BREW_PID_HYSTERESIS], brewPidRuntimeParams.hysteresisMode);
 
     auto servicePidRuntimeParams = systemStatus->getServicePidRuntimeParameters();
 
@@ -295,6 +304,7 @@ void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_STAT_SERVICE_PID_I], servicePidRuntimeParams.i);
     publish(topic_names[TOPIC_STAT_SERVICE_PID_D], servicePidRuntimeParams.d);
     publish(topic_names[TOPIC_STAT_SERVICE_PID_INTEGRAL], servicePidRuntimeParams.integral);
+    publish(topic_names[TOPIC_STAT_SERVICE_PID_HYSTERESIS], servicePidRuntimeParams.hysteresisMode);
 
     if (systemStatus->hasReceivedControlBoardPacket) {
         publish(topic_names[TOPIC_STAT_RX], true);
@@ -331,6 +341,52 @@ void WifiTransceiver::publish(const char *topic, double payload) {
     unsigned int len = snprintf(reinterpret_cast<char *>(floatString), FLOAT_MAX_LEN, "%.2f", payload);
     pubSubClient.publish(topic, floatString, len);
     handleYield();
+}
+
+void WifiTransceiver::publish(const char *topic, SystemControllerBailReason bailReason) {
+    switch (bailReason) {
+        case BAIL_REASON_NONE:
+            pubSubClient.publish(topic, "NONE");
+            break;
+        case BAIL_REASON_CB_UNRESPONSIVE:
+            pubSubClient.publish(topic, "CB_UNRESPONSIVE");
+            break;
+        case BAIL_REASON_CB_PACKET_INVALID:
+            pubSubClient.publish(topic, "CB_PACKET_INVALID");
+            break;
+        case BAIL_REASON_LCC_PACKET_INVALID:
+            pubSubClient.publish(topic, "LCC_PACKET_INVALID");
+            break;
+        case BAIL_REASON_SSR_QUEUE_EMPTY:
+            pubSubClient.publish(topic, "SSR_QUEUE_EMPTY");
+            break;
+    }
+}
+
+void WifiTransceiver::publish(const char *topic, SystemControllerState state) {
+    switch (state) {
+        case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
+            pubSubClient.publish(topic, "UNDETERMINED");
+            break;
+        case SYSTEM_CONTROLLER_STATE_HEATUP:
+            pubSubClient.publish(topic, "HEATUP");
+            break;
+        case SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING:
+            pubSubClient.publish(topic, "TEMPS_NORMALIZING");
+            break;
+        case SYSTEM_CONTROLLER_STATE_WARM:
+            pubSubClient.publish(topic, "WARM");
+            break;
+        case SYSTEM_CONTROLLER_STATE_SLEEPING:
+            pubSubClient.publish(topic, "SLEEPING");
+            break;
+        case SYSTEM_CONTROLLER_STATE_BAILED:
+            pubSubClient.publish(topic, "BAILED");
+            break;
+        case SYSTEM_CONTROLLER_STATE_FIRST_RUN:
+            pubSubClient.publish(topic, "FIRST_RUN");
+            break;
+    }
 }
 
 void WifiTransceiver::handleYield() {

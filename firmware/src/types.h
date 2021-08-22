@@ -10,6 +10,7 @@
 typedef enum {
     SYSTEM_CONTROLLER_STATE_UNDETERMINED,
     SYSTEM_CONTROLLER_STATE_HEATUP,
+    SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING,
     SYSTEM_CONTROLLER_STATE_WARM,
     SYSTEM_CONTROLLER_STATE_SLEEPING,
     SYSTEM_CONTROLLER_STATE_BAILED,
@@ -18,10 +19,10 @@ typedef enum {
 
 typedef enum {
     BAIL_REASON_NONE = 0,
-    BAIL_REASON_CB_UNRESPONSIVE,
-    BAIL_REASON_TOO_FAR_BEHIND_ON_RESPONSE,
-    BAIL_REASON_TOO_FAR_BEHIND_BETWEEN_PACKETS,
-    BAIL_REASON_SSR_QUEUE_EMPTY,
+    BAIL_REASON_CB_UNRESPONSIVE = 1,
+    BAIL_REASON_CB_PACKET_INVALID = 2,
+    BAIL_REASON_LCC_PACKET_INVALID = 3,
+    BAIL_REASON_SSR_QUEUE_EMPTY = 4,
 } SystemControllerBailReason;
 
 struct PidSettings {
@@ -31,10 +32,11 @@ struct PidSettings {
 };
 
 struct PidRuntimeParameters {
-    float integral = 0;
+    bool hysteresisMode = false;
     float p = 0;
     float i = 0;
     float d = 0;
+    float integral = 0;
 };
 
 struct SystemControllerStatusMessage{

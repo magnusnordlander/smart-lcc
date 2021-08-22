@@ -26,12 +26,26 @@ uint8_t HybridController::getControlSignal(float value) {
     uint8_t pidValue = pidController.getControlSignal(value);
 
     if (value > lowerPidBound && value < upperPidBound) {
+        lastModeWasHysteresis = false;
         return pidValue;
     }
 
+    lastModeWasHysteresis = true;
     return hysteresisValue;
 }
 
 void HybridController::setPidParameters(PidSettings pidParameters) {
     pidController.pidParameters = pidParameters;
+}
+
+PidRuntimeParameters HybridController::getRuntimeParameters() const {
+    PidRuntimeParameters params{
+        .hysteresisMode = lastModeWasHysteresis,
+        .p = (float)pidController.Pout,
+        .i = (float)pidController.Iout,
+        .d = (float)pidController.Dout,
+        .integral = (float)pidController._integral,
+    };
+
+    return params;
 }

@@ -11,7 +11,6 @@ SystemStatus::SystemStatus(SystemSettings *settings): settings(settings) {
 
 }
 
-
 void SystemStatus::updateStatusMessage(SystemControllerStatusMessage message) {
     if (!latestStatusMessage.currentlyBrewing && message.currentlyBrewing) {
         lastBrewStartedAt = rtos::Kernel::Clock::now();

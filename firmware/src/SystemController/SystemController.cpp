@@ -10,10 +10,13 @@
 
 using namespace std::chrono_literals;
 
-static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, check_timeout_fn timeout_check, struct timeout_state *ts) {
+static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
+    timeout_state_t ts;
+    check_timeout_fn timeout_check = init_single_timeout_until(&ts, timeout_time);
+
     for (size_t i = 0; i < len; ++i) {
         while (!uart_is_readable(uart)) {
-            if (timeout_check(ts)) {
+            if (timeout_check(&ts)) {
                 return false;
             }
 
@@ -47,7 +50,7 @@ SystemController::SystemController(
 }
 
 void SystemController::run() {
-    LccParsedPacket safeLccParsedPacket = LccParsedPacket();
+    LccRawPacket safeLccRawPacket = create_safe_packet();
     currentLccParsedPacket = LccParsedPacket();
 
     handleCommands();
@@ -56,34 +59,73 @@ void SystemController::run() {
         // hardware/watchdog
         // RTOS on Core0 doesn't like us entering critical sections on Core1,
         // so we can't use mbed::Watchdog.
-        hal_watchdog_kick();
+        if (core0Alive) {
+            hal_watchdog_kick();
+        }
 
-        if (isBailed()) {
-            LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(safeLccParsedPacket);
-            uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
+        LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
+        if (validate_lcc_raw_packet(rawLccPacket)) {
+            hardBail(BAIL_REASON_LCC_PACKET_INVALID);
+        }
+
+        if (onlySendSafePackages()) {
+            uart_write_blocking(uart, (uint8_t *)&safeLccRawPacket, sizeof(safeLccRawPacket));
         } else {
-            LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
             uart_write_blocking(uart, (uint8_t *)&rawLccPacket, sizeof(rawLccPacket));
         }
 
+        // This timeout is used both as a timeout for reading from the UART and to know when to send the next packet.
         auto timeout = make_timeout_time_ms(100);
 
-        timeout_state_t ts;
-        bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentControlBoardRawPacket), sizeof(currentControlBoardRawPacket), init_single_timeout_until(&ts, timeout), &ts);
+        bool success = uart_read_blocking_timeout(uart, reinterpret_cast<uint8_t *>(&currentControlBoardRawPacket), sizeof(currentControlBoardRawPacket), timeout);
 
         if (!success) {
             softBail(BAIL_REASON_CB_UNRESPONSIVE);
         }
 
+        if (validate_raw_packet(currentControlBoardRawPacket)) {
+            softBail(BAIL_REASON_CB_PACKET_INVALID);
+        }
+
         if (isBailed()) {
-            handleCommands();
+            if (isSoftBailed()) {
+                if (!success) {
+                    unbailTimer.reset();
+                } else if (!unbailTimer.has_value()) {
+                    unbailTimer = get_absolute_time();
+                } else if (absolute_time_diff_us(unbailTimer.value(), get_absolute_time()) > 2000000) {
+                    unbail();
+                }
+            }
         } else {
             currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
-            currentControlBoardRawPacket = ControlBoardRawPacket();
 
-            handleCommands();
+            if (internalState == UNDETERMINED) {
+                if (currentControlBoardParsedPacket.brew_boiler_temperature < 65) {
+                    initiateHeatup();
+                } else {
+                    internalState = RUNNING;
+                }
+            } else if (internalState == HEATUP_STAGE_1) {
+                if (currentControlBoardParsedPacket.brew_boiler_temperature > 128) {
+                    transitionToHeatupStage2();
+                }
+            } else if (internalState == HEATUP_STAGE_2) {
+                if (absolute_time_diff_us(heatupStage2Timer.value(), get_absolute_time()) > 4*60*1000*1000) {
+                    finishHeatup();
+                }
+            }
+        }
 
+        // Reset the current raw packet.
+        currentControlBoardRawPacket = ControlBoardRawPacket();
+
+        handleCommands();
+
+        if (!isBailed()) {
             currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
+        } else {
+            currentLccParsedPacket = convert_lcc_raw_to_parsed(safeLccRawPacket);
         }
 
         SystemControllerStatusMessage message = {
@@ -108,6 +150,9 @@ void SystemController::run() {
 
         if (!outgoingQueue->isFull()) {
             outgoingQueue->tryAdd(&message);
+        } else {
+            printf("Core0 isn't handling our messages :/ \n");
+            core0Alive = false;
         }
 
         sleep_until(timeout);
@@ -188,10 +233,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
         lcc.service_boiler_ssr_on = true;
     }
 
-    brewPidRuntimeParameters.p = brewBoilerController.pidController.Pout;
-    brewPidRuntimeParameters.i = brewBoilerController.pidController.Iout;
-    brewPidRuntimeParameters.d = brewBoilerController.pidController.Dout;
-    brewPidRuntimeParameters.integral = brewBoilerController.pidController._integral;
+    brewPidRuntimeParameters = brewBoilerController.getRuntimeParameters();
+    servicePidRuntimeParameters = serviceBoilerController.getRuntimeParameters();
 
     if (!waterTankEmptyLatch.get()) {
         if (latestParsedPacket.brew_switch) {
@@ -232,10 +275,10 @@ void SystemController::handleCommands() {
                 ecoMode = command.bool1;
                 break;
             case COMMAND_SET_SLEEP_MODE:
-                internalState = SLEEPING;
+                setSleepMode(command.bool1);
                 break;
             case COMMAND_UNBAIL:
-                internalState = UNDETERMINED;
+                unbail();
                 break;
             case COMMAND_TRIGGER_FIRST_RUN:
                 break;
@@ -250,9 +293,21 @@ void SystemController::handleCommands() {
 
 void SystemController::updateControllerSettings() {
     brewBoilerController.setPidParameters(brewPidParameters);
-    brewBoilerController.updateSetPoint(targetBrewTemperature);
     serviceBoilerController.setPidParameters(servicePidParameters);
-    serviceBoilerController.updateSetPoint(targetServiceTemperature);
+
+    if (internalState == SLEEPING) {
+        brewBoilerController.updateSetPoint(70.f);
+        serviceBoilerController.updateSetPoint(70.f);
+    } else if (internalState == HEATUP_STAGE_1) {
+        brewBoilerController.updateSetPoint(130.f);
+        serviceBoilerController.updateSetPoint(0.f);
+    } else if (internalState == HEATUP_STAGE_2) {
+        brewBoilerController.updateSetPoint(130.f);
+        serviceBoilerController.updateSetPoint(targetServiceTemperature);
+    } else {
+        brewBoilerController.updateSetPoint(targetBrewTemperature);
+        serviceBoilerController.updateSetPoint(targetServiceTemperature);
+    }
 }
 
 void SystemController::softBail(SystemControllerBailReason reason) {
@@ -274,11 +329,11 @@ SystemControllerState SystemController::externalState() {
     switch (internalState) {
         case UNDETERMINED:
             return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
-        case COLD_BOOT:
+        case HEATUP_STAGE_1:
+        case HEATUP_STAGE_2:
             return SYSTEM_CONTROLLER_STATE_HEATUP;
-        case WARM_BOOT:
         case RUNNING:
-            return SYSTEM_CONTROLLER_STATE_WARM;
+            return areTemperaturesAtSetPoint() ? SYSTEM_CONTROLLER_STATE_WARM : SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING;
         case SLEEPING:
             return SYSTEM_CONTROLLER_STATE_SLEEPING;
         case SOFT_BAILED:
@@ -287,4 +342,62 @@ SystemControllerState SystemController::externalState() {
     }
 
     return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
+}
+
+void SystemController::unbail() {
+    internalState = UNDETERMINED;
+    bail_reason = BAIL_REASON_NONE;
+    unbailTimer.reset();
+}
+
+void SystemController::setSleepMode(bool sleepMode) {
+    if (!sleepModeChangePossible()) {
+        return;
+    }
+
+    if (sleepMode) {
+        if (internalState == HEATUP_STAGE_2) {
+            heatupStage2Timer.reset();
+        }
+
+        internalState = SLEEPING;
+    } else {
+        internalState = UNDETERMINED;
+    }
+
+    updateControllerSettings();
+}
+
+void SystemController::initiateHeatup() {
+    internalState = HEATUP_STAGE_1;
+    updateControllerSettings();
+}
+
+void SystemController::transitionToHeatupStage2() {
+    internalState = HEATUP_STAGE_2;
+    heatupStage2Timer = get_absolute_time();
+    updateControllerSettings();
+}
+
+void SystemController::finishHeatup() {
+    internalState = RUNNING;
+    heatupStage2Timer.reset();
+    updateControllerSettings();
+}
+
+bool SystemController::areTemperaturesAtSetPoint() const {
+    float bbsplo = targetBrewTemperature - 2.f;
+    float bbsphi = targetBrewTemperature + 2.f;
+    float sbsplo = targetServiceTemperature - 4.f;
+    float sbsphi = targetServiceTemperature + 4.f;
+
+    if (currentControlBoardParsedPacket.brew_boiler_temperature < bbsplo || currentControlBoardParsedPacket.brew_boiler_temperature > bbsphi) {
+        return false;
+    }
+
+    if (!ecoMode && (currentControlBoardParsedPacket.service_boiler_temperature < sbsplo || currentControlBoardParsedPacket.service_boiler_temperature > sbsphi)) {
+        return false;
+    }
+
+    return true;
 }
