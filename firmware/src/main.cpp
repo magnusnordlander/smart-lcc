@@ -49,8 +49,8 @@ using namespace std::chrono_literals;
 PicoQueue<SystemControllerCommand> *queue0 = new PicoQueue<SystemControllerCommand>(100);
 PicoQueue<SystemControllerStatusMessage> *queue1 = new PicoQueue<SystemControllerStatusMessage>(100);
 
-SystemStatus* systemStatus = new SystemStatus;
 SystemSettings* systemSettings = new SystemSettings(queue0);
+SystemStatus* systemStatus = new SystemStatus(systemSettings);
 
 SystemController systemController(uart0, CB_TX, CB_RX, queue1, queue0);
 
@@ -60,9 +60,7 @@ rtos::Thread uiThread;
 UIController uiController(systemStatus, &gOled1);
 
 rtos::Thread wifiThread(osPriorityBelowNormal);
-WifiTransceiver wifiTransceiver(systemStatus, systemSettings);
-
-rtos::Thread otherThread(osPriorityBelowNormal);
+WifiTransceiver wifiTransceiver(systemStatus, systemSettings, queue0);
 
 [[noreturn]] void launchCore1() {
     mbed::Watchdog::get_instance().start(3000);

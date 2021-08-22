@@ -12,7 +12,7 @@ extern "C" {
 template <class T> class PicoQueue {
 public:
     explicit PicoQueue(uint count);
-    PicoQueue(uint count, uint spinlock_num);
+    PicoQueue(uint count, int spinlock_num);
     ~PicoQueue();
 
     uint getLevelUnsafe();
@@ -27,7 +27,7 @@ public:
     void peekBlocking(T *element);
 private:
     queue_t _queue{};
-    uint spinlock_num;
+    int spinlock_num;
 };
 
 #include "PicoQueue.inl"

@@ -285,4 +285,6 @@ SystemControllerState SystemController::externalState() {
         case HARD_BAILED:
             return SYSTEM_CONTROLLER_STATE_BAILED;
     }
+
+    return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
 }

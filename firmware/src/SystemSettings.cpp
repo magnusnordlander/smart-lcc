@@ -21,12 +21,20 @@ void SystemSettings::initialize() {
         writeKv("/kv/setting_version", SETTING_VERSION, true);
     }
 
-    // Order matters here, the System Controller may well bake a control packet using an intermediate state
+    brewTemperatureOffset = readKvFloat("/kv/brew_temp_offset", -10.f, -30.f, 30.f);
+
+    // This is run before core1 is launched, and the System controller processes all commands before starting to
+    // drive the bus, so order doesn't matter.
     sendCommand(COMMAND_SET_ECO_MODE, readKvBool("/kv/eco_mode", true));
     sendCommand(COMMAND_SET_BREW_PID_PARAMETERS, readKvPidParameters("/kv/brew_pid_params", PidSettings{.Kp = 0.8, .Ki = 0.04, .Kd = 16.0}));
     sendCommand(COMMAND_SET_SERVICE_PID_PARAMETERS, readKvPidParameters("/kv/service_pid_params", PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0}));
     sendCommand(COMMAND_SET_BREW_SET_POINT, readKvFloat("/kv/target_brew", 95.f, 0.f, 130.f));
     sendCommand(COMMAND_SET_SERVICE_SET_POINT, readKvFloat("/kv/target_service", 125.f, 0.f, 140.f));
+}
+
+void SystemSettings::setBrewTemperatureOffset(float offset) {
+    writeKv("/kv/brew_temp_offset", offset);
+    brewTemperatureOffset = offset;
 }
 
 void SystemSettings::setEcoMode(bool _ecoMode) {

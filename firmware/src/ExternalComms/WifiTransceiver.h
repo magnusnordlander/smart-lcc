@@ -12,12 +12,17 @@
 
 class WifiTransceiver {
 public:
-    explicit WifiTransceiver(SystemStatus *systemStatus, SystemSettings *systemSettings);
+    explicit WifiTransceiver(
+            SystemStatus *systemStatus,
+            SystemSettings *systemSettings,
+            PicoQueue<SystemControllerCommand>* commandQueue
+            );
 
     [[noreturn]] void run();
 private:
     SystemStatus* systemStatus;
     SystemSettings* systemSettings;
+    PicoQueue<SystemControllerCommand>* commandQueue;
 
     WiFiClass wifi;
     WiFiClient wifiClient;

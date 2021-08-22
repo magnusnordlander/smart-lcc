@@ -9,7 +9,7 @@ PicoQueue<T>::PicoQueue(uint count) {
 }
 
 template<class T>
-PicoQueue<T>::PicoQueue(uint count, uint _spinlock_num): spinlock_num(-1) {
+PicoQueue<T>::PicoQueue(uint count, int _spinlock_num): spinlock_num(-1) {
     queue_init_with_spinlock(&_queue, sizeof(T), count, _spinlock_num);
 }
 

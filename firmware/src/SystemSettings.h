@@ -14,13 +14,19 @@ public:
 
     void initialize();
 
+    inline float getBrewTemperatureOffset() const { return brewTemperatureOffset; };
+
+    void setBrewTemperatureOffset(float offset);
     void setEcoMode(bool ecoMode);
     void setTargetBrewTemp(float targetBrewTemp);
+    inline void setOffsetTargetBrewTemp(float offsetTargetBrewTemp) { setTargetBrewTemp(offsetTargetBrewTemp - brewTemperatureOffset); };
     void setTargetServiceTemp(float targetServiceTemp);
     void setBrewPidParameters(PidSettings params);
     void setServicePidParameters(PidSettings params);
 private:
     PicoQueue<SystemControllerCommand> *_commandQueue;
+
+    float brewTemperatureOffset;
 
     void sendCommand(SystemControllerCommandType commandType, bool value);
     void sendCommand(SystemControllerCommandType commandType, float value);

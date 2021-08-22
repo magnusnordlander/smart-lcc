@@ -9,10 +9,11 @@
 #include <SystemController/lcc_protocol.h>
 #include <SystemController/control_board_protocol.h>
 #include <SystemController/PIDController.h>
+#include "SystemSettings.h"
 
 class SystemStatus {
 public:
-    SystemStatus();
+    explicit SystemStatus(SystemSettings *settings);
 
     // Status
     bool hasSentLccPacket = false;
@@ -27,8 +28,8 @@ public:
     inline bool hasBailed() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_BAILED; }
     inline SystemControllerBailReason bailReason() const { return latestStatusMessage.bailReason; }
 
-    inline float getOffsetTargetBrewTemperature() const { return getTargetBrewTemp() + brewTemperatureOffset; }
-    inline float getOffsetBrewTemperature() const { return getBrewTemperature() + brewTemperatureOffset; }
+    inline float getOffsetTargetBrewTemperature() const { return getTargetBrewTemp() + getBrewTempOffset(); }
+    inline float getOffsetBrewTemperature() const { return getBrewTemperature() + getBrewTempOffset(); }
     inline float getBrewTemperature() const { return latestStatusMessage.brewTemperature; }
     inline float getServiceTemperature() const { return latestStatusMessage.serviceTemperature; }
 
@@ -36,13 +37,14 @@ public:
     inline bool isBrewSsrOn() const { return latestStatusMessage.brewSSRActive; }
     inline bool isServiceSsrOn() const { return latestStatusMessage.serviceSSRActive; }
     inline bool isWaterTankEmpty() const { return latestStatusMessage.waterTankLow; }
+    inline bool isInSleepMode() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_SLEEPING; }
 
     inline bool currentlyBrewing() const { return latestStatusMessage.currentlyBrewing; }
     inline bool currentlyFillingServiceBoiler() const { return latestStatusMessage.currentlyFillingServiceBoiler; }
 
     inline float getTargetBrewTemp() const { return latestStatusMessage.brewSetPoint; }
     inline float getTargetServiceTemp() const { return latestStatusMessage.serviceSetPoint; }
-    inline float getBrewTempOffset() const { return brewTemperatureOffset; }
+    inline float getBrewTempOffset() const { return settings->getBrewTemperatureOffset(); }
 
     inline PidSettings getBrewPidSettings() const { return latestStatusMessage.brewPidSettings; }
     inline PidSettings getServicePidSettings() const { return latestStatusMessage.servicePidSettings; }
@@ -51,9 +53,7 @@ public:
 
     void updateStatusMessage(SystemControllerStatusMessage message);
 private:
-    // Settings
-    float brewTemperatureOffset = -10.0f;
-
+    SystemSettings* settings;
     SystemControllerStatusMessage latestStatusMessage;
 };
 

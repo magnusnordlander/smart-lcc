@@ -7,8 +7,10 @@
 
 #define SETTING_VERSION ((uint8_t)1)
 
-SystemStatus::SystemStatus() {
+SystemStatus::SystemStatus(SystemSettings *settings): settings(settings) {
+
 }
+
 
 void SystemStatus::updateStatusMessage(SystemControllerStatusMessage message) {
     if (!latestStatusMessage.currentlyBrewing && message.currentlyBrewing) {
