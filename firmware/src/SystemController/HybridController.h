@@ -8,15 +8,17 @@
 
 #include "HysteresisController.h"
 #include "PIDController.h"
+#include <types.h>
 
 class HybridController {
 public:
-    explicit HybridController(float setPoint, float hybridDelta, const PidParameters &pidParameters, float hysteresisDelta, uint16_t cycleTime);
+    explicit HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters, float hysteresisDelta);
 
     void updateSetPoint(float setPoint);
     uint8_t getControlSignal(float value);
+    PidRuntimeParameters getRuntimeParameters() const;
 
-    void setPidParameters(PidParameters pidParameters);
+    void setPidParameters(PidSettings pidParameters);
 
     PIDController pidController;
 private:
@@ -26,6 +28,8 @@ private:
 
     float lowerPidBound;
     float upperPidBound;
+
+    bool lastModeWasHysteresis = true;
 };
 
 

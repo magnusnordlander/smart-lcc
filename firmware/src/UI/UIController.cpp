@@ -21,10 +21,31 @@ void UIController::run() {
         display->clearDisplay();
         display->setTextCursor(18,18);
 
-        display->printf("%s %s %s%s %s %s\r\n",
-                        status->hasSentLccPacket ? "TX" : "tx",
-                        status->hasReceivedControlBoardPacket ? "RX" : "rx",
-                        status->has_bailed ? "Bail " : "",
+        switch (status->getState()) {
+            case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
+                display->printf("Unkn");
+                break;
+            case SYSTEM_CONTROLLER_STATE_HEATUP:
+                display->printf("Heating");
+                break;
+            case SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING:
+                display->printf("Norm");
+                break;
+            case SYSTEM_CONTROLLER_STATE_WARM:
+                display->printf("Warm");
+                break;
+            case SYSTEM_CONTROLLER_STATE_SLEEPING:
+                display->printf("Sleep");
+                break;
+            case SYSTEM_CONTROLLER_STATE_BAILED:
+                display->printf("Bailed");
+                break;
+            case SYSTEM_CONTROLLER_STATE_FIRST_RUN:
+                display->printf("First");
+                break;
+        }
+
+        display->printf(" %s %s %s\r\n",
                         status->isInEcoMode() ? "E" : "e",
                         status->wifiConnected ? "W" : "w",
                         status->mqttConnected ? "M" : "m");
@@ -35,8 +56,8 @@ void UIController::run() {
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->controlBoardPacket.service_boiler_temperature);
-            display->printf("Br:%s SL:%s WT:%s\r\n", status->controlBoardPacket.brew_switch ? "Y" : "N", status->controlBoardPacket.service_boiler_low ? "Y" : "N", status->controlBoardPacket.water_tank_empty ? "Y" : "N");
+            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->getServiceTemperature());
+            display->printf("Br:%s SL:%s WT:%s\r\n", status->currentlyBrewing() ? "Y" : "N", status->currentlyFillingServiceBoiler() ? "Y" : "N", status->isWaterTankEmpty() ? "Y" : "N");
         }
 
         if (status->lastBrewStartedAt.has_value()) {
@@ -50,7 +71,7 @@ void UIController::run() {
         }
 
         if (status->hasSentLccPacket) {
-            display->printf("%s %s %s %s\r\n", status->lccPacket.brew_boiler_ssr_on ? "BSSR" : "bssr", status->lccPacket.service_boiler_ssr_on ? "SSSR" : "sssr", status->lccPacket.pump_on ? "P" : "p", status->lccPacket.service_boiler_solenoid_open ? "BS" : "bs");
+            display->printf("%s %s\r\n", status->isBrewSsrOn() ? "BSSR" : "bssr", status->isServiceSsrOn() ? "SSSR" : "sssr");
         }
 
 #ifndef LCC_RELAY
@@ -62,12 +83,15 @@ void UIController::run() {
         display->printf("BOn %u BOf %u\r\n", status->minBssrOnCycleMs, status->minBssrOffCycleMs);
 #endif
 
+        //display->printf("%lu", (unsigned long)start.time_since_epoch().count());
+
         display->setTextCursor(100, 18);
         display->printf("%s", blip < 5 ? "o" : " ");
         blip = (blip + 1) % 10;
 
         display->display();
 
+        //sleep_ms(30);
         // Cap at 25 fps
         rtos::ThisThread::sleep_until(start + 40ms);
     }

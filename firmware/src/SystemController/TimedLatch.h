@@ -16,10 +16,10 @@ public:
     void set(bool value);
     void setImmediate(bool value);
 private:
-    rtos::Kernel::Clock::duration threshold;
+    uint16_t threshold;
 
     bool currentState;
-    nonstd::optional<rtos::Kernel::Clock::time_point> changingSince = nonstd::nullopt;
+    nonstd::optional<absolute_time_t> changingSince = nonstd::nullopt;
 };
 
 

@@ -10,14 +10,20 @@
 #include "TimedLatch.h"
 #include "HysteresisController.h"
 #include "HybridController.h"
+#include <queue>
+#include "../types.h"
+#include <utils/PicoQueue.h>
+#include <utils/MovingAverage.h>
 
 typedef enum {
     UNDETERMINED,
-    COLD_BOOT,
-    WARM_BOOT,
+    HEATUP_STAGE_1, // Bring the Brew boiler up to 130, don't run the service boiler
+    HEATUP_STAGE_2, // Keep the Brew boiler at 130 for 4 minutes, run service boiler as normal
     RUNNING,
     SLEEPING,
-} SystemState;
+    SOFT_BAILED,
+    HARD_BAILED,
+} SystemControllerInternalState;
 
 typedef enum {
     BOTH_SSRS_OFF = 0,
@@ -28,39 +34,79 @@ typedef enum {
 class SsrStateQueueItem {
 public:
     SsrState state = BOTH_SSRS_OFF;
-    rtos::Kernel::Clock::time_point expiresAt;
 };
 
 class SystemController {
 public:
-    explicit SystemController(PinName tx, PinName rx, SystemStatus *status);
+    explicit SystemController(
+            uart_inst_t * _uart,
+            PinName tx,
+            PinName rx,
+            PicoQueue<SystemControllerStatusMessage> *outgoingQueue,
+            PicoQueue<SystemControllerCommand> *incomingQueue
+            );
 
     [[noreturn]] void run();
-    void handleRxIrq();
 private:
-    mbed::UnbufferedSerial serial;
-    SystemStatus* status;
+    SystemControllerBailReason bail_reason = BAIL_REASON_NONE;
+    SystemControllerInternalState internalState = UNDETERMINED;
 
-    rtos::Kernel::Clock::time_point lastPacketSentAt;
+    nonstd::optional<absolute_time_t> unbailTimer{};
+    nonstd::optional<absolute_time_t> heatupStage2Timer{};
 
-    bool awaitingPacket = false;
-    ControlBoardRawPacket currentPacket;
-    uint8_t currentPacketIdx = 0;
+    bool ecoMode = true;
+    float targetBrewTemperature = 0.f;
+    float targetServiceTemperature = 0.f;
+    PidSettings brewPidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f, .windupLow = -1.f, .windupHigh = 1.f};
+    PidSettings servicePidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f, .windupLow = -1.f, .windupHigh = 1.f};
 
-    [[noreturn]] void bailForever();
-    void sendPacket(LccRawPacket packet);
-    void awaitReceipt();
+    PidRuntimeParameters brewPidRuntimeParameters{};
+    PidRuntimeParameters servicePidRuntimeParameters{};
+
+    PicoQueue<SystemControllerStatusMessage> *outgoingQueue;
+    PicoQueue<SystemControllerCommand> *incomingQueue;
+    uart_inst_t* uart;
+
+    MovingAverage<float> brewTempAverage = MovingAverage<float>(5);
+    MovingAverage<float> serviceTempAverage = MovingAverage<float>(5);
+
+    bool core0Alive = true;
+
+    LccParsedPacket currentLccParsedPacket;
+    ControlBoardParsedPacket currentControlBoardParsedPacket;
+    ControlBoardRawPacket currentControlBoardRawPacket;
+
+    SystemControllerState externalState();
+
+    void softBail(SystemControllerBailReason reason);
+    void hardBail(SystemControllerBailReason reason);
+    inline bool isBailed() { return internalState == SOFT_BAILED || internalState == HARD_BAILED; }
+    inline bool isSoftBailed() { return internalState == SOFT_BAILED; };
+    void unbail();
+
+    inline bool onlySendSafePackages() { return isBailed() || internalState == UNDETERMINED; }
+
+    inline bool sleepModeChangePossible() { return !isBailed() && internalState != UNDETERMINED; };
+    void setSleepMode(bool sleepMode);
+
+    bool areTemperaturesAtSetPoint() const;
+
+    void initiateHeatup();
+    void transitionToHeatupStage2();
+    void finishHeatup();
 
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
-    void updateFromSystemStatus();
 
     HybridController brewBoilerController;
     HybridController serviceBoilerController;
 
-    rtos::Queue<SsrStateQueueItem, 50> ssrStateQueue;
+    PicoQueue<SsrState> ssrStateQueue = PicoQueue<SsrState>(25);
 
     TimedLatch waterTankEmptyLatch = TimedLatch(1000, false);
     TimedLatch serviceBoilerLowLatch = TimedLatch(500, false);
+
+    void handleCommands();
+    void updateControllerSettings();
 };
 
 

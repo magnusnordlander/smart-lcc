@@ -30,3 +30,11 @@ LccParsedPacket convert_lcc_raw_to_parsed(LccRawPacket raw) {
 
     return parsed;
 }
+
+LccRawPacket create_safe_packet() {
+    return (LccRawPacket){0x80, 0, 0, 0, 0};
+}
+
+uint16_t validate_lcc_raw_packet(LccRawPacket raw) {
+    return 0;
+}

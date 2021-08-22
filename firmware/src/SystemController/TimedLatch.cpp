@@ -14,9 +14,10 @@ bool TimedLatch::get() const {
 void TimedLatch::set(bool value) {
     if (value != currentState) {
         if (!changingSince.has_value()) {
-            changingSince = rtos::Kernel::Clock::now();
+            changingSince = get_absolute_time();
         } else {
-            if (rtos::Kernel::Clock::now() - changingSince.value() > threshold) {
+            auto now = get_absolute_time();
+            if ((absolute_time_diff_us(changingSince.value(), now) / 1000) > threshold) {
                 changingSince.reset();
                 currentState = value;
             }
