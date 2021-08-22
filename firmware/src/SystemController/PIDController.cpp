@@ -27,7 +27,7 @@ using namespace std::chrono_literals;
 PIDController::PIDController(const PidSettings &pidParameters, float setPoint) : pidParameters(pidParameters),
                                                                                    setPoint(setPoint) {}
 
-uint8_t PIDController::getControlSignal(float pv) {
+uint8_t PIDController::getControlSignal(float pv, float feedForward) {
     auto now = get_absolute_time();
 
     double diffS = (double)absolute_time_diff_us(lastPvAt, now)/1000000;
@@ -35,7 +35,7 @@ uint8_t PIDController::getControlSignal(float pv) {
     updatePidSignal(pv, diffS);
     lastPvAt = now;
 
-    return round((float)pidSignal*2.5f);
+    return round((pidSignal + feedForward)*2.5f);
 }
 
 void PIDController::updatePidSignal(float pv, double dT) {
@@ -72,7 +72,7 @@ void PIDController::updatePidSignal(float pv, double dT) {
     // Save error to previous error
     _pre_error = error;
 
-    pidSignal = (long long)round(output);
+    pidSignal = (float)round(output);
 }
 
 void PIDController::updateSetPoint(float newSetPoint) {

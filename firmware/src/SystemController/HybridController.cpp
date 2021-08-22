@@ -21,9 +21,9 @@ void HybridController::updateSetPoint(float setPoint) {
     pidController.updateSetPoint(setPoint);
 }
 
-uint8_t HybridController::getControlSignal(float value) {
+uint8_t HybridController::getControlSignal(float value, float pidFeedForward) {
     uint8_t hysteresisValue = hysteresisController.getControlSignal(value);
-    uint8_t pidValue = pidController.getControlSignal(value);
+    uint8_t pidValue = pidController.getControlSignal(value, pidFeedForward);
 
     if (value > lowerPidBound && value < upperPidBound) {
         lastModeWasHysteresis = false;

@@ -15,7 +15,7 @@ public:
     explicit HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters, float hysteresisDelta);
 
     void updateSetPoint(float setPoint);
-    uint8_t getControlSignal(float value);
+    uint8_t getControlSignal(float value, float pidFeedForward = 0.f);
     PidRuntimeParameters getRuntimeParameters() const;
 
     void setPidParameters(PidSettings pidParameters);

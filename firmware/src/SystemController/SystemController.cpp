@@ -168,6 +168,15 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     brewTempAverage.addValue(latestParsedPacket.brew_boiler_temperature);
     serviceTempAverage.addValue(latestParsedPacket.service_boiler_temperature);
 
+    if (!waterTankEmptyLatch.get()) {
+        if (latestParsedPacket.brew_switch) {
+            lcc.pump_on = true;
+        } else if (serviceBoilerLowLatch.get()) {
+            lcc.pump_on = true;
+            lcc.service_boiler_solenoid_open = true;
+        }
+    }
+
     /*
      * New algorithm:
      *
@@ -176,12 +185,12 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
      * If BB + SB < 25: Both get what they want.
      * Else: They get a proportional share of what they want.
      *   I.e. if BB = 17 and SB = 13, BB gets round((17/(17+13))*25) = 14 and SB gets round((13/(17+13))*25) = 11.
-     *
-     * Each slot allocation is stamped with an expiration timestamp. That way any delay in popping the queue won't
-     * result in old values being used.
      */
     if (ssrStateQueue.isEmpty()) {
-        uint8_t bbSignal = brewBoilerController.getControlSignal(brewTempAverage.average());
+        uint8_t bbSignal = brewBoilerController.getControlSignal(
+                brewTempAverage.average(),
+                lcc.pump_on && !lcc.service_boiler_solenoid_open ? 5.f : 0.f
+                );
         uint8_t sbSignal = serviceBoilerController.getControlSignal(serviceTempAverage.average());
 
         printf("Raw signals. BB: %u SB: %u\n", bbSignal, sbSignal);
@@ -235,15 +244,6 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     brewPidRuntimeParameters = brewBoilerController.getRuntimeParameters();
     servicePidRuntimeParameters = serviceBoilerController.getRuntimeParameters();
-
-    if (!waterTankEmptyLatch.get()) {
-        if (latestParsedPacket.brew_switch) {
-            lcc.pump_on = true;
-        } else if (serviceBoilerLowLatch.get()) {
-            lcc.pump_on = true;
-            lcc.service_boiler_solenoid_open = true;
-        }
-    }
 
     return lcc;
 }

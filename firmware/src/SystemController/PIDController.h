@@ -23,18 +23,18 @@ public:
     PidSettings pidParameters;
 
     void updateSetPoint(float setPoint);
-    uint8_t getControlSignal(float value);
+    uint8_t getControlSignal(float value, float feedForward = 0.f);
 
     double integral = 0;
 
     double Pout = 0;
     double Iout = 0;
     double Dout = 0;
-
-    long long pidSignal = 0;
 private:
     const double _max = 10;
     const double _min = 0;
+
+    float pidSignal = 0;
 
     double _pre_error = 0;
 
