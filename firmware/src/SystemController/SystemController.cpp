@@ -38,8 +38,8 @@ SystemController::SystemController(
         outgoingQueue(outgoingQueue),
         incomingQueue(incomingQueue),
         uart(_uart),
-        brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f, 200),
-        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f, 800){
+        brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f),
+        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f){
     // hardware/uart
     gpio_set_function(rx, GPIO_FUNC_UART);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
@@ -262,6 +262,8 @@ void SystemController::handleCommands() {
                 brewPidParameters.Kp = command.float1;
                 brewPidParameters.Ki = command.float2;
                 brewPidParameters.Kd = command.float3;
+                brewPidParameters.windupLow = command.float4;
+                brewPidParameters.windupHigh = command.float5;
                 break;
             case COMMAND_SET_SERVICE_SET_POINT:
                 targetServiceTemperature = command.float1;
@@ -270,6 +272,8 @@ void SystemController::handleCommands() {
                 servicePidParameters.Kp = command.float1;
                 servicePidParameters.Ki = command.float2;
                 servicePidParameters.Kd = command.float3;
+                servicePidParameters.windupLow = command.float4;
+                servicePidParameters.windupHigh = command.float5;
                 break;
             case COMMAND_SET_ECO_MODE:
                 ecoMode = command.bool1;

@@ -57,8 +57,8 @@ private:
     bool ecoMode = true;
     float targetBrewTemperature = 0.f;
     float targetServiceTemperature = 0.f;
-    PidSettings brewPidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
-    PidSettings servicePidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f};
+    PidSettings brewPidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f, .windupLow = -1.f, .windupHigh = 1.f};
+    PidSettings servicePidParameters = PidSettings{.Kp = 0.f, .Ki = 0.f, .Kd = 0.f, .windupLow = -1.f, .windupHigh = 1.f};
 
     PidRuntimeParameters brewPidRuntimeParameters{};
     PidRuntimeParameters servicePidRuntimeParameters{};

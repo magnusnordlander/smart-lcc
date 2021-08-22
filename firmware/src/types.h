@@ -29,6 +29,8 @@ struct PidSettings {
     float Kp{};
     float Ki{};
     float Kd{};
+    float windupLow{};
+    float windupHigh{};
 };
 
 struct PidRuntimeParameters {
@@ -76,6 +78,8 @@ struct SystemControllerCommand {
     float float1{};
     float float2{};
     float float3{};
+    float float4{};
+    float float5{};
     bool bool1{};
 };
 

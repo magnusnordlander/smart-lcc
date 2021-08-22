@@ -83,7 +83,7 @@ void UIController::run() {
         display->printf("BOn %u BOf %u\r\n", status->minBssrOnCycleMs, status->minBssrOffCycleMs);
 #endif
 
-        display->printf("%lu", (unsigned long)start.time_since_epoch().count());
+        //display->printf("%lu", (unsigned long)start.time_since_epoch().count());
 
         display->setTextCursor(100, 18);
         display->printf("%s", blip < 5 ? "o" : " ");

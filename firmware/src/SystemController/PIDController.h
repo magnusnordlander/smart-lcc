@@ -18,23 +18,14 @@ struct PidParameters {
 
 class PIDController {
 public:
-    PIDController(const PidSettings &pidParameters, float setPoint, uint16_t cycleTime);
+    PIDController(const PidSettings &pidParameters, float setPoint);
 
     PidSettings pidParameters;
 
     void updateSetPoint(float setPoint);
     uint8_t getControlSignal(float value);
 
-    uint16_t cycleTime = 200;
-
-    const double _max = 10;
-    const double _min = 0;
-
-    const double _integral_max = 10;
-    const double _integral_min = -10;
-
-    double _pre_error = 0;
-    double _integral = 0;
+    double integral = 0;
 
     double Pout = 0;
     double Iout = 0;
@@ -42,12 +33,14 @@ public:
 
     long long pidSignal = 0;
 private:
+    const double _max = 10;
+    const double _min = 0;
+
+    double _pre_error = 0;
+
     float setPoint;
 
     absolute_time_t lastPvAt;
-
-    nonstd::optional<absolute_time_t> onCycleEnds;
-    nonstd::optional<absolute_time_t> offCycleEnds;
 
     void updatePidSignal(float pv, double dT);
 };

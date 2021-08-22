@@ -21,6 +21,7 @@ enum topics {
     TOPIC_STATE,
     TOPIC_BAILED,
     TOPIC_BAIL_REASON,
+    TOPIC_RESET_REASON,
     TOPIC_STAT_TX,
     TOPIC_CONF_ECO_MODE,
     TOPIC_CONF_SLEEP_MODE,
@@ -30,9 +31,13 @@ enum topics {
     TOPIC_CONF_BREW_PID_KP,
     TOPIC_CONF_BREW_PID_KI,
     TOPIC_CONF_BREW_PID_KD,
+    TOPIC_CONF_BREW_PID_WINDUP_LOW,
+    TOPIC_CONF_BREW_PID_WINDUP_HIGH,
     TOPIC_CONF_SERVICE_PID_KP,
     TOPIC_CONF_SERVICE_PID_KI,
     TOPIC_CONF_SERVICE_PID_KD,
+    TOPIC_CONF_SERVICE_PID_WINDUP_LOW,
+    TOPIC_CONF_SERVICE_PID_WINDUP_HIGH,
     TOPIC_STAT_RX,
     TOPIC_STAT_WATER_TANK_EMPTY,
     TOPIC_STAT_BREW_PID_P,
@@ -55,9 +60,13 @@ enum topics {
     TOPIC_SET_CONF_BREW_PID_KP,
     TOPIC_SET_CONF_BREW_PID_KI,
     TOPIC_SET_CONF_BREW_PID_KD,
+    TOPIC_SET_CONF_BREW_PID_WINDUP_LOW,
+    TOPIC_SET_CONF_BREW_PID_WINDUP_HIGH,
     TOPIC_SET_CONF_SERVICE_PID_KP,
     TOPIC_SET_CONF_SERVICE_PID_KI,
-    TOPIC_SET_CONF_SERVICE_PID_KD
+    TOPIC_SET_CONF_SERVICE_PID_KD,
+    TOPIC_SET_CONF_SERVICE_PID_WINDUP_LOW,
+    TOPIC_SET_CONF_SERVICE_PID_WINDUP_HIGH
 };
 
 static const char * const topic_names[] = {
@@ -65,6 +74,7 @@ static const char * const topic_names[] = {
     [TOPIC_STATE] = TOPIC_PREFIX "stat/state",
     [TOPIC_BAILED] = TOPIC_PREFIX "stat/bailed",
     [TOPIC_BAIL_REASON] = TOPIC_PREFIX "stat/bail_reason",
+    [TOPIC_RESET_REASON] = TOPIC_PREFIX "stat/reset_reason",
     [TOPIC_STAT_TX] = TOPIC_PREFIX  "stat/tx",
     [TOPIC_CONF_ECO_MODE] = TOPIC_PREFIX  "conf/eco_mode",
     [TOPIC_CONF_SLEEP_MODE] = TOPIC_PREFIX  "conf/sleep_mode",
@@ -74,9 +84,13 @@ static const char * const topic_names[] = {
     [TOPIC_CONF_BREW_PID_KP] = TOPIC_PREFIX "conf/brew_pid/kp",
     [TOPIC_CONF_BREW_PID_KI] = TOPIC_PREFIX "conf/brew_pid/ki",
     [TOPIC_CONF_BREW_PID_KD] = TOPIC_PREFIX "conf/brew_pid/kd",
+    [TOPIC_CONF_BREW_PID_WINDUP_LOW] = TOPIC_PREFIX "conf/brew_pid/windup_low",
+    [TOPIC_CONF_BREW_PID_WINDUP_HIGH] = TOPIC_PREFIX "conf/brew_pid/windup_high",
     [TOPIC_CONF_SERVICE_PID_KP] = TOPIC_PREFIX "conf/service_pid/kp",
     [TOPIC_CONF_SERVICE_PID_KI] = TOPIC_PREFIX "conf/service_pid/ki",
     [TOPIC_CONF_SERVICE_PID_KD] = TOPIC_PREFIX "conf/service_pid/kd",
+    [TOPIC_CONF_SERVICE_PID_WINDUP_LOW] = TOPIC_PREFIX "conf/service_pid/windup_low",
+    [TOPIC_CONF_SERVICE_PID_WINDUP_HIGH] = TOPIC_PREFIX "conf/service_pid/windup_high",
     [TOPIC_STAT_RX] = TOPIC_PREFIX  "stat/rx",
     [TOPIC_STAT_WATER_TANK_EMPTY] = TOPIC_PREFIX  "stat/water_tank_empty",
     [TOPIC_STAT_BREW_PID_P] = TOPIC_PREFIX "stat/brew_pid/p",
@@ -99,9 +113,13 @@ static const char * const topic_names[] = {
     [TOPIC_SET_CONF_BREW_PID_KP] = TOPIC_PREFIX "conf/brew_pid/kp/set",
     [TOPIC_SET_CONF_BREW_PID_KI] = TOPIC_PREFIX "conf/brew_pid/ki/set",
     [TOPIC_SET_CONF_BREW_PID_KD] = TOPIC_PREFIX "conf/brew_pid/kd/set",
+    [TOPIC_SET_CONF_BREW_PID_WINDUP_LOW] = TOPIC_PREFIX "conf/brew_pid/windup_low/set",
+    [TOPIC_SET_CONF_BREW_PID_WINDUP_HIGH] = TOPIC_PREFIX "conf/brew_pid/windup_high/set",
     [TOPIC_SET_CONF_SERVICE_PID_KP] = TOPIC_PREFIX "conf/service_pid/kp/set",
     [TOPIC_SET_CONF_SERVICE_PID_KI] = TOPIC_PREFIX "conf/service_pid/ki/set",
-    [TOPIC_SET_CONF_SERVICE_PID_KD] = TOPIC_PREFIX "conf/service_pid/kd/set"
+    [TOPIC_SET_CONF_SERVICE_PID_KD] = TOPIC_PREFIX "conf/service_pid/kd/set",
+    [TOPIC_SET_CONF_SERVICE_PID_WINDUP_LOW] = TOPIC_PREFIX "conf/service_pid/windup_low/set",
+    [TOPIC_SET_CONF_SERVICE_PID_WINDUP_HIGH] = TOPIC_PREFIX "conf/service_pid/windup_high/set"
 };
 
 using namespace std::chrono_literals;
@@ -164,9 +182,13 @@ void WifiTransceiver::ensureConnectedToMqtt() {
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_KP]);
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_KI]);
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_KD]);
+            pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_LOW]);
+            pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_HIGH]);
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_SERVICE_PID_KP]);
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_SERVICE_PID_KI]);
             pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_SERVICE_PID_KD]);
+            pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_LOW]);
+            pubSubClient.subscribe(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_HIGH]);
             return;
         }
 
@@ -181,8 +203,6 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
     memcpy(payloadZero, payload, length);
     payloadZero[length] = '\0';
 
-    //printf("Data: %s\n", payloadZero);
-
     if (!strcmp(topic_names[TOPIC_SET_CONF_ECO_MODE], topic)) {
         systemSettings->setEcoMode(!strcmp("true", reinterpret_cast<const char *>(payloadZero)));
     } else if (!strcmp(topic_names[TOPIC_SET_CONF_SLEEP_MODE], topic)) {
@@ -190,78 +210,62 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
 
         SystemControllerCommand command{.type = COMMAND_SET_SLEEP_MODE, .bool1 = sleep};
         commandQueue->tryAdd(&command);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_TARGET], topic)) {
-        float target = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
+    } else { // Payload is a float
+        float floatPayload = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
-        if (target > 10.0f && target < 120.0f) {
-            systemSettings->setOffsetTargetBrewTemp(target);
+        if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_TARGET], topic)) {
+            if (floatPayload > 10.0f && floatPayload < 120.0f) {
+                systemSettings->setOffsetTargetBrewTemp(floatPayload);
+            }
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_TEMP_TARGET], topic)) {
+            if (floatPayload > 10.0f && floatPayload < 150.0f) {
+                systemSettings->setTargetServiceTemp(floatPayload);
+            }
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_OFFSET], topic)) {
+            if (floatPayload > -30.0f && floatPayload < 30.0f) {
+                systemSettings->setBrewTemperatureOffset(floatPayload);
+            }
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KP], topic)) {
+            auto settings = systemStatus->getBrewPidSettings();
+            settings.Kp = floatPayload;
+            systemSettings->setBrewPidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KI], topic)) {
+            auto settings = systemStatus->getBrewPidSettings();
+            settings.Ki = floatPayload;
+            systemSettings->setBrewPidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KD], topic)) {
+            auto settings = systemStatus->getBrewPidSettings();
+            settings.Kd = floatPayload;
+            systemSettings->setBrewPidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_LOW], topic)) {
+            auto settings = systemStatus->getBrewPidSettings();
+            settings.windupLow = floatPayload;
+            systemSettings->setBrewPidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_WINDUP_HIGH], topic)) {
+            auto settings = systemStatus->getBrewPidSettings();
+            settings.windupHigh = floatPayload;
+            systemSettings->setBrewPidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KP], topic)) {
+            auto settings = systemStatus->getServicePidSettings();
+            settings.Kp = floatPayload;
+            systemSettings->setServicePidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KI], topic)) {
+            auto settings = systemStatus->getServicePidSettings();
+            settings.Ki = floatPayload;
+            systemSettings->setServicePidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KD], topic)) {
+            auto settings = systemStatus->getServicePidSettings();
+            settings.Kd = floatPayload;
+            systemSettings->setServicePidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_WINDUP_LOW], topic)) {
+            auto settings = systemStatus->getServicePidSettings();
+            settings.windupLow = floatPayload;
+            systemSettings->setServicePidParameters(settings);
+        } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_WINDUP_HIGH], topic)) {
+            auto settings = systemStatus->getServicePidSettings();
+            settings.windupHigh = floatPayload;
+            systemSettings->setServicePidParameters(settings);
         }
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_TEMP_TARGET], topic)) {
-        float target = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        if (target > 10.0f && target < 150.0f) {
-            systemSettings->setTargetServiceTemp(target);
-        }
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_TEMP_OFFSET], topic)) {
-        float offset = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        if (offset > -30.0f && offset < 30.0f) {
-            systemSettings->setBrewTemperatureOffset(offset);
-        }
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KP], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getBrewPidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = param;
-        newParams.Ki = oldParams.Ki;
-        newParams.Kd = oldParams.Kd;
-        systemSettings->setBrewPidParameters(newParams);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KI], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getBrewPidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = oldParams.Kp;
-        newParams.Ki = param;
-        newParams.Kd = oldParams.Kd;
-        systemSettings->setBrewPidParameters(newParams);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_BREW_PID_KD], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getBrewPidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = oldParams.Kp;
-        newParams.Ki = oldParams.Ki;
-        newParams.Kd = param;
-        systemSettings->setBrewPidParameters(newParams);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KP], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getServicePidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = param;
-        newParams.Ki = oldParams.Ki;
-        newParams.Kd = oldParams.Kd;
-        systemSettings->setServicePidParameters(newParams);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KI], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getServicePidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = oldParams.Kp;
-        newParams.Ki = param;
-        newParams.Kd = oldParams.Kd;
-        systemSettings->setServicePidParameters(newParams);
-    } else if (!strcmp(topic_names[TOPIC_SET_CONF_SERVICE_PID_KD], topic)) {
-        float param = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
-
-        auto oldParams = systemStatus->getServicePidSettings();
-        auto newParams = PidSettings();
-        newParams.Kp = oldParams.Kp;
-        newParams.Ki = oldParams.Ki;
-        newParams.Kd = param;
-        systemSettings->setServicePidParameters(newParams);
     }
 
     free(payloadZero);
@@ -273,6 +277,7 @@ void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_STATE], systemStatus->getState());
     publish(topic_names[TOPIC_BAILED], systemStatus->hasBailed());
     publish(topic_names[TOPIC_BAIL_REASON], systemStatus->bailReason());
+    publish(topic_names[TOPIC_RESET_REASON], mbed::ResetReason::get());
 
     publish(topic_names[TOPIC_STAT_TX], systemStatus->hasSentLccPacket);
 
@@ -285,10 +290,14 @@ void WifiTransceiver::publishStatus() {
     publish(topic_names[TOPIC_CONF_BREW_PID_KP], brewPidParams.Kp);
     publish(topic_names[TOPIC_CONF_BREW_PID_KI], brewPidParams.Ki);
     publish(topic_names[TOPIC_CONF_BREW_PID_KD], brewPidParams.Kd);
+    publish(topic_names[TOPIC_CONF_BREW_PID_WINDUP_LOW], brewPidParams.windupLow);
+    publish(topic_names[TOPIC_CONF_BREW_PID_WINDUP_HIGH], brewPidParams.windupHigh);
     auto servicePidParams = systemStatus->getServicePidSettings();
     publish(topic_names[TOPIC_CONF_SERVICE_PID_KP], servicePidParams.Kp);
     publish(topic_names[TOPIC_CONF_SERVICE_PID_KI], servicePidParams.Ki);
     publish(topic_names[TOPIC_CONF_SERVICE_PID_KD], servicePidParams.Kd);
+    publish(topic_names[TOPIC_CONF_SERVICE_PID_WINDUP_LOW], servicePidParams.windupLow);
+    publish(topic_names[TOPIC_CONF_SERVICE_PID_WINDUP_HIGH], servicePidParams.windupHigh);
 
     auto brewPidRuntimeParams = systemStatus->getBrewPidRuntimeParameters();
 
@@ -361,6 +370,8 @@ void WifiTransceiver::publish(const char *topic, SystemControllerBailReason bail
             pubSubClient.publish(topic, "SSR_QUEUE_EMPTY");
             break;
     }
+
+    handleYield();
 }
 
 void WifiTransceiver::publish(const char *topic, SystemControllerState state) {
@@ -387,10 +398,54 @@ void WifiTransceiver::publish(const char *topic, SystemControllerState state) {
             pubSubClient.publish(topic, "FIRST_RUN");
             break;
     }
+
+    handleYield();
+}
+
+void WifiTransceiver::publish(const char *topic, reset_reason_t payload) {
+    switch (payload) {
+        case RESET_REASON_POWER_ON:
+            pubSubClient.publish(topic, "POWER_ON");
+            break;
+        case RESET_REASON_PIN_RESET:
+            pubSubClient.publish(topic, "PIN_RESET");
+            break;
+        case RESET_REASON_BROWN_OUT:
+            pubSubClient.publish(topic, "BROWN_OUT");
+            break;
+        case RESET_REASON_SOFTWARE:
+            pubSubClient.publish(topic, "SOFTWARE");
+            break;
+        case RESET_REASON_WATCHDOG:
+            pubSubClient.publish(topic, "WATCHDOG");
+            break;
+        case RESET_REASON_LOCKUP:
+            pubSubClient.publish(topic, "LOCKUP");
+            break;
+        case RESET_REASON_WAKE_LOW_POWER:
+            pubSubClient.publish(topic, "WAKE_LOW_POWER");
+            break;
+        case RESET_REASON_ACCESS_ERROR:
+            pubSubClient.publish(topic, "ACCESS_ERROR");
+            break;
+        case RESET_REASON_BOOT_ERROR:
+            pubSubClient.publish(topic, "BOOT_ERROR");
+            break;
+        case RESET_REASON_MULTIPLE:
+            pubSubClient.publish(topic, "MULTIPLE");
+            break;
+        case RESET_REASON_PLATFORM:
+            pubSubClient.publish(topic, "PLATFORM");
+            break;
+        case RESET_REASON_UNKNOWN:
+            pubSubClient.publish(topic, "UNKNOWN");
+            break;
+    }
+
+    handleYield();
 }
 
 void WifiTransceiver::handleYield() {
     pubSubClient.loop();
     rtos::ThisThread::yield();
 }
-

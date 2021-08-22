@@ -12,7 +12,7 @@
 
 class HybridController {
 public:
-    explicit HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters, float hysteresisDelta, uint16_t cycleTime);
+    explicit HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters, float hysteresisDelta);
 
     void updateSetPoint(float setPoint);
     uint8_t getControlSignal(float value);

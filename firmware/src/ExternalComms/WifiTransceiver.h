@@ -40,6 +40,7 @@ private:
     void publish(const char *topic, double payload);
     void publish(const char *topic, SystemControllerBailReason payload);
     void publish(const char *topic, SystemControllerState payload);
+    void publish(const char *topic, reset_reason_t payload);
 
     void handleYield();
 };

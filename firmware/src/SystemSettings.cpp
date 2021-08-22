@@ -7,7 +7,7 @@
 #include <kvstore_global_api.h>
 #include "pico/multicore.h"
 
-#define SETTING_VERSION ((uint8_t)2)
+#define SETTING_VERSION ((uint8_t)3)
 
 SystemSettings::SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue): _commandQueue(commandQueue) {
 
@@ -26,9 +26,9 @@ void SystemSettings::initialize() {
     // This is run before core1 is launched, and the System controller processes all commands before starting to
     // drive the bus, so order doesn't matter.
     sendCommand(COMMAND_SET_ECO_MODE, readKvBool("/kv/eco_mode", true));
-    sendCommand(COMMAND_SET_BREW_PID_PARAMETERS, readKvPidParameters("/kv/brew_pid_params", PidSettings{.Kp = 0.8, .Ki = 0.04, .Kd = 16.0}));
-    sendCommand(COMMAND_SET_SERVICE_PID_PARAMETERS, readKvPidParameters("/kv/service_pid_params", PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0}));
-    sendCommand(COMMAND_SET_BREW_SET_POINT, readKvFloat("/kv/target_brew", 95.f, 0.f, 130.f));
+    sendCommand(COMMAND_SET_BREW_PID_PARAMETERS, readKvPidParameters("/kv/brew_pid_params", PidSettings{.Kp = 0.8, .Ki = 0.12, .Kd = 12.0, .windupLow = -7.f, .windupHigh = 7.f}));
+    sendCommand(COMMAND_SET_SERVICE_PID_PARAMETERS, readKvPidParameters("/kv/service_pid_params", PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0, .windupLow = -10.f, .windupHigh = 10.f}));
+    sendCommand(COMMAND_SET_BREW_SET_POINT, readKvFloat("/kv/target_brew", 105.f, 0.f, 130.f));
     sendCommand(COMMAND_SET_SERVICE_SET_POINT, readKvFloat("/kv/target_service", 125.f, 0.f, 140.f));
 }
 
@@ -85,6 +85,8 @@ void SystemSettings::sendCommand(SystemControllerCommandType commandType, PidSet
     command.float1 = value.Kp;
     command.float2 = value.Ki;
     command.float3 = value.Kd;
+    command.float4 = value.windupLow;
+    command.float5 = value.windupHigh;
 
     sendCommandObject(command);
 }

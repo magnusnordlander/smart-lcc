@@ -5,8 +5,8 @@
 #include "HybridController.h"
 
 HybridController::HybridController(float setPoint, float hybridDelta, const PidSettings &pidParameters,
-                                   float hysteresisDelta, uint16_t cycleTime):
-                                   pidController(pidParameters, setPoint, cycleTime),
+                                   float hysteresisDelta):
+                                   pidController(pidParameters, setPoint),
                                    hysteresisController(setPoint, hysteresisDelta),
                                    delta(hybridDelta),
                                    lowerPidBound(setPoint - hybridDelta),
@@ -44,7 +44,7 @@ PidRuntimeParameters HybridController::getRuntimeParameters() const {
         .p = (float)pidController.Pout,
         .i = (float)pidController.Iout,
         .d = (float)pidController.Dout,
-        .integral = (float)pidController._integral,
+        .integral = (float)pidController.integral,
     };
 
     return params;

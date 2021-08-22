@@ -24,7 +24,7 @@
 
 using namespace std::chrono_literals;
 
-PIDController::PIDController(const PidSettings &pidParameters, float setPoint, uint16_t cycleTime) : pidParameters(pidParameters), cycleTime(cycleTime),
+PIDController::PIDController(const PidSettings &pidParameters, float setPoint) : pidParameters(pidParameters),
                                                                                    setPoint(setPoint) {}
 
 uint8_t PIDController::getControlSignal(float pv) {
@@ -46,15 +46,15 @@ void PIDController::updatePidSignal(float pv, double dT) {
     Pout = pidParameters.Kp * error;
 
     // Integral term
-    _integral += error * dT;
+    integral += error * dT;
 
     // Prevent integral wind-up
-    if( _integral > _integral_max )
-        _integral = _integral_max;
-    else if( _integral < _integral_min )
-        _integral = _integral_min;
+    if(integral > pidParameters.windupHigh )
+        integral = pidParameters.windupHigh;
+    else if(integral < pidParameters.windupLow )
+        integral = pidParameters.windupLow;
 
-    Iout = pidParameters.Ki * _integral;
+    Iout = pidParameters.Ki * integral;
 
     // Derivative term
     double derivative = (error - _pre_error) / dT;
