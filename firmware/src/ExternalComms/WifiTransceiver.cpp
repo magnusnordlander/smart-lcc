@@ -332,22 +332,25 @@ void WifiTransceiver::publish(const char *topic, bool payload) {
 }
 
 void WifiTransceiver::publish(const char *topic, uint8_t payload) {
-    uint8_t intString[4];
-    unsigned int len = snprintf(reinterpret_cast<char *>(intString), 4, "%u", payload);
+    char intString[4];
+    unsigned int len = snprintf(intString, 4, "%u", payload);
     pubSubClient.publish(topic, intString, len);
     handleYield();
 }
 
 void WifiTransceiver::publish(const char *topic, float payload) {
-    uint8_t floatString[FLOAT_MAX_LEN];
-    unsigned int len = snprintf(reinterpret_cast<char *>(floatString), FLOAT_MAX_LEN, "%.2f", payload);
+    char floatString[FLOAT_MAX_LEN];
+/*    auto payloadInt = (int16_t)payload;
+    auto fractionsInt = (uint8_t)abs((int)((payload*100)-(float)(payloadInt*100)));
+    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%d.%u", payloadInt, fractionsInt);*/
+    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%.2f", payload);
     pubSubClient.publish(topic, floatString, len);
     handleYield();
 }
 
 void WifiTransceiver::publish(const char *topic, double payload) {
-    uint8_t floatString[FLOAT_MAX_LEN];
-    unsigned int len = snprintf(reinterpret_cast<char *>(floatString), FLOAT_MAX_LEN, "%.2f", payload);
+    char floatString[FLOAT_MAX_LEN];
+    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%.2f", payload);
     pubSubClient.publish(topic, floatString, len);
     handleYield();
 }
