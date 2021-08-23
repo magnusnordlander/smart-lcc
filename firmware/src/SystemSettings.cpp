@@ -95,28 +95,28 @@ void SystemSettings::writeKv(const char *key, bool value, bool skip_lockout) {
     int res = kvSetInternal(key, &value, sizeof(value), 0, skip_lockout);
 
     if (res != MBED_SUCCESS) {
-        printf("Error writing bool %u to %s: %u\n", value, key, res);
+        //printf("Error writing bool %u to %s: %u\n", value, key, res);
     }
 }
 
 void SystemSettings::writeKv(const char *key, float value, bool skip_lockout) {
     int res = kvSetInternal(key, &value, sizeof(value), 0, skip_lockout);
     if (res != MBED_SUCCESS) {
-        printf("Error writing float %f to %s: %u\n", value, key, res);
+        //printf("Error writing float %f to %s: %u\n", value, key, res);
     }
 }
 
 void SystemSettings::writeKv(const char *key, uint8_t value, bool skip_lockout) {
     int res = kvSetInternal(key, &value, sizeof(value), 0, skip_lockout);
     if (res != MBED_SUCCESS) {
-        printf("Error writing uint8 %u to %s: %u\n", value, key, res);
+        //printf("Error writing uint8 %u to %s: %u\n", value, key, res);
     }
 }
 
 void SystemSettings::writeKv(const char *key, PidSettings value, bool skip_lockout) {
     int res = kvSetInternal(key, &value, sizeof(value), 0, skip_lockout);
     if (res != MBED_SUCCESS) {
-        printf("Error writing pid parameters to %s: %u\n", key, res);
+        //printf("Error writing pid parameters to %s: %u\n", key, res);
     }
 }
 
@@ -128,7 +128,7 @@ bool SystemSettings::readKvBool(const char *key, bool defaultValue) {
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv bool %s was not set, defaulting to %u\n", key, defaultValue);
+        //printf("Kv bool %s was not set, defaulting to %u\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -143,12 +143,12 @@ float SystemSettings::readKvFloat(const char *key, float defaultValue, float low
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv float %s was not set, defaulting to %f\n", key, defaultValue);
+        //printf("Kv float %s was not set, defaulting to %f\n", key, defaultValue);
         value = defaultValue;
     }
 
     if (value > upperBound || value < lowerBound) {
-        printf("Kv float %s was outside bounds, defaulting to %f\n", key, defaultValue);
+        //printf("Kv float %s was outside bounds, defaulting to %f\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -163,7 +163,7 @@ uint8_t SystemSettings::readKvUint8(const char *key, uint8_t defaultValue) {
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv uint8 %s was not set, defaulting to %u\n", key, defaultValue);
+        //printf("Kv uint8 %s was not set, defaulting to %u\n", key, defaultValue);
         value = defaultValue;
     }
 
@@ -178,7 +178,7 @@ PidSettings SystemSettings::readKvPidParameters(const char *key, PidSettings def
     res = kv_get(key, &value, sizeof(value), &outSz);
 
     if (res != MBED_SUCCESS) {
-        printf("Kv pid parameters %s was not set, defaulting\n", key);
+        //printf("Kv pid parameters %s was not set, defaulting\n", key);
         value = defaultValue;
     }
 
@@ -186,7 +186,7 @@ PidSettings SystemSettings::readKvPidParameters(const char *key, PidSettings def
 }
 
 void SystemSettings::sendCommandObject(SystemControllerCommand command) {
-    printf("Sending command of type %u. F1: %.1f F2 %.1f F3 %.1f B1: %u\n", (uint8_t)command.type, command.float1, command.float2, command.float3, command.bool1);
+    //printf("Sending command of type %u. F1: %.1f F2 %.1f F3 %.1f B1: %u\n", (uint8_t)command.type, command.float1, command.float2, command.float3, command.bool1);
     _commandQueue->addBlocking(&command);
 }
 

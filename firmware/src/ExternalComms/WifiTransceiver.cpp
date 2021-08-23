@@ -6,6 +6,7 @@
 
 #include <mbed.h>
 #include <functional>
+#include <lccmacros.h>
 
 #define WIFI_PASS "pass"
 #define WIFI_SSID "IoT Transform"
@@ -341,13 +342,8 @@ void WifiTransceiver::publish(const char *topic, uint8_t payload) {
 void WifiTransceiver::publish(const char *topic, float payload) {
     char floatString[FLOAT_MAX_LEN];
 
-    // I *think* there's something wrong with printf:ing floats. It's been causing hard faults and wrong numbers
-    // This ugly ass way of formatting floats to a string solves it.
-    auto payloadInt = (int16_t)payload;
-    auto fractionsInt = (uint8_t)abs((int)((payload*100)-(float)(payloadInt*100)));
-    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%d.%02u", payloadInt, fractionsInt);
+    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, FUCKED_UP_FLOAT_2_FMT, FUCKED_UP_FLOAT_2_ARG(payload));
 
-    //unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%.2f", payload);
     pubSubClient.publish(topic, floatString, len);
     handleYield();
 }
@@ -355,13 +351,8 @@ void WifiTransceiver::publish(const char *topic, float payload) {
 void WifiTransceiver::publish(const char *topic, double payload) {
     char floatString[FLOAT_MAX_LEN];
 
-    // I *think* there's something wrong with printf:ing floats. It's been causing hard faults and wrong numbers
-    // This ugly ass way of formatting floats to a string solves it.
-    auto payloadInt = (int16_t)payload;
-    auto fractionsInt = (uint8_t)abs((int)((payload*100)-(float)(payloadInt*100)));
-    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%d.%02u", payloadInt, fractionsInt);
-    
-    //unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, "%.2f", payload);
+    unsigned int len = snprintf(floatString, FLOAT_MAX_LEN, FUCKED_UP_FLOAT_2_FMT, FUCKED_UP_FLOAT_2_ARG(payload));
+
     pubSubClient.publish(topic, floatString, len);
     handleYield();
 }

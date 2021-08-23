@@ -3,6 +3,7 @@
 //
 
 #include "UIController.h"
+#include <lccmacros.h>
 
 using namespace std::chrono_literals;
 
@@ -56,7 +57,7 @@ void UIController::run() {
 
         if (status->hasReceivedControlBoardPacket) {
 //            display->printf("H: %u L: %u\r\n", triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_high_gain), triplet_to_int(status->controlBoardRawPacket.brew_boiler_temperature_low_gain));
-            display->printf("CB:%.01f SB:%.01f\r\n", status->getOffsetBrewTemperature(), status->getServiceTemperature());
+            display->printf("CB:" FUCKED_UP_FLOAT_1_FMT " SB:" FUCKED_UP_FLOAT_1_FMT "\r\n", FUCKED_UP_FLOAT_1_ARG(status->getOffsetBrewTemperature()), FUCKED_UP_FLOAT_1_ARG(status->getServiceTemperature()));
             display->printf("Br:%s SL:%s WT:%s\r\n", status->currentlyBrewing() ? "Y" : "N", status->currentlyFillingServiceBoiler() ? "Y" : "N", status->isWaterTankEmpty() ? "Y" : "N");
         }
 
