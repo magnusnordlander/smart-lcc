@@ -8,7 +8,7 @@ Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-pro
 
 Consider this project early alpha. Expect a beta release some time during fall/winter.
 
-The revision B PCB works well. Manufacturing files are available in the `pcb/` directory. Unless you're *very* good at soldering fine pitch by hand, I suggest manufacturing with SMT assembly. I've used JLCPCB for my manufacturing runs, and the files have worked well there. I do have some spares of both the Rev A PCB (just the PCB) and the Rev B PCB (most components already soldered, but does need buttons, a display and an Arduino). If you have experience of embedded programming, want to help with the project and you want one of the PCBs, reach out.
+The revision B PCB works well. Manufacturing files are available in the `pcb/` directory. Unless you're *very* good at soldering fine pitch by hand, I suggest manufacturing with SMT assembly. I've used JLCPCB for my manufacturing runs, and the files have worked well there. I do have some spares of both the Rev A PCB (just the PCB) and the Rev B PCB (the difficult components already soldered, but does need a connector, buttons, a display and an Arduino). If you have experience of embedded programming, want to help with the project and you want one of the PCBs, reach out.
 
 Considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. This is not the stage to get on board with this project if you aren't willing to deal with possibly having to buy spare parts for and repair your machine.
 
@@ -39,6 +39,7 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
   * Communicates with the Control Board
   * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
   * Responsible for kicking the watchdog
+    * Reboots if Core 0 isn't handling its messages (i.e. has crashed or is frozen)
   * Responsible for PID, keeping water in the boiler, running pumps etc.
 
 #### Core communication protocol
