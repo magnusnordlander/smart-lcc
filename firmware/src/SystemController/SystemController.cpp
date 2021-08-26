@@ -168,13 +168,22 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     brewTempAverage.addValue(latestParsedPacket.brew_boiler_temperature);
     serviceTempAverage.addValue(latestParsedPacket.service_boiler_temperature);
 
+    bool brewing = false;
+
     if (!waterTankEmptyLatch.get()) {
         if (latestParsedPacket.brew_switch) {
             lcc.pump_on = true;
+            brewing = true;
         } else if (serviceBoilerLowLatch.get()) {
             lcc.pump_on = true;
             lcc.service_boiler_solenoid_open = true;
         }
+    }
+
+    if (brewing && !brewStartedAt.has_value()) {
+        brewStartedAt = get_absolute_time();
+    } else if (!brewing && brewStartedAt.has_value()) {
+        brewStartedAt.reset();
     }
 
     /*
@@ -187,9 +196,14 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
      *   I.e. if BB = 17 and SB = 13, BB gets round((17/(17+13))*25) = 14 and SB gets round((13/(17+13))*25) = 11.
      */
     if (ssrStateQueue.isEmpty()) {
+        float feedForward = 0.0f;
+        if (brewStartedAt.has_value()) {
+            feedForward = feedForwardK * ((float)absolute_time_diff_us(brewStartedAt.value(), get_absolute_time()) / 1000.f) + feedForwardM;
+        }
+
         uint8_t bbSignal = brewBoilerController.getControlSignal(
                 brewTempAverage.average(),
-                lcc.pump_on && !lcc.service_boiler_solenoid_open ? 5.f : 0.f
+                brewing ? feedForward : 0.f
                 );
         uint8_t sbSignal = serviceBoilerController.getControlSignal(serviceTempAverage.average());
 

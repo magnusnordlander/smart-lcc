@@ -51,8 +51,17 @@ private:
     SystemControllerBailReason bail_reason = BAIL_REASON_NONE;
     SystemControllerInternalState internalState = UNDETERMINED;
 
+    // Feed forward PID addition
+    // y = kx+m, 0 <= y <= 10
+    // x is time in milliseconds since start of brew
+    //
+    // Start at 10 and go to zero at 10000 milliseconds
+    float feedForwardK = -0.001f;
+    float feedForwardM = 10.0f;
+
     nonstd::optional<absolute_time_t> unbailTimer{};
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
+    nonstd::optional<absolute_time_t> brewStartedAt{};
 
     bool ecoMode = true;
     float targetBrewTemperature = 0.f;
