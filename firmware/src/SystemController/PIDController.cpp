@@ -35,7 +35,21 @@ uint8_t PIDController::getControlSignal(float pv, float feedForward) {
     updatePidSignal(pv, diffS);
     lastPvAt = now;
 
-    return round((pidSignal + feedForward)*2.5f);
+    if (feedForward > 10.f) {
+        feedForward = 10.f;
+    }
+
+    if (feedForward < 0.f) {
+        feedForward = 0.f;
+    }
+
+    float unscaledSignal = pidSignal + feedForward;
+
+    if (unscaledSignal > 10.f) {
+        unscaledSignal = 10.f;
+    }
+
+    return round(unscaledSignal*2.5f);
 }
 
 void PIDController::updatePidSignal(float pv, double dT) {
