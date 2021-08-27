@@ -55,8 +55,8 @@ private:
     // y = kx+m, 0 <= y <= 10
     // x is time in milliseconds since start of brew
     //
-    // Start at 10 and go to zero at 10000 milliseconds
-    float feedForwardK = -0.001f;
+    // Start at 10 and go to zero at 20000 milliseconds
+    float feedForwardK = -0.0005f;
     float feedForwardM = 10.0f;
 
     nonstd::optional<absolute_time_t> unbailTimer{};
@@ -94,6 +94,7 @@ private:
     void unbail();
 
     inline bool onlySendSafePackages() { return isBailed() || internalState == UNDETERMINED; }
+    inline bool shouldForceHysteresisForBrewBoiler() const { return internalState == HEATUP_STAGE_1 || internalState == HEATUP_STAGE_2; };
 
     inline bool sleepModeChangePossible() { return !isBailed() && internalState != UNDETERMINED; };
     void setSleepMode(bool sleepMode);

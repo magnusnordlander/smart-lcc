@@ -203,7 +203,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
         uint8_t bbSignal = brewBoilerController.getControlSignal(
                 brewTempAverage.average(),
-                brewing ? feedForward : 0.f
+                brewing ? feedForward : 0.f,
+                shouldForceHysteresisForBrewBoiler()
                 );
         uint8_t sbSignal = serviceBoilerController.getControlSignal(serviceTempAverage.average());
 
