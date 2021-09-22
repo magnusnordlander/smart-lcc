@@ -55,9 +55,9 @@ private:
     // y = kx+m, 0 <= y <= 10
     // x is time in milliseconds since start of brew
     //
-    // Start at 10 and go to zero at 20000 milliseconds
-    float feedForwardK = -0.0005f;
-    float feedForwardM = 10.0f;
+    // Start at 5 and go to zero at 20000 milliseconds
+    float feedForwardK = -0.00025f;
+    float feedForwardM = 5.0f;
 
     nonstd::optional<absolute_time_t> unbailTimer{};
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
