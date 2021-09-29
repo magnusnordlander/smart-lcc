@@ -108,7 +108,7 @@ private:
     LccParsedPacket handleControlBoardPacket(ControlBoardParsedPacket packet);
 
     HybridController brewBoilerController;
-    HybridController serviceBoilerController;
+    HysteresisController serviceBoilerController;
 
     PicoQueue<SsrState> ssrStateQueue = PicoQueue<SsrState>(25);
 

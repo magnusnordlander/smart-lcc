@@ -39,7 +39,7 @@ SystemController::SystemController(
         incomingQueue(incomingQueue),
         uart(_uart),
         brewBoilerController(targetBrewTemperature, 20.0f, brewPidParameters, 2.0f),
-        serviceBoilerController(targetServiceTemperature, 20.0f, servicePidParameters, 2.0f){
+        serviceBoilerController(targetServiceTemperature, 0.5f){
     // hardware/uart
     gpio_set_function(rx, GPIO_FUNC_UART);
     gpio_set_inover(rx, GPIO_OVERRIDE_INVERT);
@@ -214,15 +214,14 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
             sbSignal = 0;
         }
 
+        // Power sharing
         if (bbSignal + sbSignal > 25) {
-            auto newBbSignal = (uint8_t)round(((float)bbSignal / (float)(bbSignal + sbSignal)) * 25.f);
-            auto newSbSignal = (uint8_t)round(((float)sbSignal / (float)(bbSignal + sbSignal)) * 25.f);
-            bbSignal = newBbSignal;
-            sbSignal = newSbSignal;
-
-            if (bbSignal + sbSignal == 26) {
-                sbSignal--;
+            if (!brewing) {
+                // If we're brewing, prioritize the brew boiler fully
+                // Otherwise, give the brew boiler slightly less than 75% priority
+                bbSignal = floor((float)bbSignal * 0.75);
             }
+            sbSignal = 25 - bbSignal;
         }
 
         uint8_t noSignal = 25 - bbSignal - sbSignal;
@@ -258,7 +257,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     }
 
     brewPidRuntimeParameters = brewBoilerController.getRuntimeParameters();
-    servicePidRuntimeParameters = serviceBoilerController.getRuntimeParameters();
+    //servicePidRuntimeParameters = serviceBoilerController.getRuntimeParameters();
 
     return lcc;
 }
@@ -312,7 +311,7 @@ void SystemController::handleCommands() {
 
 void SystemController::updateControllerSettings() {
     brewBoilerController.setPidParameters(brewPidParameters);
-    serviceBoilerController.setPidParameters(servicePidParameters);
+    //serviceBoilerController.setPidParameters(servicePidParameters);
 
     if (internalState == SLEEPING) {
         brewBoilerController.updateSetPoint(70.f);
