@@ -35,30 +35,6 @@ LccRawPacket create_safe_packet() {
     return (LccRawPacket){0x80, 0, 0, 0, 0};
 }
 
-uint16_t validate_lcc_raw_packet(LccRawPacket packet) {
-    uint16_t error = LCC_VALIDATION_ERROR_NONE;
-
-    if (packet.header != 0x80) {
-        error |= LCC_VALIDATION_ERROR_INVALID_HEADER;
-    }
-
-    static_assert(sizeof(packet) == 5, "Weird LCC Packet size");
-    uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01);
-    if (calculated_checksum != packet.checksum) {
-        error |= LCC_VALIDATION_ERROR_INVALID_CHECKSUM;
-    }
-
-    if (packet.byte1 & 0xEE || packet.byte2 & 0xE7 || packet.byte3 & 0xF3) {
-        error |= LCC_VALIDATION_ERROR_UNEXPECTED_FLAGS;
-    }
-
-    if (packet.byte1 & 0x01 && packet.byte2 & 0x08) {
-        error |= LCC_VALIDATION_ERROR_BOTH_SSRS_ON;
-    }
-
-    if (packet.byte2 & 0x10 && packet.byte1 & 0x10) {
-        error |= LCC_VALIDATION_ERROR_SOLENOID_OPEN_WITHOUT_PUMP;
-    }
-
-    return error;
+uint16_t validate_lcc_raw_packet(LccRawPacket raw) {
+    return 0;
 }
