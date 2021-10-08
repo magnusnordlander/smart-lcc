@@ -18,6 +18,7 @@ public:
 
     void setBrewTemperatureOffset(float offset);
     void setEcoMode(bool ecoMode);
+    void setSleepMode(bool sleepMode);
     void setTargetBrewTemp(float targetBrewTemp);
     inline void setOffsetTargetBrewTemp(float offsetTargetBrewTemp) { setTargetBrewTemp(offsetTargetBrewTemp - brewTemperatureOffset); };
     void setTargetServiceTemp(float targetServiceTemp);

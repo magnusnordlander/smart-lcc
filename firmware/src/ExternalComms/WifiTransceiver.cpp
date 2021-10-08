@@ -116,10 +116,7 @@ void WifiTransceiver::callback(char *topic, byte *payload, unsigned int length) 
     if (!strcmp(&TOPIC_SET_CONF_ECO_MODE[0], topic)) {
         systemSettings->setEcoMode(!strcmp("ON", reinterpret_cast<const char *>(payloadZero)));
     } else if (!strcmp(&TOPIC_SET_CONF_SLEEP_MODE[0], topic)) {
-        bool sleep = !strcmp("ON", reinterpret_cast<const char *>(payloadZero));
-
-        SystemControllerCommand command{.type = COMMAND_SET_SLEEP_MODE, .bool1 = sleep};
-        commandQueue->tryAdd(&command);
+        systemSettings->setSleepMode(!strcmp("ON", reinterpret_cast<const char *>(payloadZero)));
     } else { // Payload is a float
         float floatPayload = strtof(reinterpret_cast<const char *>(payloadZero), nullptr);
 
