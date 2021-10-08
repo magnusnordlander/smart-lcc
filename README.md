@@ -6,11 +6,11 @@ Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-pro
 
 ## Status
 
-Consider this project early alpha. Expect a beta release some time during fall/winter.
+Consider this project beta quality.
 
 The revision B PCB works well. Manufacturing files are available in the `pcb/` directory. Unless you're *very* good at soldering fine pitch by hand, I suggest manufacturing with SMT assembly. I've used JLCPCB for my manufacturing runs, and the files have worked well there. I do have some spares of both the Rev A PCB (just the PCB) and the Rev B PCB (the difficult components already soldered, but does need a connector, buttons, a display and an Arduino). If you have experience of embedded programming, want to help with the project and you want one of the PCBs, reach out.
 
-Considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. This is not the stage to get on board with this project if you aren't willing to deal with possibly having to buy spare parts for and repair your machine.
+Considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. Your machine uses both line voltage power, high pressured hot water, steam and other dangerous components. There is a risk of both damaging the machine, personal injury and property damage, the liability for which you assume yourself. This is not the stage to get on board with this project if you aren't willing to deal with those risks. 
 
 ## Project goals
 
