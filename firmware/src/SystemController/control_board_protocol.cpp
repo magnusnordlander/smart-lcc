@@ -45,40 +45,50 @@ uint16_t float_to_low_gain_adc(float floatValue) {
 }
 
 uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
-    uint16_t error = NONE;
+    uint16_t error = CONTROL_BOARD_VALIDATION_ERROR_NONE;
 
     if (packet.header != 0x81) {
-        error |= INVALID_HEADER;
+        error |= CONTROL_BOARD_VALIDATION_ERROR_INVALID_HEADER;
     }
 
-    static_assert(sizeof(packet) > 2);
+    static_assert(sizeof(packet) == 18, "Packet size weird");
     uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01);
     if (calculated_checksum != packet.checksum) {
-        //printf("Calculated: %hu Actual %hu \n", calculated_checksum, packet.checksum);
-
-        error |= INVALID_CHECKSUM;
+        error |= CONTROL_BOARD_VALIDATION_ERROR_INVALID_CHECKSUM;
     }
 
     if (packet.flags & 0xBD) {
-        error |= UNEXPECTED_FLAGS;
-    }
-/*
-    if (std::fabs(
-            high_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_high_gain))
-            -
-            low_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_low_gain))
-            ) > 1.0f ) {
-        error |= HIGH_AND_LOW_GAIN_BREW_BOILER_TEMP_TOO_DIFFERENT;
+        error |= CONTROL_BOARD_VALIDATION_ERROR_UNEXPECTED_FLAGS;
     }
 
+    auto brew_boiler_temp = high_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_high_gain));
+
     if (std::fabs(
-            high_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_high_gain))
+            brew_boiler_temp
+            -
+            low_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_low_gain))
+            ) > 2.0f ) {
+        error |= CONTROL_BOARD_VALIDATION_ERROR_HIGH_AND_LOW_GAIN_BREW_BOILER_TEMP_TOO_DIFFERENT;
+    }
+
+    auto service_boiler_temp = high_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_high_gain));
+
+    if (std::fabs(
+            service_boiler_temp
             -
             low_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_low_gain))
-    ) > 1.0f ) {
-        error |= HIGH_AND_LOW_GAIN_SERVICE_BOILER_TEMP_TOO_DIFFERENT;
+    ) > 2.0f ) {
+        error |= CONTROL_BOARD_VALIDATION_ERROR_HIGH_AND_LOW_GAIN_SERVICE_BOILER_TEMP_TOO_DIFFERENT;
     }
-*/
+
+    if (brew_boiler_temp > 140) {
+        error |= CONTROL_BOARD_VALIDATION_ERROR_BREW_BOILER_TEMP_DANGEROUSLY_HIGH;
+    }
+
+    if (brew_boiler_temp > 150) {
+        error |= CONTROL_BOARD_VALIDATION_ERROR_SERVICE_BOILER_TEMP_DANGEROUSLY_HIGH;
+    }
+
     return error;
 }
 
@@ -119,7 +129,7 @@ ControlBoardRawPacket convert_parsed_control_board_packet(ControlBoardParsedPack
     rawPacket.service_boiler_temperature_high_gain = int_to_triplet(largeService);
 
     rawPacket.service_boiler_level = int_to_triplet(parsed_packet.service_boiler_low ? 650 : 90);
-    rawPacket.checksum = calculate_checksum(reinterpret_cast<uint8_t*>(&rawPacket), 17, 0x0);
+    rawPacket.checksum = calculate_checksum(reinterpret_cast<uint8_t*>(&rawPacket + 1), sizeof(rawPacket) - 2, 0x01);
 
     return rawPacket;
 }
