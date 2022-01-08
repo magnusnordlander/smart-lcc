@@ -63,6 +63,16 @@ void SystemController::run() {
             hal_watchdog_kick();
         }
 
+        if(uart_is_readable(uart)) {
+            printf("There's cruft inside the UART. That's weird. Wait a little. Clear that out, and wait a little.\n");
+            sleep_ms(50);
+            while (uart_is_readable(uart)) {
+                uart_get_hw(uart)->dr;
+            }
+            sleep_ms(50);
+            printf("We're getting on with it.\n");
+        }
+
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
         uint16_t lccValidation = validate_lcc_raw_packet(rawLccPacket);
         if (lccValidation) {

@@ -547,6 +547,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -564,6 +565,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_BREW_BOILER_SENSOR[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -580,6 +582,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -593,6 +596,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_ECO_MODE_SWITCH[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -606,6 +610,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_SLEEP_MODE_SWITCH[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -621,6 +626,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -637,6 +643,7 @@ void WifiTransceiver::publishAutoconfig() {
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -652,6 +659,7 @@ void WifiTransceiver::publishAutoconfig() {
 
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     pubSubClient.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload, len);
+    handleYield();
     autoconfPayload.clear();
 
     autoconfPayload["dev"] = devObj;
@@ -667,6 +675,7 @@ void WifiTransceiver::publishAutoconfig() {
 
     serializeJson(autoconfPayload, mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload, len);
+    handleYield();
 
     printf("Done\n");
 }
@@ -685,4 +694,5 @@ void WifiTransceiver::sendWifiStats() {
     size_t len = serializeJson(doc, data);
 
     pubSubClient.publish(&TOPIC_STAT_WIFI[0], data, len);
+    handleYield();
 }
