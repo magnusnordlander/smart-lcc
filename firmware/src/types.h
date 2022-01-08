@@ -6,6 +6,7 @@
 #define FIRMWARE_TYPES_H
 
 #include <pico/time.h>
+#include <mbed.h>
 
 typedef enum {
     SYSTEM_CONTROLLER_STATE_UNDETERMINED,
@@ -39,6 +40,14 @@ struct PidRuntimeParameters {
     float i = 0;
     float d = 0;
     float integral = 0;
+};
+
+struct InternalStateMessage {
+    bool bailed{};
+    SystemControllerBailReason  bailReason{};
+    reset_reason_t resetReason{};
+    bool rx{};
+    bool tx{};
 };
 
 struct SystemControllerStatusMessage{
