@@ -62,30 +62,30 @@ uint16_t validate_raw_packet(ControlBoardRawPacket packet) {
     }
 
     auto brew_boiler_temp = high_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_high_gain));
-
+/*
     if (std::fabs(
             brew_boiler_temp
             -
             low_gain_adc_to_float(triplet_to_int(packet.brew_boiler_temperature_low_gain))
-            ) > 2.0f ) {
+            ) > 3.0f ) {
         error |= CONTROL_BOARD_VALIDATION_ERROR_HIGH_AND_LOW_GAIN_BREW_BOILER_TEMP_TOO_DIFFERENT;
-    }
+    }*/
 
     auto service_boiler_temp = high_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_high_gain));
 
-    if (std::fabs(
+/*    if (std::fabs(
             service_boiler_temp
             -
             low_gain_adc_to_float(triplet_to_int(packet.service_boiler_temperature_low_gain))
-    ) > 2.0f ) {
+    ) > 3.0f ) {
         error |= CONTROL_BOARD_VALIDATION_ERROR_HIGH_AND_LOW_GAIN_SERVICE_BOILER_TEMP_TOO_DIFFERENT;
-    }
+    }*/
 
     if (brew_boiler_temp > 140) {
         error |= CONTROL_BOARD_VALIDATION_ERROR_BREW_BOILER_TEMP_DANGEROUSLY_HIGH;
     }
 
-    if (brew_boiler_temp > 150) {
+    if (service_boiler_temp > 150) {
         error |= CONTROL_BOARD_VALIDATION_ERROR_SERVICE_BOILER_TEMP_DANGEROUSLY_HIGH;
     }
 

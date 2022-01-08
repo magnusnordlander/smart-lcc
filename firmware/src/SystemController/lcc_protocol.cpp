@@ -56,7 +56,7 @@ uint16_t validate_lcc_raw_packet(LccRawPacket packet) {
         error |= LCC_VALIDATION_ERROR_BOTH_SSRS_ON;
     }
 
-    if (packet.byte2 & 0x10 && packet.byte1 & 0x10) {
+    if (packet.byte2 & 0x10 && (packet.byte1 & 0x10) == 0x00) {
         error |= LCC_VALIDATION_ERROR_SOLENOID_OPEN_WITHOUT_PUMP;
     }
 

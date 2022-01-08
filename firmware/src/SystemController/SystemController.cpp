@@ -64,8 +64,11 @@ void SystemController::run() {
         }
 
         LccRawPacket rawLccPacket = convert_lcc_parsed_to_raw(currentLccParsedPacket);
-        if (validate_lcc_raw_packet(rawLccPacket)) {
+        uint16_t lccValidation = validate_lcc_raw_packet(rawLccPacket);
+        if (lccValidation) {
             hardBail(BAIL_REASON_LCC_PACKET_INVALID);
+
+            printf("LCC Invalid: 0x%4x\n", lccValidation);
         }
 
         if (onlySendSafePackages()) {
@@ -83,8 +86,12 @@ void SystemController::run() {
             softBail(BAIL_REASON_CB_UNRESPONSIVE);
         }
 
-        if (validate_raw_packet(currentControlBoardRawPacket)) {
+        uint16_t cbValidation = validate_raw_packet(currentControlBoardRawPacket);
+
+        if (cbValidation) {
             softBail(BAIL_REASON_CB_PACKET_INVALID);
+
+            printf("CB Invalid: 0x%4x\n", cbValidation);
         }
 
         if (isBailed()) {
