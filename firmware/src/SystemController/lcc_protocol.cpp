@@ -43,7 +43,7 @@ uint16_t validate_lcc_raw_packet(LccRawPacket packet) {
     }
 
     static_assert(sizeof(packet) == 5, "Weird LCC Packet size");
-    uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x01);
+    uint8_t calculated_checksum = calculate_checksum(((uint8_t *) &packet + 1), sizeof(packet) - 2, 0x00);
     if (calculated_checksum != packet.checksum) {
         error |= LCC_VALIDATION_ERROR_INVALID_CHECKSUM;
     }
