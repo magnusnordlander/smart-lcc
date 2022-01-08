@@ -100,6 +100,12 @@ void SystemController::run() {
         } else {
             currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
 
+            if (sleepModeRequested && internalState != SLEEPING) {
+                setSleepMode(true);
+            } else if (!sleepModeRequested && internalState == SLEEPING) {
+                setSleepMode(false);
+            }
+
             if (internalState == UNDETERMINED) {
                 if (currentControlBoardParsedPacket.brew_boiler_temperature < 65) {
                     initiateHeatup();
@@ -293,7 +299,7 @@ void SystemController::handleCommands() {
                 ecoMode = command.bool1;
                 break;
             case COMMAND_SET_SLEEP_MODE:
-                setSleepMode(command.bool1);
+                sleepModeRequested = command.bool1;
                 break;
             case COMMAND_UNBAIL:
                 unbail();

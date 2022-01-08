@@ -19,6 +19,9 @@
 #define OLED_RST digitalPinToPinName(3)
 #define OLED_CS digitalPinToPinName(PIN_SPI_SS)
 
+#define PLUS_BUTTON digitalPinToPinName(4)
+#define MINUS_BUTTON digitalPinToPinName(5)
+
 #define CB_TX SERIAL1_TX
 #define CB_RX SERIAL1_RX
 
@@ -45,6 +48,9 @@ UART SerialAux(AUX_TX, AUX_RX);
 REDIRECT_STDOUT_TO(SerialAux);
 
 using namespace std::chrono_literals;
+
+mbed::DigitalIn plus(PLUS_BUTTON, INPUT_PULLDOWN);
+mbed::DigitalIn minus(MINUS_BUTTON, INPUT_PULLDOWN);
 
 PicoQueue<SystemControllerCommand> *queue0 = new PicoQueue<SystemControllerCommand>(100);
 PicoQueue<SystemControllerStatusMessage> *queue1 = new PicoQueue<SystemControllerStatusMessage>(100);
@@ -94,7 +100,12 @@ int main()
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
     while(true) {
-        while (!queue1->isEmpty()) {
+        while (
+                !queue1->isEmpty()
+#ifdef MINUS_TO_REBOOT
+                && !minus
+#endif
+                ) {
             queue1->removeBlocking(&message);
 
             systemStatus->updateStatusMessage(message);
