@@ -63,6 +63,7 @@ private:
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
     nonstd::optional<absolute_time_t> brewStartedAt{};
 
+    bool sleepModeRequested = false;
     bool ecoMode = true;
     float targetBrewTemperature = 0.f;
     float targetServiceTemperature = 0.f;
