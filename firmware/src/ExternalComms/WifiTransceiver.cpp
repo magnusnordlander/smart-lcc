@@ -429,25 +429,25 @@ void WifiTransceiver::publish(const char *topic, SystemControllerState state, Sy
 
     switch (state) {
         case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
-            pubSubClient.publish(topic, "UNDETERMINED");
+            pubSubClient.publish(topic, "Undetermined");
             break;
         case SYSTEM_CONTROLLER_STATE_HEATUP:
-            pubSubClient.publish(topic, "HEATUP");
+            pubSubClient.publish(topic, "Heating up");
             break;
         case SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING:
-            pubSubClient.publish(topic, "TEMPS_NORMALIZING");
+            pubSubClient.publish(topic, "Temperatures normalizing");
             break;
         case SYSTEM_CONTROLLER_STATE_WARM:
-            pubSubClient.publish(topic, "WARM");
+            pubSubClient.publish(topic, "Warm");
             break;
         case SYSTEM_CONTROLLER_STATE_SLEEPING:
-            pubSubClient.publish(topic, "SLEEPING");
+            pubSubClient.publish(topic, "Sleeping");
             break;
         case SYSTEM_CONTROLLER_STATE_BAILED:
-            pubSubClient.publish(topic, "BAILED");
+            pubSubClient.publish(topic, "Error");
             break;
         case SYSTEM_CONTROLLER_STATE_FIRST_RUN:
-            pubSubClient.publish(topic, "FIRST_RUN");
+            pubSubClient.publish(topic, "First run");
             break;
     }
 
@@ -503,12 +503,16 @@ void WifiTransceiver::formatTopics() {
     snprintf(TOPIC_SET_CONF_SERVICE_PID_WINDUP_LOW, TOPIC_LENGTH - 1, "%s/%s/conf/service_pid/set/windup_low", TOPIC_PREFIX, identifier);
     snprintf(TOPIC_SET_CONF_SERVICE_PID_WINDUP_HIGH, TOPIC_LENGTH - 1, "%s/%s/conf/service_pid/set/windup_high", TOPIC_PREFIX, identifier);
 
+    snprintf(TOPIC_AUTOCONF_STATE_SENSOR, 127, "homeassistant/sensor/%s/%s_state/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_BREW_BOILER_SENSOR, 127, "homeassistant/sensor/%s/%s_brew_temp/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR, 127, "homeassistant/sensor/%s/%s_serv_temp/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_ECO_MODE_SWITCH, 127, "homeassistant/switch/%s/%s_eco_mode/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_SLEEP_MODE_SWITCH, 127, "homeassistant/switch/%s/%s_sleep_mode/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_brew_temp_target/config", FIRMWARE_PREFIX, identifier);
     snprintf(TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_serv_temp_target/config", FIRMWARE_PREFIX, identifier);
+    snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", FIRMWARE_PREFIX, identifier);
+    snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", FIRMWARE_PREFIX, identifier);
+
 }
 
 void WifiTransceiver::publishAutoconfig() {
@@ -536,11 +540,29 @@ void WifiTransceiver::publishAutoconfig() {
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = identifier + String(" State");
+    autoconfPayload["uniq_id"] = identifier + String("_state");
+    autoconfPayload["ic"] = "mdi:eye";
+    autoconfPayload["json_attr_t"] = TOPIC_STAT_INTERNAL;
+    autoconfPayload["json_attr_tpl"] = R"({"bail_reason": "{{value_json.bail_reason}}", "reset_reason": "{{value_json.reset_reason}}"})";
+
+    len = serializeJson(autoconfPayload, mqttPayload, 2048);
+    printf("Payload: %s\n", mqttPayload);
+    pubSubClient.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload, len);
+    autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
     autoconfPayload["stat_t"] = TOPIC_TEMP_BREW;
     autoconfPayload["name"] = identifier + String(" Brew Boiler Temperature");
     autoconfPayload["uniq_id"] = identifier + String("_brew_temp");
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["json_attr_t"] = TOPIC_STAT_BREW_PID;
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.p}}", "i": "{{value_json.i}}", "d": "{{value_json.d}}", "integral": "{{value_json.integral}}",  "hysteresis_mode": "{{value_json.hysteresisMode}}"})";
+
 
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
@@ -554,6 +576,9 @@ void WifiTransceiver::publishAutoconfig() {
     autoconfPayload["uniq_id"] = identifier + String("_serv_temp");
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["json_attr_t"] = TOPIC_STAT_SERVICE_PID;
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.p}}", "i": "{{value_json.i}}", "d": "{{value_json.d}}", "integral": "{{value_json.integral}}",  "hysteresis_mode": "{{value_json.hysteresisMode}}"})";
 
     len = serializeJson(autoconfPayload, mqttPayload, 2048);
     printf("Payload: %s\n", mqttPayload);
@@ -616,6 +641,35 @@ void WifiTransceiver::publishAutoconfig() {
     printf("Payload: %s\n", mqttPayload);
     pubSubClient.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
     autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_STAT_WATER_TANK_EMPTY;
+    autoconfPayload["name"] = identifier + String(" Water Tank Low");
+    autoconfPayload["uniq_id"] = identifier + String("_water_tank_low");
+    autoconfPayload["ic"] = "mdi:water-alert";
+    autoconfPayload["pl_on"] = "true";
+    autoconfPayload["pl_off"] = "false";
+    autoconfPayload["dev_cla"] = "problem";
+
+
+    len = serializeJson(autoconfPayload, mqttPayload, 2048);
+    pubSubClient.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload, len);
+    autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_STAT_WIFI;
+    autoconfPayload["name"] = identifier + String(" WiFi");
+    autoconfPayload["uniq_id"] = identifier + String("_wifi");
+    autoconfPayload["val_tpl"] = "{{value_json.rssi}}";
+    autoconfPayload["unit_of_meas"] = "dBm";
+    autoconfPayload["json_attr_t"] = TOPIC_STAT_WIFI;
+    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.ssid}}", "ip": "{{value_json.ip}}"})";
+    autoconfPayload["ic"] = "mdi:wifi";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    pubSubClient.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload, len);
 
     printf("Done\n");
 }
