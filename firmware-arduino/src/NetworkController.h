@@ -5,80 +5,109 @@
 #ifndef FIRMWARE_ARDUINO_NETWORKCONTROLLER_H
 #define FIRMWARE_ARDUINO_NETWORKCONTROLLER_H
 
-#define DEBUG_WIFI_WEBSERVER_PORT       Serial
-#define WIFININA_DEBUG_OUTPUT           Serial
-#define _WIFININA_LOGLEVEL_             4
-#define DRD_GENERIC_DEBUG               true
-#define USING_CUSTOMS_STYLE           true
-#define USING_CUSTOMS_HEAD_ELEMENT    true
-#define USING_CORS_FEATURE            true
-#define USE_WIFI_NINA                 true
-#define RESET_IF_CONFIG_TIMEOUT                   true
-#define RETRY_TIMES_RECONNECT_WIFI                3
-#define CONFIG_TIMEOUT_RETRYTIMES_BEFORE_RESET    5
-#define CONFIG_TIMEOUT                      120000L
-#define REQUIRE_ONE_SET_SSID_PW             true
-#define USE_DYNAMIC_PARAMETERS              true
-#define SCAN_WIFI_NETWORKS                  true
-#define MANUAL_SSID_INPUT_ALLOWED           true
-#define MAX_SSID_IN_LIST                    8
-
 #include <WiFiNINA_Pinout_Generic.h>
-#include <WiFiManager_NINA_Lite_RP2040.h>
 #include <WiFi_Generic.h>
 #include <ArduinoOTA.h>
 #include <Adafruit_MQTT.h>
 #include <Adafruit_MQTT_Client.h>
+#include <FS.h>
+#include <LittleFS.h>
+#include "optional.hpp"
+#include "types.h"
+#include "SystemStatus.h"
 
-#define AIO_SERVER_LEN       20
-#define AIO_SERVERPORT_LEN   6
-#define AIO_USERNAME_LEN     20
-#define AIO_KEY_LEN          40
+// Because these libraries don't use .cpp files, we have to forward declare the class instead to linking errors.
+class WiFiWebServer;
 
-char AIO_SERVER     [AIO_SERVER_LEN + 1]        = "io.adafruit.com";
-char AIO_SERVERPORT [AIO_SERVERPORT_LEN + 1]    = "1883";     //1883, or 8883 for SSL
-char AIO_USERNAME   [AIO_USERNAME_LEN + 1]      = "private";
-char AIO_KEY        [AIO_KEY_LEN + 1]           = "private";
+#define SSID_MAX_LEN      32
+#define PASS_MAX_LEN      64
+#define MQTT_SERVER_LEN       20
+#define MQTT_PORT_LEN         5
+#define MQTT_USERNAME_LEN     20
+#define MQTT_PASS_LEN         40
+#define MQTT_PREFIX_LEN       20
+#define TOPIC_LENGTH 49
 
-MenuItem myMenuItems [] =
-        {
-                { "svr", "AIO_SERVER",      AIO_SERVER,     AIO_SERVER_LEN },
-                { "prt", "AIO_SERVERPORT",  AIO_SERVERPORT, AIO_SERVERPORT_LEN },
-                { "usr", "AIO_USERNAME",    AIO_USERNAME,   AIO_USERNAME_LEN },
-                { "key", "AIO_KEY",         AIO_KEY,        AIO_KEY_LEN },
-        };
+typedef struct
+{
+    char wifi_ssid[SSID_MAX_LEN];
+    char wifi_pw  [PASS_MAX_LEN];
+}  WiFi_Credentials;
 
-uint16_t NUM_MENU_ITEMS = sizeof(myMenuItems) / sizeof(MenuItem);  //MenuItemSize;
+typedef struct
+{
+    char server[MQTT_SERVER_LEN + 1] = "test.mosquitto.org";
+    char port[MQTT_PORT_LEN + 1] = "1883";
+    char username[MQTT_USERNAME_LEN + 1] = "";
+    char password[MQTT_PASS_LEN + 1] = "";
+    char prefix[MQTT_PREFIX_LEN + 1] = "lcc";
+}  MQTT_Configuration;
 
-bool LOAD_DEFAULT_CONFIG_DATA = false;
-WiFiNINA_Configuration defaultConfig;
-
-typedef enum {
-    NETWORK_CONTROLLER_MODE_NORMAL,
-    NETWORK_CONTROLLER_MODE_FORCE_CONFIG,
-    NETWORK_CONTROLLER_MODE_OTA
-} NetworkControllerMode;
+typedef struct
+{
+    WiFi_Credentials wiFiCredentials;
+    MQTT_Configuration mqttConfig;
+} WiFiNINA_Configuration;
 
 class NetworkController {
 public:
-    explicit NetworkController(NetworkControllerMode mode);
+    explicit NetworkController(FS* _fileSystem, SystemStatus* _status);
+
+    void init(NetworkControllerMode mode);
+
+    bool hasConfiguration();
+    bool isConnectedToWifi();
+    bool isConnectedToMqtt();
+    NetworkControllerMode getMode() {
+        return mode;
+    }
 
     void loop();
-
 private:
     NetworkControllerMode mode;
+    FS* fileSystem;
+    SystemStatus* status;
+
+    uint8_t previousWifiStatus = 0;
+
+    nonstd::optional<WiFiNINA_Configuration> config;
+    nonstd::optional<absolute_time_t> wifiConnectTimeoutTime;
+    nonstd::optional<absolute_time_t> mqttConnectTimeoutTime;
+    nonstd::optional<absolute_time_t> mqttNextPublishTime;
 
     ArduinoOTAMdnsClass <WiFiServer, WiFiClient, WiFiUDP> ArduinoOTA;
+    WiFiClient *client;
+    Adafruit_MQTT_Client *mqtt = nullptr;
 
-    WiFiClient *client{};
-
-    Adafruit_MQTT_Client *mqtt{};
-
-    WiFiManager_NINA_Lite* wifiManager;
+    WiFiWebServer* server = nullptr;
 
     bool otaInited = false;
+    bool _isConnectedToWifi = false;
+    bool topicsFormatted = false;
 
+    char identifier[24];
+
+    void initConfigMode();
     void initOTA();
+    void loopNormal();
+    void loopConfig();
+    void loopOta();
+    void attemptWifiConnection();
+    void attemptReadConfig();
+    void writeConfig(WiFiNINA_Configuration newConfig);
+
+    void ensureMqttClient();
+    void ensureTopicsFormatted();
+
+    void publishMqtt();
+
+    void handleConfigHTTPRequest();
+    void sendHTTPHeaders();
+    void createHTML(String& root_html_template);
+
+    char TOPIC_LWT[TOPIC_LENGTH];
+    char TOPIC_STATE[TOPIC_LENGTH];
+    char TOPIC_COMMAND[TOPIC_LENGTH];
 };
 
 
