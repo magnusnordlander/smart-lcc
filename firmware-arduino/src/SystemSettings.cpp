@@ -9,7 +9,7 @@
 #define SETTING_FILENAME ("/fs/settings.dat")
 #define SETTING_VERSION ((uint8_t)4)
 
-SystemSettings::SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, FS* _fileSystem): _commandQueue(commandQueue), fileSystem(_fileSystem) {
+SystemSettings::SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, FileIO* fileIO): _commandQueue(commandQueue), _fileIO(fileIO) {
 
 }
 
@@ -107,53 +107,17 @@ void SystemSettings::sendCommandObject(SystemControllerCommand command) {
 }
 
 void SystemSettings::readSettings() {
-    File file = fileSystem->open(SETTING_FILENAME, "r");
-    if (!file)
-    {
+    nonstd::optional<SettingStruct> settings = _fileIO->readSystemSettings(SETTING_FILENAME, SETTING_VERSION);
+
+    if (!settings.has_value()) {
         currentSettings = SettingStruct{};
-        return;
-    }
-
-    file.seek(0, SeekSet);
-
-    uint8_t readVersion;
-    file.read((uint8_t *) &readVersion, sizeof(readVersion));
-
-    if (readVersion != SETTING_VERSION) {
-        file.close();
-        currentSettings = SettingStruct{};
-        return;
-    }
-
-    file.read((uint8_t *) &currentSettings, sizeof(currentSettings));
-
-    uint32_t readChecksum;
-    file.read((uint8_t *) &readChecksum, sizeof(readChecksum));
-
-    file.close();
-
-    uint32_t calculatedChecksum = CRC32::calculate((uint8_t *) &currentSettings, sizeof(currentSettings));
-
-    if (calculatedChecksum != readChecksum) {
-        currentSettings = SettingStruct{};
-        return;
+    } else {
+        currentSettings = settings.value();
     }
 }
 
 void SystemSettings::writeSettings() {
-    File file = fileSystem->open(SETTING_FILENAME, "w");
-
-    if (file)
-    {
-        uint32_t calculatedChecksum = CRC32::calculate((uint8_t *) &currentSettings, sizeof(currentSettings));
-
-        file.seek(0, SeekSet);
-        file.write(SETTING_VERSION);
-        file.write((uint8_t *) &currentSettings, sizeof(currentSettings));
-        file.write((uint8_t *) &calculatedChecksum, sizeof(calculatedChecksum));
-        file.close();
-    }
-    else {
-        Serial.println("Couldn't open settings file for writing");
+    if (!_fileIO->saveSystemSettings(currentSettings, SETTING_FILENAME, SETTING_VERSION)) {
+        DEBUGV("Unable to save system settings\n");
     }
 }

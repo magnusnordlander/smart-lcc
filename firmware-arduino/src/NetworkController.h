@@ -51,7 +51,7 @@ typedef struct
 
 class NetworkController {
 public:
-    explicit NetworkController(FS* _fileSystem, SystemStatus* _status, SystemSettings* _settings);
+    explicit NetworkController(FileIO* _fileIO, SystemStatus* _status, SystemSettings* _settings);
 
     void init(NetworkControllerMode mode);
 
@@ -65,7 +65,7 @@ public:
     void loop();
 private:
     NetworkControllerMode mode;
-    FS* fileSystem;
+    FileIO* fileIO;
     SystemStatus* status;
     SystemSettings* settings;
 

@@ -85,6 +85,7 @@ typedef enum {
     COMMAND_UNBAIL,
     COMMAND_TRIGGER_FIRST_RUN,
     COMMAND_INITIALIZE,
+    COMMAND_VICTIMIZE
 } SystemControllerCommandType;
 
 struct SystemControllerCommand {

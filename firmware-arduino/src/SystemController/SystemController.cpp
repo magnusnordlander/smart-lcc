@@ -7,6 +7,7 @@
 #include <hardware/watchdog.h>
 #include "pico/timeout_helper.h"
 #include <cmath>
+#include <pico/multicore.h>
 
 static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
     timeout_state_t ts;
@@ -312,6 +313,8 @@ void SystemController::handleCommands() {
             case COMMAND_INITIALIZE:
                 readyToGo = true;
                 break;
+            case COMMAND_VICTIMIZE:
+                multicore_lockout_victim_init();
         }
     }
 

@@ -2,6 +2,7 @@
 #include <pins_arduino.h>
 #include <hardware/uart.h>
 #include <U8g2lib.h>
+#include <hardware/watchdog.h>
 #include "src/NetworkController.h"
 #include "src/SystemController/SystemController.h"
 #include "src/SystemSettings.h"
@@ -9,6 +10,7 @@
 #include "src/UIController.h"
 #include "src/SafePacketSender.h"
 #include "src/MemoryFree.h"
+#include "src/FileIO.h"
 
 #define OLED_MOSI PIN_SPI0_MOSI
 #define OLED_MISO PIN_SPI0_MISO
@@ -30,12 +32,13 @@ PicoQueue<SystemControllerCommand> *queue0 = new PicoQueue<SystemControllerComma
 PicoQueue<SystemControllerStatusMessage> *queue1 = new PicoQueue<SystemControllerStatusMessage>(100);
 
 FS* fileSystem = &LittleFS;
+FileIO* fileIO = new FileIO(fileSystem, queue0);
 
 SystemController systemController(uart0, queue1, queue0);
 SafePacketSender safePacketSender(uart0);
-SystemSettings settings(queue0, fileSystem);
+SystemSettings settings(queue0, fileIO);
 SystemStatus status(&settings);
-NetworkController networkController(fileSystem, &status, &settings);
+NetworkController networkController(fileIO, &status, &settings);
 
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &u8g2);
@@ -73,6 +76,8 @@ void setup()
 
         settings.initialize();
 
+        watchdog_enable(3000, false);
+
         SystemControllerCommand initCmd = SystemControllerCommand{.type = COMMAND_INITIALIZE};
         queue0->addBlocking(&initCmd);
     }
@@ -80,7 +85,7 @@ void setup()
 
 void loop()
 {
-//    Serial.printf("Loop. Memfree: %u\n", freeMemory());
+    DEBUGV("Loop. Memfree: %u\n", freeMemory());
 
     if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
         safePacketSender.loop();

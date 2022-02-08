@@ -27,7 +27,7 @@ add_executable(z_dummy
         src/SystemController/SystemController.cpp
         src/SystemController/TimedLatch.cpp
         src/SafePacketSender.cpp src/SafePacketSender.h
-        src/MemoryFree.cpp src/MemoryFree.h)
+        src/MemoryFree.cpp src/MemoryFree.h src/FileIO.cpp src/FileIO.h)
 set_target_properties(z_dummy PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(z_dummy PRIVATE
         arduino/user/libraries/Functional-Vlpp/src
@@ -51,6 +51,7 @@ target_include_directories(z_dummy PRIVATE
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2_common/hardware_base/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2040/hardware_structs/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/host/pico_platform/include
+        arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/host/pico_multicore/include
         )
 target_compile_definitions(z_dummy PUBLIC ARDUINO_NANO_RP2040_CONNECT U8X8_USE_PINS PUBSUB_USE_FUNCTIONAL)
 

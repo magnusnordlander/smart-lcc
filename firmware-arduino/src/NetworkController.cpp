@@ -59,8 +59,8 @@ const char WM_HTTP_PRAGMA[]          PROGMEM = "Pragma";
 const char WM_HTTP_NO_CACHE[]        PROGMEM = "no-cache";
 const char WM_HTTP_EXPIRES[]         PROGMEM = "Expires";
 
-NetworkController::NetworkController(FS* _fileSystem, SystemStatus* _status, SystemSettings* _settings):
-    fileSystem(_fileSystem), status(_status), settings(_settings) {
+NetworkController::NetworkController(FileIO* _fileIO, SystemStatus* _status, SystemSettings* _settings):
+    fileIO(_fileIO), status(_status), settings(_settings) {
 }
 
 void NetworkController::init(NetworkControllerMode _mode) {
@@ -253,70 +253,18 @@ bool NetworkController::isConnectedToMqtt() {
 }
 
 void NetworkController::attemptReadConfig() {
-    DEBUGV("Reading network config\n");
-    WiFiNINA_Configuration readConfig;
-    File file = fileSystem->open(CONFIG_FILENAME, "r");
+    nonstd::optional<WiFiNINA_Configuration> readConfig = fileIO->readWifiConfig(CONFIG_FILENAME, CONFIG_VERSION);
 
-    if (!file)
-    {
+    if (readConfig.has_value()) {
+        config = readConfig.value();
+    } else {
         config.reset();
-        DEBUGV("No config file\n");
-        return;
     }
-
-    file.seek(0, SeekSet);
-
-    uint8_t readVersion;
-    file.read((uint8_t *) &readVersion, sizeof(readVersion));
-
-    if (readVersion != CONFIG_VERSION) {
-        file.close();
-        config.reset();
-        DEBUGV("Wrong config version\n");
-        return;
-    }
-
-    file.read((uint8_t *) &readConfig, sizeof(readConfig));
-
-    uint32_t readChecksum;
-    file.read((uint8_t *) &readChecksum, sizeof(readChecksum));
-
-    file.close();
-
-    uint32_t calculatedChecksum = CRC32::calculate((uint8_t *) &readConfig, sizeof(readConfig));
-
-    if (calculatedChecksum != readChecksum) {
-        config.reset();
-        DEBUGV("Config checksum mismatch\n");
-        DEBUGV("Calculated config checksum %d, read %d\n", calculatedChecksum, readChecksum);
-        return;
-    }
-
-    config = readConfig;
 }
 
 void NetworkController::writeConfig(WiFiNINA_Configuration newConfig) {
-    File file = fileSystem->open(CONFIG_FILENAME, "w");
-
-    if (file)
-    {
-        uint32_t calculatedChecksum = CRC32::calculate((uint8_t *) &newConfig, sizeof(newConfig));
-
-        DEBUGV("Calculated config checksum %d\n", calculatedChecksum);
-
-        file.seek(0, SeekSet);
-        file.write(CONFIG_VERSION);
-        file.write((uint8_t *) &newConfig, sizeof(newConfig));
-        file.write((uint8_t *) &calculatedChecksum, sizeof(calculatedChecksum));
-        file.close();
-
-        DEBUGV("Writing network config\n");
-
+    if (fileIO->saveWifiConfig(newConfig, CONFIG_FILENAME, CONFIG_VERSION)) {
         config = newConfig;
-
-    }
-    else {
-        DEBUGV("Couldn't network config file for writing\n");
     }
 }
 

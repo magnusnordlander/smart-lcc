@@ -9,6 +9,7 @@
 #include <LittleFS.h>
 #include "utils/PicoQueue.h"
 #include "types.h"
+#include "FileIO.h"
 
 struct SettingStruct {
     float brewTemperatureOffset = -10;
@@ -22,7 +23,7 @@ struct SettingStruct {
 
 class SystemSettings {
 public:
-    explicit SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, FS* fileSystem);
+    explicit SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, FileIO* fileIO);
 
     void initialize();
 
@@ -39,7 +40,7 @@ public:
 private:
     PicoQueue<SystemControllerCommand> *_commandQueue;
 
-    FS* fileSystem;
+    FileIO* _fileIO;
 
     SettingStruct currentSettings;
     void readSettings();
