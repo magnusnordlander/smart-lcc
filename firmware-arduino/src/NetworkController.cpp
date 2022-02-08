@@ -661,7 +661,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
     autoconfPayload["dev_cla"] = "temperature";
-    autoconfPayload["val_tpl"] = "{{ value_json.stat.brew_temp }}";
+    autoconfPayload["val_tpl"] = "{{ value_json.stat.brew_temp | round(1) }}";
     autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.p}}", "i": "{{value_json.i}}", "d": "{{value_json.d}}", "integral": "{{value_json.integral}}",  "hysteresis_mode": "{{value_json.hysteresisMode}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
@@ -679,7 +679,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
     autoconfPayload["dev_cla"] = "temperature";
-    autoconfPayload["val_tpl"] = "{{ value_json.stat.service_temp }}";
+    autoconfPayload["val_tpl"] = "{{ value_json.stat.service_temp | round(1) }}";
     autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.service_pid.p}}", "i": "{{value_json.stat.service_pid.i}}", "d": "{{value_json.stat.service_pid.d}}", "integral": "{{value_json.stat.service_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.service_pid.hysteresisMode}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
@@ -687,6 +687,21 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload.clear();
     mqttPayload.clear();
 
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " WiFi";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_wifi";
+    autoconfPayload["val_tpl"] = "{{value_json.stat.wifi.rssi}}";
+    autoconfPayload["unit_of_meas"] = "dBm";
+    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.stat.wifi.ssid}}", "ip": "{{value_json.stat.wifi.ip}}"})";
+    autoconfPayload["ic"] = "mdi:wifi";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
@@ -723,72 +738,58 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload.clear();
     mqttPayload.clear();
 
-    /*
     autoconfPayload["dev"] = devObj;
-    autoconfPayload["avty_t"] = TOPIC_ONLINE;
-    autoconfPayload["stat_t"] = TOPIC_CONF_BREW_TEMP_TARGET;
-    autoconfPayload["name"] = identifier + String(" Brew Boiler Temperature Target");
-    autoconfPayload["uniq_id"] = identifier + String("_brew_temp_target");
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Brew Boiler Temperature Target";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_brew_temp_target";
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
-    autoconfPayload["cmd_t"] = TOPIC_SET_CONF_BREW_TEMP_TARGET;
-    autoconfPayload["step"] = 0.01;
-
-    len = serializeJson(autoconfPayload, mqttPayload, 2048);
-    printf("Payload: %s\n", mqttPayload);
-    pubSubClient.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
-    handleYield();
-    autoconfPayload.clear();
-
-    autoconfPayload["dev"] = devObj;
-    autoconfPayload["avty_t"] = TOPIC_ONLINE;
-    autoconfPayload["stat_t"] = TOPIC_CONF_SERVICE_TEMP_TARGET;
-    autoconfPayload["name"] = identifier + String(" Service Boiler Temperature Target");
-    autoconfPayload["uniq_id"] = identifier + String("_serv_temp_target");
-    autoconfPayload["unit_of_meas"] = "°C";
-    autoconfPayload["ic"] = "mdi:thermometer";
-    autoconfPayload["cmd_t"] = TOPIC_SET_CONF_SERVICE_TEMP_TARGET;
-    autoconfPayload["max"] = 150;
-    autoconfPayload["step"] = 0.01;
-
-    len = serializeJson(autoconfPayload, mqttPayload, 2048);
-    printf("Payload: %s\n", mqttPayload);
-    pubSubClient.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
-    handleYield();
-    autoconfPayload.clear();
-
-    autoconfPayload["dev"] = devObj;
-    autoconfPayload["avty_t"] = TOPIC_ONLINE;
-    autoconfPayload["stat_t"] = TOPIC_STAT_WATER_TANK_EMPTY;
-    autoconfPayload["name"] = identifier + String(" Water Tank Low");
-    autoconfPayload["uniq_id"] = identifier + String("_water_tank_low");
-    autoconfPayload["ic"] = "mdi:water-alert";
-    autoconfPayload["pl_on"] = "true";
-    autoconfPayload["pl_off"] = "false";
-    autoconfPayload["dev_cla"] = "problem";
-
-
-    len = serializeJson(autoconfPayload, mqttPayload, 2048);
-    pubSubClient.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload, len);
-    handleYield();
-    autoconfPayload.clear();
-
-    autoconfPayload["dev"] = devObj;
-    autoconfPayload["avty_t"] = TOPIC_ONLINE;
-    autoconfPayload["stat_t"] = TOPIC_STAT_WIFI;
-    autoconfPayload["name"] = identifier + String(" WiFi");
-    autoconfPayload["uniq_id"] = identifier + String("_wifi");
-    autoconfPayload["val_tpl"] = "{{value_json.rssi}}";
-    autoconfPayload["unit_of_meas"] = "dBm";
-    autoconfPayload["json_attr_t"] = TOPIC_STAT_WIFI;
-    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.ssid}}", "ip": "{{value_json.ip}}"})";
-    autoconfPayload["ic"] = "mdi:wifi";
+    autoconfPayload["step"] = 0.1;
+    autoconfPayload["min"] = 0;
+    autoconfPayload["max"] = 100;
+    autoconfPayload["val_tpl"] = R"("{{ value_json.conf.brew.temp_target | round(1) }}")";
+    autoconfPayload["cmd_tpl"] = R"({"cmd": "set_brew_temp_target", "float_value": {{value}} })";
 
     serializeJson(autoconfPayload, mqttPayload);
-    pubSubClient.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload, len);
-    handleYield();
+    mqtt.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Service Boiler Temperature Target";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_service_temp_target";
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["step"] = 0.1;
+    autoconfPayload["min"] = 0;
+    autoconfPayload["max"] = 150;
+    autoconfPayload["val_tpl"] = R"("{{ value_json.conf.service.temp_target | round(1) }}")";
+    autoconfPayload["cmd_tpl"] = R"({"cmd": "set_service_temp_target", "float_value": {{value}} })";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
 
 
-*/
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Water Tank Low";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_water_tank_low";
+    autoconfPayload["ic"] = "mdi:water-alert";
+    autoconfPayload["dev_cla"] = "problem";
+    autoconfPayload["val_tpl"] = R"("{{ value_json.stat.water_tank_empty ? "on" : "off" }}")";
 
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
 }
