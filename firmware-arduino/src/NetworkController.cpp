@@ -6,6 +6,8 @@
 #include <CRC32.h>
 #include <WiFiWebServer.h>
 #include <ArduinoJson.h>
+#include <hardware/watchdog.h>
+#include <functional>
 
 #define CONFIG_FILENAME ("/fs/network-config.dat")
 #define CONFIG_VERSION ((uint8_t)1)
@@ -57,8 +59,8 @@ const char WM_HTTP_PRAGMA[]          PROGMEM = "Pragma";
 const char WM_HTTP_NO_CACHE[]        PROGMEM = "no-cache";
 const char WM_HTTP_EXPIRES[]         PROGMEM = "Expires";
 
-NetworkController::NetworkController(FS* _fileSystem, SystemStatus* _status): fileSystem(_fileSystem), status(_status) {
-    client = new WiFiClient;
+NetworkController::NetworkController(FS* _fileSystem, SystemStatus* _status, SystemSettings* _settings):
+    fileSystem(_fileSystem), status(_status), settings(_settings) {
 }
 
 void NetworkController::init(NetworkControllerMode _mode) {
@@ -68,7 +70,8 @@ void NetworkController::init(NetworkControllerMode _mode) {
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     WiFi.macAddress(mac);
 
-    snprintf(identifier, sizeof(identifier), "LCC-%02X%02X%02X", mac[3], mac[4], mac[5]);
+    snprintf(identifier, sizeof(identifier), "LCC-%02X%02X%02X", mac[2], mac[1], mac[0]);
+    stdIdentifier = std::string(identifier);
 
     switch (mode) {
         case NETWORK_CONTROLLER_MODE_NORMAL:
@@ -132,8 +135,9 @@ void NetworkController::loopNormal() {
 
         if (_isConnectedToWifi) {
             ensureMqttClient();
+            mqtt.loop();
 
-            if (mqtt->connected()) {
+            if (mqtt.connected()) {
                 if (!mqttNextPublishTime.has_value() || absolute_time_diff_us(mqttNextPublishTime.value(), get_absolute_time()) > 0) {
                     publishMqtt();
                     mqttNextPublishTime = make_timeout_time_ms(1000);
@@ -144,24 +148,40 @@ void NetworkController::loopNormal() {
 }
 
 void NetworkController::ensureMqttClient() {
-    if (!mqtt)
-    {
-        mqtt = new Adafruit_MQTT_Client(client, config.value().mqttConfig.server, atoi(config.value().mqttConfig.port), config.value().mqttConfig.username, config.value().mqttConfig.password);
-    }
-
-    if (!mqtt->connected()) {
+    if (!mqtt.connected()) {
         if (!mqttConnectTimeoutTime.has_value()) {
-            DEBUGV("Attempting to connect to MQTT\n");
             ensureTopicsFormatted();
+            DEBUGV("Attempting to connect to MQTT\n");
 
-            mqtt->will(TOPIC_LWT, "offline");
-            int8_t ret = mqtt->connect();
-            if (ret != 0) {
-                DEBUGV("Couldn't connect to MQTT server: %d. Reconnecting in 5 s.\n", ret);
-                mqtt->disconnect();
+            mqtt.setServer(config.value().mqttConfig.server, atoi(config.value().mqttConfig.port));
+
+            std::function<void(char*, uint8_t*, unsigned int)> func = [&] (char* topic, byte* payload, unsigned int length) {
+                callback(topic, payload, length);
+            };
+            mqtt.setCallback(func);
+
+            bool success = false;
+
+            if (strlen(config.value().mqttConfig.username) > 0) {
+                DEBUGV("Connecting using username and password\n");
+                success = mqtt.connect(identifier, config.value().mqttConfig.username, config.value().mqttConfig.password, &TOPIC_LWT[0], 0, true, "offline");
+            } else {
+                DEBUGV("Connecting unauthenticated\n");
+                success = mqtt.connect(identifier, &TOPIC_LWT[0], 0, true, "offline");
+            }
+            if (!success) {
+                DEBUGV("Couldn't connect to MQTT server. Reconnecting in 5 s.\n");
+                mqtt.disconnect();
                 mqttConnectTimeoutTime = make_timeout_time_ms(5000);
                 return;
             }
+            DEBUGV("MQTT connection successful, changing buffer size.\n");
+            mqtt.setBufferSize(4096);
+            DEBUGV("Buffer size changed\n");
+
+            mqtt.subscribe(&TOPIC_COMMAND[0]);
+
+            publishAutoconfigure();
         } else {
             if (absolute_time_diff_us(mqttConnectTimeoutTime.value(), get_absolute_time()) > 0) {
                 mqttConnectTimeoutTime.reset();
@@ -229,11 +249,7 @@ bool NetworkController::isConnectedToWifi() {
 }
 
 bool NetworkController::isConnectedToMqtt() {
-    if (!mqtt) {
-        return false;
-    }
-
-    return mqtt->connected();
+    return mqtt.connected();
 }
 
 void NetworkController::attemptReadConfig() {
@@ -455,14 +471,25 @@ void NetworkController::ensureTopicsFormatted() {
         snprintf(TOPIC_LWT, TOPIC_LENGTH - 1, "%s/%s/lwt", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_STATE, TOPIC_LENGTH - 1, "%s/%s/state", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_COMMAND, TOPIC_LENGTH - 1, "%s/%s/cmd", config->mqttConfig.prefix, identifier);
+
+        snprintf(TOPIC_AUTOCONF_STATE_SENSOR, 127, "homeassistant/sensor/%s/%s_state/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_BREW_BOILER_SENSOR, 127, "homeassistant/sensor/%s/%s_brew_temp/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR, 127, "homeassistant/sensor/%s/%s_serv_temp/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_ECO_MODE_SWITCH, 127, "homeassistant/switch/%s/%s_eco_mode/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_SLEEP_MODE_SWITCH, 127, "homeassistant/switch/%s/%s_sleep_mode/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_brew_temp_target/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_serv_temp_target/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", config->mqttConfig.prefix, identifier);
+
         topicsFormatted = true;
     }
 }
 
 void NetworkController::publishMqtt() {
-    mqtt->publish(TOPIC_LWT, "online");
+    mqtt.publish(TOPIC_LWT, "online");
 
-    StaticJsonDocument<1024> doc;
+    DynamicJsonDocument doc(1024);
 
     JsonObject conf = doc.createNestedObject("conf");
 
@@ -492,12 +519,14 @@ void NetworkController::publishMqtt() {
 
     JsonObject stat = doc.createNestedObject("stat");
 
+    stat["state"] = status->getState();
+
     JsonObject stat_internal = stat.createNestedObject("internal");
-    stat_internal["rx"] = true;
-    stat_internal["tx"] = true;
+    stat_internal["rx"] = status->hasReceivedControlBoardPacket;
+    stat_internal["tx"] = status->hasSentLccPacket;
     stat_internal["bailed"] = status->hasBailed();
-    stat_internal["bail_reason"] = "NONE";
-    stat_internal["reset_reason"] = "WATCHDOG";
+    stat_internal["bail_reason"] = status->bailReason();
+    stat_internal["watchdog_reset"] = watchdog_caused_reboot();
 
     JsonObject stat_brew_pid = stat.createNestedObject("brew_pid");
     stat_brew_pid["p"] = status->getBrewPidRuntimeParameters().p;
@@ -513,17 +542,253 @@ void NetworkController::publishMqtt() {
     stat_service_pid["integral"] = status->getServicePidRuntimeParameters().integral;
     stat_service_pid["hysteresisMode"] = status->getServicePidRuntimeParameters().hysteresisMode;
 
+    IPAddress ip = WiFi.localIP();
+    uint8_t mac[WL_MAC_ADDR_LENGTH];
+    WiFi.macAddress(mac);
+
+    std::string ipString = std::to_string(ip[0]) + "." + std::to_string(ip[1]) + "." + std::to_string(ip[2]) + "." + std::to_string(ip[3]);
+
+    char macAddress[19];
+    snprintf(macAddress, sizeof(macAddress), "%02X:%02X:%02X:%02X:%02X:%02X", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+
     JsonObject stat_wifi = stat.createNestedObject("wifi");
-    stat_wifi["ssid"] = "IoT Transform";
-    stat_wifi["ip"] = "192.168.11.82";
-    stat_wifi["rssi"] = -52;
-    stat_wifi["mac"] = "AA:BB:CC:DD:EE:FF";
+    stat_wifi["ssid"] = WiFi.SSID();
+    stat_wifi["ip"] = ipString;
+    stat_wifi["rssi"] = WiFi.RSSI();
+    stat_wifi["mac"] = macAddress;
+    stat_wifi["nina_firmware"] = WiFi.firmwareVersion();
 
     stat["brew_temp"] = status->getBrewTemperature();
     stat["service_temp"] = status->getServiceTemperature();
     stat["water_tank_empty"] = status->isWaterTankEmpty();
 
-    char output[4096];
-    serializeJson(doc, &output, sizeof(output));
-    mqtt->publish(TOPIC_STATE, (uint8_t*)&output, strlen(output));
+    std::string output;
+    serializeJson(doc, output);
+    mqtt.publish(TOPIC_STATE, output.c_str(), false);
+}
+
+void NetworkController::callback(char *topic, byte *payload, unsigned int length) {
+    DEBUGV("Received callback of length %u\n", length);
+
+    StaticJsonDocument<128> doc;
+
+    DeserializationError error = deserializeJson(doc, payload, length);
+
+    if (error) {
+        DEBUGV("deserializeJson() failed: %s\n", error.c_str());
+        return;
+    }
+
+    std::string cmd = doc["cmd"];
+
+    if (cmd == "set_brew_temp_target") {
+        settings->setOffsetTargetBrewTemp(doc["float_value"]);
+    } else if (cmd == "set_brew_temp_offset") {
+        settings->setBrewTemperatureOffset(doc["float_value"]);
+    } else if (cmd == "set_brew_pid_params") {
+        PidSettings params{
+            .Kp = doc["kp"],
+            .Ki = doc["ki"],
+            .Kd = doc["kd"],
+            .windupLow = doc["windup_low"],
+            .windupHigh = doc["windup_high"]
+        };
+
+        settings->setBrewPidParameters(params);
+    } else if (cmd == "set_service_pid_params") {
+        PidSettings params{
+                .Kp = doc["kp"],
+                .Ki = doc["ki"],
+                .Kd = doc["kd"],
+                .windupLow = doc["windup_low"],
+                .windupHigh = doc["windup_high"]
+        };
+
+        settings->setServicePidParameters(params);
+    } else if (cmd == "set_service_temp_target") {
+        settings->setTargetServiceTemp(doc["float_value"]);
+    } else if (cmd == "set_eco_mode") {
+        settings->setEcoMode(doc["bool_value"]);
+    } else if (cmd == "set_sleep_mode") {
+        settings->setSleepMode(doc["bool_value"]);
+    } else {
+        DEBUGV("Unknown command");
+    }
+}
+
+void NetworkController::publishAutoconfigure() {
+    std::string mqttPayload;
+    DynamicJsonDocument device(256);
+    DynamicJsonDocument autoconfPayload(1024);
+    size_t len;
+
+    char macString[19];
+    uint8_t mac[WL_MAC_ADDR_LENGTH];
+    WiFi.macAddress(mac);
+    snprintf(macString, sizeof(macString), "%02x:%02x:%02x:%02x:%02x:%02x", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
+
+    device["ids"][0] = stdIdentifier;
+    device["cns"][0][0] = "mac";
+    device["cns"][0][1] = macString;
+    device["mf"] = "magnusnordlander";
+    device["mdl"] = "smart-lcc";
+    device["name"] = stdIdentifier;
+    device["sw"] = "0.2.0";
+
+    JsonObject devObj = device.as<JsonObject>();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " State";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_state";
+    autoconfPayload["ic"] = "mdi:eye";
+    autoconfPayload["val_tpl"] = "{{ value_json.stat.state }}";
+    autoconfPayload["json_attr_tpl"] = R"({"bail_reason": "{{value_json.stat.internal.bail_reason}}", "watchdog_reset": "{{value_json.stat.internal.watchdog_reset}}"})";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " Brew Boiler Temperature";
+    autoconfPayload["uniq_id"] = stdIdentifier +"_brew_temp";
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["val_tpl"] = "{{ value_json.stat.brew_temp }}";
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.p}}", "i": "{{value_json.i}}", "d": "{{value_json.d}}", "integral": "{{value_json.integral}}",  "hysteresis_mode": "{{value_json.hysteresisMode}}"})";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_BREW_BOILER_SENSOR[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " Service Boiler Temperature";
+    autoconfPayload["uniq_id"] = stdIdentifier +"_serv_temp";
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["val_tpl"] = "{{ value_json.stat.service_temp }}";
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.service_pid.p}}", "i": "{{value_json.stat.service_pid.i}}", "d": "{{value_json.stat.service_pid.d}}", "integral": "{{value_json.stat.service_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.service_pid.hysteresisMode}}"})";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Eco Mode";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_eco_mode";
+    autoconfPayload["ic"] = "hass:leaf";
+    autoconfPayload["val_tpl"] = R"("{{ value_json.conf.eco_mode ? "ON" : "OFF" }}")";
+    autoconfPayload["pl_on"] = R"({"cmd": "set_eco_mode", "bool_value": true})";
+    autoconfPayload["pl_off"] = R"({"cmd": "set_eco_mode", "bool_value": false})";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_ECO_MODE_SWITCH[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Sleep Mode";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_sleep_mode";
+    autoconfPayload["ic"] = "hass:sleep";
+    autoconfPayload["val_tpl"] = R"("{{ value_json.conf.sleep_mode ? "ON" : "OFF" }}")";
+    autoconfPayload["pl_on"] = R"({"cmd": "set_sleep_mode", "bool_value": true})";
+    autoconfPayload["pl_off"] = R"({"cmd": "set_sleep_mode", "bool_value": false})";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_SLEEP_MODE_SWITCH[0], mqttPayload.c_str());
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+    /*
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_CONF_BREW_TEMP_TARGET;
+    autoconfPayload["name"] = identifier + String(" Brew Boiler Temperature Target");
+    autoconfPayload["uniq_id"] = identifier + String("_brew_temp_target");
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["cmd_t"] = TOPIC_SET_CONF_BREW_TEMP_TARGET;
+    autoconfPayload["step"] = 0.01;
+
+    len = serializeJson(autoconfPayload, mqttPayload, 2048);
+    printf("Payload: %s\n", mqttPayload);
+    pubSubClient.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
+    handleYield();
+    autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_CONF_SERVICE_TEMP_TARGET;
+    autoconfPayload["name"] = identifier + String(" Service Boiler Temperature Target");
+    autoconfPayload["uniq_id"] = identifier + String("_serv_temp_target");
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["cmd_t"] = TOPIC_SET_CONF_SERVICE_TEMP_TARGET;
+    autoconfPayload["max"] = 150;
+    autoconfPayload["step"] = 0.01;
+
+    len = serializeJson(autoconfPayload, mqttPayload, 2048);
+    printf("Payload: %s\n", mqttPayload);
+    pubSubClient.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload, len);
+    handleYield();
+    autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_STAT_WATER_TANK_EMPTY;
+    autoconfPayload["name"] = identifier + String(" Water Tank Low");
+    autoconfPayload["uniq_id"] = identifier + String("_water_tank_low");
+    autoconfPayload["ic"] = "mdi:water-alert";
+    autoconfPayload["pl_on"] = "true";
+    autoconfPayload["pl_off"] = "false";
+    autoconfPayload["dev_cla"] = "problem";
+
+
+    len = serializeJson(autoconfPayload, mqttPayload, 2048);
+    pubSubClient.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload, len);
+    handleYield();
+    autoconfPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_ONLINE;
+    autoconfPayload["stat_t"] = TOPIC_STAT_WIFI;
+    autoconfPayload["name"] = identifier + String(" WiFi");
+    autoconfPayload["uniq_id"] = identifier + String("_wifi");
+    autoconfPayload["val_tpl"] = "{{value_json.rssi}}";
+    autoconfPayload["unit_of_meas"] = "dBm";
+    autoconfPayload["json_attr_t"] = TOPIC_STAT_WIFI;
+    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.ssid}}", "ip": "{{value_json.ip}}"})";
+    autoconfPayload["ic"] = "mdi:wifi";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    pubSubClient.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload, len);
+    handleYield();
+
+
+*/
+
 }

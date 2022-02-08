@@ -8,6 +8,7 @@
 #include "src/SystemStatus.h"
 #include "src/UIController.h"
 #include "src/SafePacketSender.h"
+#include "src/MemoryFree.h"
 
 #define OLED_MOSI PIN_SPI0_MOSI
 #define OLED_MISO PIN_SPI0_MISO
@@ -34,15 +35,17 @@ SystemController systemController(uart0, queue1, queue0);
 SafePacketSender safePacketSender(uart0);
 SystemSettings settings(queue0, fileSystem);
 SystemStatus status(&settings);
-NetworkController networkController(fileSystem, &status);
+NetworkController networkController(fileSystem, &status, &settings);
 
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &u8g2);
 
 void setup()
 {
+#if DEBUG_RP2040_PORT == Serial
     Serial.begin(115200);
     sleep_ms(2000);
+#endif
 
     fileSystem->begin();
     u8g2.begin();
@@ -77,6 +80,8 @@ void setup()
 
 void loop()
 {
+//    Serial.printf("Loop. Memfree: %u\n", freeMemory());
+
     if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
         safePacketSender.loop();
     }

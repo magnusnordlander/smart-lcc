@@ -27,13 +27,13 @@ add_executable(z_dummy
         src/SystemController/SystemController.cpp
         src/SystemController/TimedLatch.cpp
         src/SafePacketSender.cpp src/SafePacketSender.h
-        )
+        src/MemoryFree.cpp src/MemoryFree.h)
 set_target_properties(z_dummy PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(z_dummy PRIVATE
         arduino/user/libraries/Functional-Vlpp/src
         arduino/user/libraries/WiFiWebServer/src
         arduino/user/libraries/WiFiNINA_Generic/src
-        arduino/user/libraries/Adafruit_MQTT_Library
+        arduino/user/libraries/PubSubClient/src
         arduino/user/libraries/ArduinoOTA/src
         arduino/user/libraries/ArduinoJson/src
         arduino/user/libraries/CRC32/src
@@ -52,26 +52,26 @@ target_include_directories(z_dummy PRIVATE
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2040/hardware_structs/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/host/pico_platform/include
         )
-target_compile_definitions(z_dummy PUBLIC ARDUINO_NANO_RP2040_CONNECT U8X8_USE_PINS)
+target_compile_definitions(z_dummy PUBLIC ARDUINO_NANO_RP2040_CONNECT U8X8_USE_PINS PUBSUB_USE_FUNCTIONAL)
 
 add_custom_target(install-libraries COMMAND
-        arduino-cli lib install Functional-Vlpp@1.0.2 --config-file ../arduino-config.yaml &&
         arduino-cli lib install WiFiNINA_Generic@1.8.14-3 --config-file ../arduino-config.yaml &&
         arduino-cli lib install WiFiWebServer@1.5.5-1 --config-file ../arduino-config.yaml &&
-        arduino-cli lib install DoubleResetDetector_Generic@1.8.0 --config-file ../arduino-config.yaml &&
-        arduino-cli lib install FlashStorage_SAMD@1.3.2 --config-file ../arduino-config.yaml &&
-        arduino-cli lib install FlashStorage_STM32@1.2.0 --config-file ../arduino-config.yaml &&
-        arduino-cli lib install WiFiManager_NINA_Lite@1.6.1 --no-deps --config-file ../arduino-config.yaml &&
-        arduino-cli lib install "Adafruit MQTT Library@2.4.2" --config-file ../arduino-config.yaml &&
         arduino-cli lib install CRC32@2.0.0 --config-file ../arduino-config.yaml &&
         arduino-cli lib install ArduinoJson@6.19.1  --config-file ../arduino-config.yaml &&
         arduino-cli lib install U8g2@2.31.2  --config-file ../arduino-config.yaml &&
+        arduino-cli lib install PubSubClient@2.8.0  --config-file ../arduino-config.yaml &&
+        rm -rf ../arduino/user/libraries/PubSubClient &&
+        mkdir ../arduino/user/libraries/PubSubClient &&
+        git clone https://github.com/magnusnordlander/pubsubclient.git ../arduino/user/libraries/PubSubClient/ &&
         rm -rf ../arduino/user/libraries/ArduinoOTA &&
         mkdir ../arduino/user/libraries/ArduinoOTA &&
         git clone https://github.com/jandrassy/ArduinoOTA.git ../arduino/user/libraries/ArduinoOTA/ &&
         cd ../arduino/user/libraries/ArduinoOTA && git checkout fbfeb4bf4211b8bf2837a59d1359818feab3d9e8
         )
-add_custom_target(install-core COMMAND arduino-cli core install rp2040:rp2040@1.9.14 --config-file ../arduino-config.yaml)
+add_custom_target(install-core COMMAND
+        arduino-cli core install rp2040:rp2040@1.9.14 --config-file ../arduino-config.yaml &&
+        arduino-cli core install arduino:avr --config-file ../arduino-config.yaml)
 add_custom_target(compile COMMAND
         arduino-cli compile
         -v
@@ -81,13 +81,21 @@ add_custom_target(compile COMMAND
         --build-property \"build.eeprom_start=285208576\"
         --build-property \"build.fs_start=281014272\"
         --build-property \"build.fs_end=285208576\"
-        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
-        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
+#        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
+#        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
+        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
+#        --build-property \"compiler.defines=-DARDUINO= -DPUBSUB_USE_FUNCTIONAL=\"
+#        --show-properties
         ${CMAKE_SOURCE_DIR}
         -e --output-dir ${CMAKE_BINARY_DIR}/build
         --config-file ../arduino-config.yaml
         )
+# --build-property \"compiler.define=-DARDUINO= -DPICO_USE_STACK_GUARDS=1\"
 
 add_custom_target(copy COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
-add_custom_target(compile-and-copy DEPENDS compile DEPENDS copy)
+add_custom_target(compile-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
+
+add_custom_target(upload-ota COMMAND
+        python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
+        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.11.83 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)

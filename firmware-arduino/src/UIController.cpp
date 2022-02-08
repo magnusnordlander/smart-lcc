@@ -10,12 +10,14 @@ UIController::UIController(SystemStatus *status, U8G2 *display) : status(status)
     blip = 0;
 }
 
-#define LINE_HEIGHT 10
+#define LINE_HEIGHT 7
+#define X_START 18
+#define Y_START 18
 
 void UIController::loop() {
     display->clearBuffer();
-    display->setFont(u8g2_font_ncenB08_tr);
-    display->setCursor(0, LINE_HEIGHT);
+    display->setFont(u8g2_font_5x7_tf);
+    display->setCursor(X_START, LINE_HEIGHT + Y_START);
 
     switch (status->getState()) {
         case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
@@ -95,5 +97,5 @@ void UIController::loop() {
 }
 
 void UIController::newline() {
-    display->setCursor(0, display->ty + LINE_HEIGHT);
+    display->setCursor(X_START, display->ty + LINE_HEIGHT);
 }

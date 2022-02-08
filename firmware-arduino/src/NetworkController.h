@@ -8,10 +8,10 @@
 #include <WiFiNINA_Pinout_Generic.h>
 #include <WiFi_Generic.h>
 #include <ArduinoOTA.h>
-#include <Adafruit_MQTT.h>
-#include <Adafruit_MQTT_Client.h>
+#include <PubSubClient.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <string>
 #include "optional.hpp"
 #include "types.h"
 #include "SystemStatus.h"
@@ -51,7 +51,7 @@ typedef struct
 
 class NetworkController {
 public:
-    explicit NetworkController(FS* _fileSystem, SystemStatus* _status);
+    explicit NetworkController(FS* _fileSystem, SystemStatus* _status, SystemSettings* _settings);
 
     void init(NetworkControllerMode mode);
 
@@ -67,6 +67,7 @@ private:
     NetworkControllerMode mode;
     FS* fileSystem;
     SystemStatus* status;
+    SystemSettings* settings;
 
     uint8_t previousWifiStatus = 0;
 
@@ -76,8 +77,8 @@ private:
     nonstd::optional<absolute_time_t> mqttNextPublishTime;
 
     ArduinoOTAMdnsClass <WiFiServer, WiFiClient, WiFiUDP> ArduinoOTA;
-    WiFiClient *client;
-    Adafruit_MQTT_Client *mqtt = nullptr;
+    WiFiClient client = WiFiClient();
+    PubSubClient mqtt = PubSubClient(client);
 
     WiFiWebServer* server = nullptr;
 
@@ -86,6 +87,7 @@ private:
     bool topicsFormatted = false;
 
     char identifier[24];
+    std::string stdIdentifier;
 
     void initConfigMode();
     void initOTA();
@@ -108,6 +110,20 @@ private:
     char TOPIC_LWT[TOPIC_LENGTH];
     char TOPIC_STATE[TOPIC_LENGTH];
     char TOPIC_COMMAND[TOPIC_LENGTH];
+
+    char TOPIC_AUTOCONF_STATE_SENSOR[128];
+    char TOPIC_AUTOCONF_BREW_BOILER_SENSOR[128];
+    char TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[128];
+    char TOPIC_AUTOCONF_ECO_MODE_SWITCH[128];
+    char TOPIC_AUTOCONF_SLEEP_MODE_SWITCH[128];
+    char TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[128];
+    char TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[128];
+    char TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[128];
+    char TOPIC_AUTOCONF_WIFI_SENSOR[128];
+
+    void callback(char *topic, byte *payload, unsigned int length);
+
+    void publishAutoconfigure();
 };
 
 
