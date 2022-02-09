@@ -123,6 +123,8 @@ private:
 
     void handleCommands();
     void updateControllerSettings();
+
+    inline void inline_busy_wait_us_32(uint32_t delay_us);
 };
 
 

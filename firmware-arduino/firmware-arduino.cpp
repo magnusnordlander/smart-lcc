@@ -69,8 +69,10 @@ void setup()
 
     if (gpio_get(MINUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_OTA);
+        rp2040.idleOtherCore();
     } else if (gpio_get(PLUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
+        rp2040.idleOtherCore();
     } else {
         networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
 

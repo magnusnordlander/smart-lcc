@@ -11,13 +11,14 @@ FileIO::FileIO(FS *fileSystem, PicoQueue<SystemControllerCommand> *queue) : _fil
 }
 
 bool FileIO::saveSystemSettings(SettingStruct systemSettings, const char *filename, uint8_t version) {
+    DEBUGV("Creating victimize command\n");
     SystemControllerCommand victimizeCommand = SystemControllerCommand{
             .type = COMMAND_VICTIMIZE
     };
-
+    DEBUGV("Adding victimize command\n");
     _queue->addBlocking(&victimizeCommand);
-
-    multicore_lockout_start_blocking();
+    DEBUGV("Done with victimize command\n");
+    //multicore_lockout_start_blocking();
 
     File file = _fileSystem->open(filename, "w");
 
@@ -31,12 +32,12 @@ bool FileIO::saveSystemSettings(SettingStruct systemSettings, const char *filena
         file.write((uint8_t *) &calculatedChecksum, sizeof(calculatedChecksum));
         file.close();
 
-        multicore_lockout_end_blocking();
+        //multicore_lockout_end_blocking();
 
         return true;
     }
     else {
-        multicore_lockout_end_blocking();
+        //multicore_lockout_end_blocking();
 
         return false;
     }

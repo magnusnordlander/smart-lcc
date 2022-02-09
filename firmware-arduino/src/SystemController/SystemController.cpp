@@ -8,6 +8,7 @@
 #include "pico/timeout_helper.h"
 #include <cmath>
 #include <pico/multicore.h>
+#include <hardware/timer.h>
 
 static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
     timeout_state_t ts;
@@ -314,7 +315,8 @@ void SystemController::handleCommands() {
                 readyToGo = true;
                 break;
             case COMMAND_VICTIMIZE:
-                multicore_lockout_victim_init();
+                inline_busy_wait_us_32(20000);
+                break;
         }
     }
 
@@ -430,4 +432,17 @@ bool SystemController::areTemperaturesAtSetPoint() const {
     }
 
     return true;
+}
+
+inline void SystemController::inline_busy_wait_us_32(uint32_t delay_us) {
+    if (0 <= (int32_t)delay_us) {
+        // we only allow 31 bits, otherwise we could have a race in the loop below with
+        // values very close to 2^32
+        uint32_t start = time_us_32();
+        while (time_us_32() - start < delay_us) {
+            tight_loop_contents();
+        }
+    } else {
+        busy_wait_us(delay_us);
+    }
 }
