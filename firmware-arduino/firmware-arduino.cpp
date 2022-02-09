@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <pins_arduino.h>
 #include <hardware/uart.h>
+#include <hardware/irq.h>
+#include <hardware/regs/intctrl.h>
 #include <U8g2lib.h>
 #include <hardware/watchdog.h>
 #include "src/NetworkController.h"
@@ -45,13 +47,27 @@ UIController uiController(&status, &u8g2);
 
 void setup()
 {
+    u8g2.begin();
+
+    u8g2.clearBuffer();
+    u8g2.drawDisc(32, 32, 20);
+    u8g2.sendBuffer();
+
 #if DEBUG_RP2040_PORT == Serial
     Serial.begin(115200);
-    sleep_ms(2000);
+    while(!Serial) { sleep_ms(1); }
 #endif
 
+    u8g2.clearBuffer();
+    u8g2.drawDisc(64, 32, 20);
+    u8g2.sendBuffer();
+
     fileSystem->begin();
-    u8g2.begin();
+
+    u8g2.clearBuffer();
+    u8g2.drawDisc(96, 32, 20);
+    u8g2.sendBuffer();
+
 
     gpio_set_dir(PLUS_BUTTON, false);
     gpio_pull_down(PLUS_BUTTON);
@@ -72,16 +88,15 @@ void setup()
         rp2040.idleOtherCore();
     } else if (gpio_get(PLUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
-        rp2040.idleOtherCore();
     } else {
         networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
-
         settings.initialize();
 
-        //watchdog_enable(3000, false);
+        watchdog_enable(3000, false);
 
-        SystemControllerCommand initCmd = SystemControllerCommand{.type = COMMAND_INITIALIZE};
-        queue0->addBlocking(&initCmd);
+        SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
+        queue0->addBlocking(&beginCmd);
+
     }
 }
 

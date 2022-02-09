@@ -123,8 +123,7 @@ typedef enum {
     COMMAND_SET_SLEEP_MODE,
     COMMAND_UNBAIL,
     COMMAND_TRIGGER_FIRST_RUN,
-    COMMAND_INITIALIZE,
-    COMMAND_VICTIMIZE
+    COMMAND_BEGIN
 } SystemControllerCommandType;
 
 struct SystemControllerCommand {

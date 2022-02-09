@@ -50,6 +50,8 @@ target_include_directories(z_dummy PRIVATE
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2_common/hardware_gpio/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2_common/hardware_base/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2_common/hardware_timer/include
+        arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2_common/hardware_irq/include
+        arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2040/hardware_regs/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/rp2040/hardware_structs/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/host/pico_platform/include
         arduino/data/packages/rp2040/hardware/rp2040/1.9.14/pico-sdk/src/host/pico_multicore/include

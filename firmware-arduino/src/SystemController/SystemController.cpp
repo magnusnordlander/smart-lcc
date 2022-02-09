@@ -9,6 +9,8 @@
 #include <cmath>
 #include <pico/multicore.h>
 #include <hardware/timer.h>
+#include <hardware/irq.h>
+#include <hardware/regs/intctrl.h>
 
 static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
     timeout_state_t ts;
@@ -279,6 +281,8 @@ void SystemController::handleCommands() {
     while (!incomingQueue->isEmpty()) {
         incomingQueue->removeBlocking(&command);
 
+        DEBUGV("SysCtl: Handling command of type %u\n", command.type);
+
         switch (command.type) {
             case COMMAND_SET_BREW_SET_POINT:
                 targetBrewTemperature = command.float1;
@@ -311,11 +315,8 @@ void SystemController::handleCommands() {
                 break;
             case COMMAND_TRIGGER_FIRST_RUN:
                 break;
-            case COMMAND_INITIALIZE:
+            case COMMAND_BEGIN:
                 readyToGo = true;
-                break;
-            case COMMAND_VICTIMIZE:
-                inline_busy_wait_us_32(20000);
                 break;
         }
     }
