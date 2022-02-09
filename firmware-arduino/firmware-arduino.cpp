@@ -76,7 +76,7 @@ void setup()
 
         settings.initialize();
 
-        watchdog_enable(3000, false);
+        //watchdog_enable(3000, false);
 
         SystemControllerCommand initCmd = SystemControllerCommand{.type = COMMAND_INITIALIZE};
         queue0->addBlocking(&initCmd);
@@ -85,7 +85,7 @@ void setup()
 
 void loop()
 {
-    DEBUGV("Loop. Memfree: %u\n", freeMemory());
+    //DEBUGV("Loop. Memfree: %u\n", freeMemory());
 
     if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
         safePacketSender.loop();

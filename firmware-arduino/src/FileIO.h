@@ -5,9 +5,11 @@
 #ifndef FIRMWARE_ARDUINO_FILEIO_H
 #define FIRMWARE_ARDUINO_FILEIO_H
 
-
-#include "SystemSettings.h"
-#include "NetworkController.h"
+#include <FS.h>
+#include <LittleFS.h>
+#include "types.h"
+#include "optional.hpp"
+#include "utils/PicoQueue.h"
 
 class FileIO {
 public:

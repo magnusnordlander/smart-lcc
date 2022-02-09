@@ -5,21 +5,9 @@
 #ifndef FIRMWARE_SYSTEMSETTINGS_H
 #define FIRMWARE_SYSTEMSETTINGS_H
 
-#include <FS.h>
-#include <LittleFS.h>
 #include "utils/PicoQueue.h"
 #include "types.h"
 #include "FileIO.h"
-
-struct SettingStruct {
-    float brewTemperatureOffset = -10;
-    bool sleepMode = false;
-    bool ecoMode = false;
-    float brewTemperatureTarget = 105;
-    float serviceTemperatureTarget = 120;
-    PidSettings brewPidParameters = PidSettings{.Kp = 0.8, .Ki = 0.12, .Kd = 12.0, .windupLow = -7.f, .windupHigh = 7.f};
-    PidSettings servicePidParameters = PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0, .windupLow = -10.f, .windupHigh = 10.f};
-};
 
 class SystemSettings {
 public:

@@ -47,6 +47,45 @@ struct PidRuntimeParameters {
     float integral = 0;
 };
 
+struct SettingStruct {
+    float brewTemperatureOffset = -10;
+    bool sleepMode = false;
+    bool ecoMode = false;
+    float brewTemperatureTarget = 105;
+    float serviceTemperatureTarget = 120;
+    PidSettings brewPidParameters = PidSettings{.Kp = 0.8, .Ki = 0.12, .Kd = 12.0, .windupLow = -7.f, .windupHigh = 7.f};
+    PidSettings servicePidParameters = PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0, .windupLow = -10.f, .windupHigh = 10.f};
+};
+
+#define SSID_MAX_LEN      32
+#define PASS_MAX_LEN      64
+#define MQTT_SERVER_LEN       20
+#define MQTT_PORT_LEN         5
+#define MQTT_USERNAME_LEN     20
+#define MQTT_PASS_LEN         40
+#define MQTT_PREFIX_LEN       20
+
+struct WiFi_Credentials
+{
+    char wifi_ssid[SSID_MAX_LEN];
+    char wifi_pw  [PASS_MAX_LEN];
+};
+
+struct MQTT_Configuration
+{
+    char server[MQTT_SERVER_LEN + 1] = "test.mosquitto.org";
+    char port[MQTT_PORT_LEN + 1] = "1883";
+    char username[MQTT_USERNAME_LEN + 1] = "";
+    char password[MQTT_PASS_LEN + 1] = "";
+    char prefix[MQTT_PREFIX_LEN + 1] = "lcc";
+};
+
+struct WiFiNINA_Configuration
+{
+    WiFi_Credentials wiFiCredentials{};
+    MQTT_Configuration mqttConfig{};
+};
+
 struct InternalStateMessage {
     bool bailed{};
     SystemControllerBailReason  bailReason{};

@@ -82,10 +82,9 @@ add_custom_target(compile COMMAND
         --build-property \"build.eeprom_start=285208576\"
         --build-property \"build.fs_start=281014272\"
         --build-property \"build.fs_end=285208576\"
-#        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
-#        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
+        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
+        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
         --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
-#        --build-property \"compiler.defines=-DARDUINO= -DPUBSUB_USE_FUNCTIONAL=\"
 #        --show-properties
         ${CMAKE_SOURCE_DIR}
         -e --output-dir ${CMAKE_BINARY_DIR}/build
