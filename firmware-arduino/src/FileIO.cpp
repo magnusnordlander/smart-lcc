@@ -31,14 +31,6 @@ bool FileIO::saveSystemSettings(SettingStruct systemSettings, const char *filena
 }
 
 bool FileIO::saveWifiConfig(WiFiNINA_Configuration wifiConfig, const char *filename, uint8_t version) {
-/*    SystemControllerCommand victimizeCommand = SystemControllerCommand{
-        .type = COMMAND_VICTIMIZE
-    };
-
-    _queue->addBlocking(&victimizeCommand);
-
-    multicore_lockout_start_blocking();
-*/
     File file = _fileSystem->open(filename, "w");
 
     if (file)
@@ -55,14 +47,10 @@ bool FileIO::saveWifiConfig(WiFiNINA_Configuration wifiConfig, const char *filen
 
         DEBUGV("Writing network config\n");
 
-        //multicore_lockout_end_blocking();
-
         return true;
     }
     else {
         DEBUGV("Couldn't network config file for writing\n");
-
-        //multicore_lockout_end_blocking();
 
         return false;
     }

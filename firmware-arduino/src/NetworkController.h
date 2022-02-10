@@ -28,7 +28,7 @@ public:
     void init(NetworkControllerMode mode);
 
     bool hasConfiguration();
-    bool isConnectedToWifi();
+    bool isConnectedToWifi() const;
     bool isConnectedToMqtt();
     NetworkControllerMode getMode() {
         return mode;

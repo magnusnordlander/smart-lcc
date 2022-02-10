@@ -73,6 +73,8 @@ void NetworkController::init(NetworkControllerMode _mode) {
     snprintf(identifier, sizeof(identifier), "LCC-%02X%02X%02X", mac[2], mac[1], mac[0]);
     stdIdentifier = std::string(identifier);
 
+    WiFi.setHostname(identifier);
+
     switch (mode) {
         case NETWORK_CONTROLLER_MODE_NORMAL:
         case NETWORK_CONTROLLER_MODE_OTA:
@@ -84,10 +86,10 @@ void NetworkController::init(NetworkControllerMode _mode) {
 }
 
 void NetworkController::loop() {
-    int status = WiFi.status();
-    if (status != previousWifiStatus) {
-        DEBUGV("Wifi status transition. From %d to %d\n", previousWifiStatus, status);
-        previousWifiStatus = status;
+    int wifiStatus = WiFi.status();
+    if (wifiStatus != previousWifiStatus) {
+        DEBUGV("Wifi status transition. From %d to %d\n", previousWifiStatus, wifiStatus);
+        previousWifiStatus = wifiStatus;
     }
 
     switch (mode) {
@@ -169,6 +171,7 @@ void NetworkController::ensureMqttClient() {
                 DEBUGV("Connecting unauthenticated\n");
                 success = mqtt.connect(identifier, &TOPIC_LWT[0], 0, true, "offline");
             }
+
             if (!success) {
                 DEBUGV("Couldn't connect to MQTT server. Reconnecting in 5 s.\n");
                 mqtt.disconnect();
@@ -244,7 +247,7 @@ bool NetworkController::hasConfiguration() {
     return config.has_value();
 }
 
-bool NetworkController::isConnectedToWifi() {
+bool NetworkController::isConnectedToWifi() const {
     return _isConnectedToWifi;
 }
 
