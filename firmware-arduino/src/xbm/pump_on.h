@@ -1,0 +1,4 @@
+#define pump_on_width  8
+#define pump_on_height 8
+static unsigned char pump_on_bits[] = {
+        0x70,0x90,0x1e,0x1f,0x19,0x18,0x19,0x19};

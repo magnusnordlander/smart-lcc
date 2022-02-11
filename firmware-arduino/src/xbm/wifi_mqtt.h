@@ -1,0 +1,4 @@
+#define wifi_mqtt_width  8
+#define wifi_mqtt_height 8
+static unsigned char wifi_mqtt_bits[] = {
+        0xa0,0xe0,0xa7,0x08,0x13,0x24,0x29,0x2b};

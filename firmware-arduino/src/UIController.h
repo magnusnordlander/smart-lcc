@@ -12,6 +12,12 @@
 #define U8LOG_WIDTH 16
 #define U8LOG_HEIGHT 8
 
+typedef enum {
+    BREW_SCREEN_IDLE,
+    BREW_SCREEN_MOVING_1,
+    BREW_SCREEN_MOVING_2
+} BrewScreen;
+
 class UIController {
 public:
     UIController(SystemStatus *status, U8G2 *display);
@@ -23,6 +29,9 @@ private:
     uint8_t blip;
 
     void newline();
+    void drawStatusIcons();
+    void drawBrewScreen(BrewScreen screen, uint8_t seconds);
+    void drawProgressBar();
 };
 
 

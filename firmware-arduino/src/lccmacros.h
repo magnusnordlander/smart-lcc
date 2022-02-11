@@ -14,4 +14,6 @@
 #define FUCKED_UP_FLOAT_1_ARG(f) (int16_t)f, (uint8_t)abs((int)((f*10)-(float)(((int16_t)f)*10)))
 #define FUCKED_UP_FLOAT_2_ARG(f) (int16_t)f, (uint8_t)abs((int)((f*100)-(float)(((int16_t)f)*100)))
 
+#define FUCKED_UP_FLOAT_1_DECIMAL(f) (uint8_t)abs((int)((f*10)-(float)(((int16_t)f)*10)))
+
 #endif //FIRMWARE_MACROS_H

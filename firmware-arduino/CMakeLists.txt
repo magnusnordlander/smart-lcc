@@ -27,7 +27,9 @@ add_executable(z_dummy
         src/SystemController/SystemController.cpp
         src/SystemController/TimedLatch.cpp
         src/SafePacketSender.cpp src/SafePacketSender.h
-        src/MemoryFree.cpp src/MemoryFree.h src/FileIO.cpp src/FileIO.h)
+        src/MemoryFree.cpp src/MemoryFree.h
+        src/FileIO.cpp src/FileIO.h
+        src/xbm/bssr_on.h src/xbm/eco_mode.h src/xbm/no_water.h src/xbm/sssr_on.h src/xbm/wifi_mqtt.h src/xbm/wifi_no_mqtt.h src/xbm/pump_on.h src/xbm/cup_no_smoke.h src/xbm/cup_smoke_1.h src/xbm/cup_smoke_2.h)
 set_target_properties(z_dummy PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(z_dummy PRIVATE
         arduino/user/libraries/Functional-Vlpp/src
@@ -101,4 +103,4 @@ add_custom_target(compile-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Vo
 
 add_custom_target(upload-ota COMMAND
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
-        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.159 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
+        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.164 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
