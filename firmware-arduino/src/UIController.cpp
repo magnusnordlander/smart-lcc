@@ -73,15 +73,16 @@ void UIController::loop() {
         newline();
     }
 
-/*    if (status->lastBrewStartedAt.has_value()) {
+    if (status->lastBrewStartedAt.has_value()) {
         if (status->lastBrewEndedAt.has_value()) {
-            auto millis = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(status->lastBrewEndedAt.value() - status->lastBrewStartedAt.value()).count();
-            display->printf("Brewed: %u s\r\n", (uint8_t)round((float)millis / 1000.f));
+            auto micros = absolute_time_diff_us(status->lastBrewStartedAt.value(), status->lastBrewEndedAt.value());
+            display->printf("Brewed: %u s", (uint8_t)round((float)micros / 1000000.f));
         } else {
-            auto millis = (uint16_t)std::chrono::duration_cast<std::chrono::milliseconds>(rtos::Kernel::Clock::now() - status->lastBrewStartedAt.value()).count();
-            display->printf("Brewing: %u s\r\n", (uint8_t)round((float)millis / 1000.f));
+            auto micros = absolute_time_diff_us(status->lastBrewStartedAt.value(), get_absolute_time());
+            display->printf("Brewing: %u s", (uint8_t)round((float)micros / 1000000.f));
         }
-    }*/
+        newline();
+    }
 
     if (status->hasSentLccPacket) {
         display->printf("%s %s", status->isBrewSsrOn() ? "BSSR" : "bssr", status->isServiceSsrOn() ? "SSSR" : "sssr");

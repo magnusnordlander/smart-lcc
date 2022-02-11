@@ -53,19 +53,15 @@ void setup()
     u8g2.drawDisc(32, 32, 20);
     u8g2.sendBuffer();
 
-#if DEBUG_RP2040_PORT == Serial
+#ifdef DEBUG_RP2040_CORE
     Serial.begin(115200);
     while(!Serial) { sleep_ms(1); }
 #endif
 
-    u8g2.clearBuffer();
-    u8g2.drawDisc(64, 32, 20);
-    u8g2.sendBuffer();
-
     fileSystem->begin();
 
     u8g2.clearBuffer();
-    u8g2.drawDisc(96, 32, 20);
+    u8g2.drawDisc(64, 32, 20);
     u8g2.sendBuffer();
 
 
@@ -85,7 +81,6 @@ void setup()
 
     if (gpio_get(MINUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_OTA);
-        rp2040.idleOtherCore();
     } else if (gpio_get(PLUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
     } else {
