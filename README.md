@@ -23,17 +23,19 @@ This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ boa
 
 A custom PCB has been designed (see `pcb/`) that is designed to fit in the original LCC enclosure. A BOM for components is also available. Aside from the Arduino RP2040 Connect, the PCB has push buttons for + and -, a resistor divider for the 5V Control Board UART signal, and a flat flex connector for a SSD1309 based OLED. The PCB has been designed with surface mount components, but uses relatively large 1206 caps and resistors, which are somewhat simple to hand solder.
 
-### Firmware
-The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Since Mbed OS doesn't support running the RTOS Kernel (at all) on Core 1, this is where the system controller will reside (since that doesn't require anything that requires Mbed RTOS). Core 0 will run UI and external communications, and will communicate with core 1 through `pico_util/queue`. Core1 will not *store* it's parameters. Core0 will read them from Mbed KV store, and pass them to Core1 through regular message passing.
+### Firmware (1.0.0, current)
+The project is using arduino-cli, with earlephilhower/arduino-pico. Core 0 runs UI and external communications, and will communicate with core 1 through `pico_util/queue`. Core1 does not *store* it's parameters. Core0 reads them from LittleFS, and passes them to Core1 through regular message passing.
 
-#### Things to avoid in Core 1
-* The Mbed RTOS Kernel really doesn't like it if Core 1 enters an *mbed* critical section, so that needs to be avoided as far as possible. This pretty much means that Core 1 needs to be pure pico-sdk.
+#### Usage
+Hold the plus button while booting to trigger configuration mode. In configuration mode, a safe packet is continually sent to the control board, and a WiFi access point is created, with the SSID `LCC-XXXXXX`, where `XXXXXX` is the last 6 hex digits of the unit's MAC address. It is password protected, using the same password as the SSID, (i.e. `LCC-XXXXXX`). Therein you can configure your WiFi network and MQTT settings.
 
-#### (Planned) Threads on RP2040 Core 0
+Hold the minus button while booting to trigger OTA mode. As in configuration mode, a safe packet is continually sent to the control board. It connects to the WiFi configured in configuration mode. Use ArduinoOTA to send new firmware. The controller doesn't automatically reboot after OTA, so after the OTA is complete and the display goes blank, manually cycle power.
+
+#### RP2040 Core 0
 * UI controller
 * External communication
 
-#### (Planned) RP2040 Core 1
+#### RP2040 Core 1
 * System controller
   * Safety critical, uses the entire core for itself
   * Communicates with the Control Board
@@ -93,7 +95,13 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
     * Eco mode
     * Sleep mode
 
-#### Reference material
+### Firmware 1.1.0
+In this firmware, Core0 and Core1 will swap functions.
+
+### Firmware 2.0.0
+In this firmware, a custom firmware for the Ublox Nina W102 will be developed to handle network communication.
+
+### Reference material
 (In no particular order)
 
 * https://github.com/improv-wifi/sdk-cpp
