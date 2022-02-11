@@ -19,28 +19,9 @@ Create a smart replacement for the "LCC" PID module used in the Lelit Bianca wit
 ## Architecture
 
 ### Hardware
-This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ board with a Ublox Nina W102 module.
+This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ board with a Ublox Nina W102 module (running an ESP32).
 
 A custom PCB has been designed (see `pcb/`) that is designed to fit in the original LCC enclosure. A BOM for components is also available. Aside from the Arduino RP2040 Connect, the PCB has push buttons for + and -, a resistor divider for the 5V Control Board UART signal, and a flat flex connector for a SSD1309 based OLED. The PCB has been designed with surface mount components, but uses relatively large 1206 caps and resistors, which are somewhat simple to hand solder.
-
-### Firmware
-The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little code will use the Arduino library, and most of it will instead use mbed or the rp2040 library. Since Mbed OS doesn't support running the RTOS Kernel (at all) on Core 1, this is where the system controller will reside (since that doesn't require anything that requires Mbed RTOS). Core 0 will run UI and external communications, and will communicate with core 1 through `pico_util/queue`. Core1 will not *store* it's parameters. Core0 will read them from Mbed KV store, and pass them to Core1 through regular message passing.
-
-#### Things to avoid in Core 1
-* The Mbed RTOS Kernel really doesn't like it if Core 1 enters an *mbed* critical section, so that needs to be avoided as far as possible. This pretty much means that Core 1 needs to be pure pico-sdk.
-
-#### (Planned) Threads on RP2040 Core 0
-* UI controller
-* External communication
-
-#### (Planned) RP2040 Core 1
-* System controller
-  * Safety critical, uses the entire core for itself
-  * Communicates with the Control Board
-  * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
-  * Responsible for kicking the watchdog
-    * Reboots if Core 0 isn't handling its messages (i.e. has crashed or is frozen)
-  * Responsible for PID, keeping water in the boiler, running pumps etc.
 
 #### Core communication protocol
 
@@ -93,7 +74,51 @@ The project is using PlatformIO, with ArduinoCore-mbed. Ideally, very little cod
     * Eco mode
     * Sleep mode
 
-#### Reference material
+### Firmware R1B, normal mode
+The project is using arduino-cli to build, and uses the earlephilhower/arduino-pico core. Anything system critical occurs on core0, which is responsible for communication with the Control Board. The Nina W102 module uses the Arduino WiFiNina firmware.
+
+#### RP2040 Core 0
+* System controller
+  * Safety critical, after boot it uses the entire core for itself
+  * Communicates with the Control Board
+  * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
+  * Responsible for kicking the watchdog
+    * Reboots if Core 1 isn't handling its messages (i.e. has crashed or is frozen)
+  * Responsible for PID, keeping water in the boiler, running pumps etc.
+
+#### RP2040 Core 1
+* UI controller
+* Network communication
+  * MQTT
+
+### Firmware R1B, OTA mode or configuration mode
+
+In OTA mode or configuration mode, core 1 is not used. A safe packet is sent every second to the control board, though the timing of this may vary.
+
+### Firmware R2A (Planned for 22Q2)
+The project will start using custom code for the Nina W102. 
+
+#### RP2040 Core 0
+* System controller
+  * Safety critical, after boot it uses the entire core for itself
+  * Communicates with the Control Board
+  * Performs a safety check, ensuring that temperatures in the boilers never exceed safe limits, and that both boilers are never running simultaneously.
+  * Responsible for kicking the watchdog
+    * Reboots if Core 1 isn't handling its messages (i.e. has crashed or is frozen)
+  * Responsible for PID, keeping water in the boiler, running pumps etc.
+
+#### RP2040 Core 1
+* UI controller
+
+#### W102 Core 1
+* Communication with the RP2040
+
+#### W102 Core 2
+* Network communication
+  * MQTT
+  * HTTP
+
+### Reference material
 (In no particular order)
 
 * https://github.com/improv-wifi/sdk-cpp

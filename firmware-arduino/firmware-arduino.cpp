@@ -45,6 +45,10 @@ NetworkController networkController(fileIO, &status, &settings);
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &u8g2);
 
+bool core0Inited = false;
+
+SystemMode mode = SYSTEM_MODE_NORMAL;
+
 void setup()
 {
     u8g2.begin();
@@ -52,22 +56,6 @@ void setup()
     u8g2.clearBuffer();
     u8g2.drawDisc(32, 32, 20);
     u8g2.sendBuffer();
-
-#if DEBUG_RP2040_PORT == Serial
-    Serial.begin(115200);
-    while(!Serial) { sleep_ms(1); }
-#endif
-
-    u8g2.clearBuffer();
-    u8g2.drawDisc(64, 32, 20);
-    u8g2.sendBuffer();
-
-    fileSystem->begin();
-
-    u8g2.clearBuffer();
-    u8g2.drawDisc(96, 32, 20);
-    u8g2.sendBuffer();
-
 
     gpio_set_dir(PLUS_BUTTON, false);
     gpio_pull_down(PLUS_BUTTON);
@@ -84,27 +72,19 @@ void setup()
     uart_init(uart0, 9600);
 
     if (gpio_get(MINUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_OTA);
-        rp2040.idleOtherCore();
+        mode = SYSTEM_MODE_RP2040_OTA;
     } else if (gpio_get(PLUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
-    } else {
-        networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
-        settings.initialize();
-
-        watchdog_enable(3000, false);
-
-        SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
-        queue0->addBlocking(&beginCmd);
-
+        mode = SYSTEM_MODE_NETWORK_CONFIG;
     }
+
+    core0Inited = true;
 }
 
 void loop()
 {
-    //DEBUGV("Loop. Memfree: %u\n", freeMemory());
-
-    if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
+    systemController.loop();
+git
+    if (networkController.getMode() != SYSTEM_MODE_NORMAL) {
         safePacketSender.loop();
     }
 
@@ -126,6 +106,35 @@ void loop()
     uiController.loop();
 }
 
+void setup1() {
+    while (!core0Inited) {
+        tight_loop_contents();
+    }
+
+    u8g2.clearBuffer();
+    u8g2.drawDisc(64, 32, 20);
+    u8g2.sendBuffer();
+
+#if DEBUG_RP2040_PORT == Serial
+    Serial.begin(115200);
+    //while(!Serial) { sleep_ms(1); }
+#endif
+
+    fileSystem->begin();
+
+    networkController.init(mode);
+
+    if (mode == SYSTEM_MODE_RP2040_OTA) {
+        rp2040.idleOtherCore();
+    } else if (mode == SYSTEM_MODE_NORMAL) {
+        settings.initialize();
+
+        watchdog_enable(3000, false);
+
+        SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
+        queue0->addBlocking(&beginCmd);
+    }
+}
+
 void loop1() {
-    systemController.loop();
 }

@@ -63,7 +63,7 @@ NetworkController::NetworkController(FileIO* _fileIO, SystemStatus* _status, Sys
     fileIO(_fileIO), status(_status), settings(_settings) {
 }
 
-void NetworkController::init(NetworkControllerMode _mode) {
+void NetworkController::init(SystemMode _mode) {
     mode = _mode;
     attemptReadConfig();
 
@@ -76,10 +76,10 @@ void NetworkController::init(NetworkControllerMode _mode) {
     WiFi.setHostname(identifier);
 
     switch (mode) {
-        case NETWORK_CONTROLLER_MODE_NORMAL:
-        case NETWORK_CONTROLLER_MODE_OTA:
+        case SYSTEM_MODE_NORMAL:
+        case SYSTEM_MODE_RP2040_OTA:
             break;
-        case NETWORK_CONTROLLER_MODE_CONFIG:
+        case SYSTEM_MODE_NETWORK_CONFIG:
             initConfigMode();
             break;
     }
@@ -93,11 +93,11 @@ void NetworkController::loop() {
     }
 
     switch (mode) {
-        case NETWORK_CONTROLLER_MODE_NORMAL:
+        case SYSTEM_MODE_NORMAL:
             return loopNormal();
-        case NETWORK_CONTROLLER_MODE_CONFIG:
+        case SYSTEM_MODE_NETWORK_CONFIG:
             return loopConfig();
-        case NETWORK_CONTROLLER_MODE_OTA:
+        case SYSTEM_MODE_RP2040_OTA:
             return loopOta();
     }
 

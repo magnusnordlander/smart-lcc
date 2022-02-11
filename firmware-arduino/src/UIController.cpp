@@ -22,13 +22,13 @@ void UIController::loop() {
     switch (status->getState()) {
         case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
             switch (status->mode) {
-                case NETWORK_CONTROLLER_MODE_NORMAL:
+                case SYSTEM_MODE_NORMAL:
                     display->printf("Unkn");
                     break;
-                case NETWORK_CONTROLLER_MODE_CONFIG:
+                case SYSTEM_MODE_NETWORK_CONFIG:
                     display->printf("Conf");
                     break;
-                case NETWORK_CONTROLLER_MODE_OTA:
+                case SYSTEM_MODE_RP2040_OTA:
                     display->printf("OTA");
                     break;
             }
