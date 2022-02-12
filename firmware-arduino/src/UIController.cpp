@@ -16,11 +16,11 @@
 #include "xbm/cup_smoke_2.h"
 #include "xbm/cup_no_smoke.h"
 
-UIController::UIController(SystemStatus *status, U8G2 *display) : status(status), display(display) {
+UIController::UIController(SystemStatus *status, SystemSettings* settings, U8G2 *display, uint minus_gpio, uint plus_gpio):
+status(status), settings(settings), display(display), minus_gpio(minus_gpio), plus_gpio(plus_gpio) {
     blip = 0;
 }
 
-#define LINE_HEIGHT 7
 #define X_START 15
 #define Y_START 14
 #define S_WIDTH 95
@@ -33,9 +33,19 @@ UIController::UIController(SystemStatus *status, U8G2 *display) : status(status)
 #define Y_END_MARGIN (Y_END - 2)
 
 void UIController::loop() {
+    previousMinus = minus;
+    previousPlus = plus;
+
+    minus = gpio_get(minus_gpio);
+    plus = gpio_get(plus_gpio);
+
+    // Exit sleep mode on any button press
+    if (status->isInSleepMode() && ((plus && !previousPlus) || (minus && !previousMinus))) {
+        settings->setSleepMode(false);
+    }
+
     display->clearBuffer();
     display->setFont(u8g2_font_5x7_tf);
-    display->setCursor(X_START, LINE_HEIGHT + Y_START);
 
     // Bounds frame, debug only
     // display->drawFrame(X_START, Y_START, S_WIDTH, S_HEIGHT);
@@ -163,10 +173,6 @@ void UIController::loop() {
     blip = (blip + 1) % 50;
 
     display->sendBuffer();
-}
-
-void UIController::newline() {
-    display->setCursor(X_START, display->ty + LINE_HEIGHT);
 }
 
 void UIController::drawStatusIcons() {

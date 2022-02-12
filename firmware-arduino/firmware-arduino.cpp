@@ -21,8 +21,8 @@
 #define OLED_RST D3
 #define OLED_CS PIN_SPI0_SS
 
-#define PLUS_BUTTON D4
-#define MINUS_BUTTON D5
+#define PLUS_BUTTON D5
+#define MINUS_BUTTON D4
 
 #define CB_TX PIN_SERIAL1_TX
 #define CB_RX PIN_SERIAL1_RX
@@ -43,7 +43,7 @@ SystemStatus status(&settings);
 NetworkController networkController(fileIO, &status, &settings);
 
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
-UIController uiController(&status, &u8g2);
+UIController uiController(&status, &settings, &u8g2, MINUS_BUTTON, PLUS_BUTTON);
 
 void setup()
 {
@@ -79,9 +79,9 @@ void setup()
 
     uart_init(uart0, 9600);
 
-    if (gpio_get(MINUS_BUTTON)) {
+    if (gpio_get(PLUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_OTA);
-    } else if (gpio_get(PLUS_BUTTON)) {
+    } else if (gpio_get(MINUS_BUTTON)) {
         networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
     } else {
         networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
@@ -91,7 +91,6 @@ void setup()
 
         SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
         queue0->addBlocking(&beginCmd);
-
     }
 }
 

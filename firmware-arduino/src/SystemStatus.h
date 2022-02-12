@@ -41,6 +41,9 @@ public:
     inline bool isWaterTankEmpty() const { return latestStatusMessage.waterTankLow; }
     inline bool isInSleepMode() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_SLEEPING; }
 
+    inline bool hasPreviousBrew() const { return !currentlyBrewing() && lastBrewStartedAt.has_value() && lastBrewEndedAt.has_value(); }
+    inline uint32_t previousBrewDurationMs() const { return absolute_time_diff_us(lastBrewStartedAt.value(), lastBrewEndedAt.value()) / 1000; }
+
     inline bool currentlyBrewing() const { return latestStatusMessage.currentlyBrewing; }
     inline bool currentlyFillingServiceBoiler() const { return latestStatusMessage.currentlyFillingServiceBoiler; }
 

@@ -558,6 +558,12 @@ void NetworkController::publishMqtt() {
     stat["service_temp"] = status->getServiceTemperature();
     stat["water_tank_empty"] = status->isWaterTankEmpty();
 
+    if (status->hasPreviousBrew()) {
+        stat["last_shot_duration"] = (float)status->previousBrewDurationMs() / 1000.f;
+    } else {
+        stat["last_shot_duration"] = false;
+    }
+
     std::string output;
     serializeJson(doc, output);
     mqtt.publish(TOPIC_STATE, output.c_str(), false);

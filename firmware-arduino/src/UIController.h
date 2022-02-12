@@ -20,15 +20,24 @@ typedef enum {
 
 class UIController {
 public:
-    UIController(SystemStatus *status, U8G2 *display);
+    UIController(SystemStatus *status, SystemSettings* settings, U8G2 *display, uint minus_gpio, uint plus_gpio);
     void loop();
 
 private:
     SystemStatus* status;
+    SystemSettings* settings;
     U8G2* display;
+
+    uint minus_gpio;
+    uint plus_gpio;
+
+    bool minus;
+    bool plus;
+    bool previousMinus = false;
+    bool previousPlus = false;
+
     uint8_t blip;
 
-    void newline();
     void drawStatusIcons();
     void drawBrewScreen(BrewScreen screen, uint8_t seconds);
     void drawProgressBar();
