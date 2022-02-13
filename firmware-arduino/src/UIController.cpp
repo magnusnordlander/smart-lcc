@@ -3,6 +3,7 @@
 //
 
 #include <U8g2lib.h>
+#include <string>
 #include "UIController.h"
 #include "lccmacros.h"
 #include "xbm/bssr_on.h"
@@ -39,10 +40,52 @@ void UIController::loop() {
     minus = gpio_get(minus_gpio);
     plus = gpio_get(plus_gpio);
 
-    // Exit sleep mode on any button press
-    if (status->isInSleepMode() && ((plus && !previousPlus) || (minus && !previousMinus))) {
-        settings->setSleepMode(false);
+    if (status->mode == NETWORK_CONTROLLER_MODE_NORMAL) {
+        // Exit sleep mode on any button press
+        if (status->isInSleepMode() && ((plus && !previousPlus) || (minus && !previousMinus))) {
+            settings->setSleepMode(false);
+            sleepModeButtonPressBlock = make_timeout_time_ms(2000);
+        }
+
+        if (status->getState() == SYSTEM_CONTROLLER_STATE_HEATUP || status->getState() == SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING || status->getState() == SYSTEM_CONTROLLER_STATE_WARM) {
+            if (!minusStartedAt.has_value() && minus) {
+                minusStartedAt = get_absolute_time();
+            } else if (minusStartedAt.has_value() && !minus) {
+                int64_t minusPressTime = absolute_time_diff_us(minusStartedAt.value(), get_absolute_time());
+
+                if (minusPressTime > 5000 && minusPressTime < 3000000 && allowedByTimeout(sleepModeButtonPressBlock)) {
+                    settings->setTargetBrewTemp(status->getTargetBrewTemp() - 0.5f);
+                }
+
+                minusStartedAt.reset();
+            }
+
+            if (!plusStartedAt.has_value() && plus) {
+                plusStartedAt = get_absolute_time();
+            } else if (plusStartedAt.has_value() && !plus) {
+                int64_t plusPressTime = absolute_time_diff_us(plusStartedAt.value(), get_absolute_time());
+
+                if (plusPressTime > 5000 && plusPressTime < 3000000 && allowedByTimeout(sleepModeButtonPressBlock)) {
+                    settings->setTargetBrewTemp(status->getTargetBrewTemp() + 0.5f);
+                }
+
+                plusStartedAt.reset();
+            }
+
+            if (
+                    plusStartedAt.has_value() &&
+                    absolute_time_diff_us(plusStartedAt.value(), get_absolute_time()) > 3000000 &&
+                    allowedByTimeout(sleepModeSetBlock)
+                    ) {
+                if (!status->isInSleepMode()) {
+                    settings->setSleepMode(true);
+                }
+
+                sleepModeSetBlock = make_timeout_time_ms(3000);
+            }
+        }
     }
+
 
     display->clearBuffer();
     display->setFont(u8g2_font_5x7_tf);
@@ -265,4 +308,8 @@ void UIController::drawProgressBar() {
     }
 
     display->drawBox(start, y, width, 5);
+}
+
+inline bool UIController::allowedByTimeout(nonstd::optional<absolute_time_t> timeout) {
+    return !timeout.has_value() || absolute_time_diff_us(timeout.value(), get_absolute_time()) > 0;
 }

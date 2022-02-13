@@ -36,11 +36,19 @@ private:
     bool previousMinus = false;
     bool previousPlus = false;
 
+    nonstd::optional<absolute_time_t> sleepModeButtonPressBlock;
+    nonstd::optional<absolute_time_t> sleepModeSetBlock;
+
+    nonstd::optional<absolute_time_t> minusStartedAt;
+    nonstd::optional<absolute_time_t> plusStartedAt;
+
     uint8_t blip;
 
     void drawStatusIcons();
     void drawBrewScreen(BrewScreen screen, uint8_t seconds);
     void drawProgressBar();
+
+    inline bool allowedByTimeout(nonstd::optional<absolute_time_t> timeout);
 };
 
 
