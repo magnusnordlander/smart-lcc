@@ -116,6 +116,7 @@ void loop()
     status.mode = networkController.getMode();
     status.wifiConnected = networkController.isConnectedToWifi();
     status.mqttConnected = networkController.isConnectedToMqtt();
+    status.ipAddress = networkController.getIPAddress();
 
     uiController.loop();
 }

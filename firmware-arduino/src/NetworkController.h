@@ -29,6 +29,7 @@ public:
 
     bool hasConfiguration();
     bool isConnectedToWifi() const;
+    nonstd::optional<IPAddress> getIPAddress();
     bool isConnectedToMqtt();
     NetworkControllerMode getMode() {
         return mode;

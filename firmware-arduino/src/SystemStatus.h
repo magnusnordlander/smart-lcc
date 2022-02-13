@@ -25,6 +25,7 @@ public:
     NetworkControllerMode mode;
     bool wifiConnected = false;
     bool mqttConnected = false;
+    nonstd::optional<IPAddress> ipAddress;
 
     inline bool hasBailed() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_BAILED; }
     inline SystemControllerBailReason bailReason() const { return latestStatusMessage.bailReason; }

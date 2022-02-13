@@ -59,8 +59,13 @@ void UIController::loop() {
     } else if (status->mode == NETWORK_CONTROLLER_MODE_OTA) {
         display->setFont(u8g2_font_9x15_tf);
         display->drawStr(X_START + 10, Y_START + 20, "OTA mode");
-        display->setFont(u8g2_font_5x7_tf);
-        display->drawStr(X_START + 10, Y_START + 43, "192.168.232.200");
+        if (status->ipAddress.has_value()) {
+            IPAddress ip = status->ipAddress.value();
+
+            display->setFont(u8g2_font_5x7_tf);
+            std::string ipString = std::to_string(ip[0]) + "." + std::to_string(ip[1]) + "." + std::to_string(ip[2]) + "." + std::to_string(ip[3]);
+            display->drawStr(X_START + 10, Y_START + 43, ipString.c_str());
+        }
     } else if (status->getState() == SYSTEM_CONTROLLER_STATE_UNDETERMINED) {
         display->setFont(u8g2_font_9x15_tf);
         display->drawStr(X_START + 10, Y_START + 20, "Undetermined");

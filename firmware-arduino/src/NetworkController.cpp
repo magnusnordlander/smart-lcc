@@ -799,3 +799,11 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload.clear();
     mqttPayload.clear();
 }
+
+nonstd::optional<IPAddress> NetworkController::getIPAddress() {
+    if (!isConnectedToWifi()) {
+        return nonstd::optional<IPAddress>();
+    }
+
+    return nonstd::optional<IPAddress>(WiFi.localIP());
+}
