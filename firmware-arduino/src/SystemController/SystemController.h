@@ -67,6 +67,7 @@ private:
     nonstd::optional<absolute_time_t> unbailTimer{};
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
     nonstd::optional<absolute_time_t> brewStartedAt{};
+    nonstd::optional<absolute_time_t> latestAutosleepPreventingActionAt{};
 
     bool sleepModeRequested = false;
     bool ecoMode = true;

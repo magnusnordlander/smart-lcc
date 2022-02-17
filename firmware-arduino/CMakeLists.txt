@@ -29,7 +29,7 @@ add_executable(z_dummy
         src/SafePacketSender.cpp src/SafePacketSender.h
         src/MemoryFree.cpp src/MemoryFree.h
         src/FileIO.cpp src/FileIO.h
-        src/xbm/bssr_on.h src/xbm/eco_mode.h src/xbm/no_water.h src/xbm/sssr_on.h src/xbm/wifi_mqtt.h src/xbm/wifi_no_mqtt.h src/xbm/pump_on.h src/xbm/cup_no_smoke.h src/xbm/cup_smoke_1.h src/xbm/cup_smoke_2.h)
+        src/xbm/bssr_on.h src/xbm/eco_mode.h src/xbm/no_water.h src/xbm/sssr_on.h src/xbm/wifi_mqtt.h src/xbm/wifi_no_mqtt.h src/xbm/pump_on.h src/xbm/cup_no_smoke.h src/xbm/cup_smoke_1.h src/xbm/cup_smoke_2.h src/AutomationController.cpp src/AutomationController.h)
 set_target_properties(z_dummy PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(z_dummy PRIVATE
         arduino/user/libraries/Functional-Vlpp/src

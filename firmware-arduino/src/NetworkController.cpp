@@ -432,6 +432,7 @@ void NetworkController::ensureTopicsFormatted() {
         snprintf(TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_serv_temp_target/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_AUTO_SLEEP_MIN, 127, "homeassistant/number/%s/%s_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
 
         topicsFormatted = true;
     }
@@ -467,6 +468,7 @@ void NetworkController::publishMqtt() {
 
     conf["eco_mode"] = status->isInEcoMode();
     conf["sleep_mode"] = status->isInSleepMode();
+    conf["auto_sleep_min"] = settings->getAutoSleepMin();
 
     JsonObject stat = doc.createNestedObject("stat");
 
@@ -613,6 +615,8 @@ void NetworkController::callback(char *topic, byte *payload, unsigned int length
         settings->setEcoMode(doc["bool_value"]);
     } else if (cmd == "set_sleep_mode") {
         settings->setSleepMode(doc["bool_value"]);
+    } else if (cmd == "set_auto_sleep_min") {
+        settings->setAutoSleepMin(doc["int_value"]);
     } else {
         DEBUGV("Unknown command");
     }
@@ -650,7 +654,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["json_attr_tpl"] = R"({"bail_reason": "{{value_json.stat.internal.bail_reason}}", "watchdog_reset": "{{value_json.stat.internal.watchdog_reset}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -667,7 +671,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.brew_pid.p}}", "i": "{{value_json.stat.brew_pid.i}}", "d": "{{value_json.stat.brew_pid.d}}", "integral": "{{value_json.stat.brew_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.brew_pid.hysteresisMode}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_BREW_BOILER_SENSOR[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_BREW_BOILER_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -685,7 +689,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.service_pid.p}}", "i": "{{value_json.stat.service_pid.i}}", "d": "{{value_json.stat.service_pid.d}}", "integral": "{{value_json.stat.service_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.service_pid.hysteresisMode}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -699,9 +703,10 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["unit_of_meas"] = "dBm";
     autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.stat.wifi.ssid}}", "ip": "{{value_json.stat.wifi.ip}}"})";
     autoconfPayload["ic"] = "mdi:wifi";
+    autoconfPayload["entity_category"] = "diagnostic";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -718,9 +723,10 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["pl_off"] = R"({"cmd": "set_eco_mode", "bool_value": false})";
     autoconfPayload["stat_on"] = "ON";
     autoconfPayload["stat_off"] = "OFF";
+    autoconfPayload["entity_category"] = "config";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_ECO_MODE_SWITCH[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_ECO_MODE_SWITCH[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -738,9 +744,10 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["pl_off"] = R"({"cmd": "set_sleep_mode", "bool_value": false})";
     autoconfPayload["stat_on"] = "ON";
     autoconfPayload["stat_off"] = "OFF";
+    autoconfPayload["entity_category"] = "config";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_SLEEP_MODE_SWITCH[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_SLEEP_MODE_SWITCH[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -757,9 +764,10 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["max"] = 100;
     autoconfPayload["val_tpl"] = R"({{ value_json.conf.brew.temp_target | round(1) }})";
     autoconfPayload["cmd_tpl"] = R"({"cmd": "set_brew_temp_target", "float_value": {{value}} })";
+    autoconfPayload["entity_category"] = "config";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_BREW_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
@@ -776,12 +784,32 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["max"] = 150;
     autoconfPayload["val_tpl"] = R"({{ value_json.conf.service.temp_target | round(1) }})";
     autoconfPayload["cmd_tpl"] = R"({"cmd": "set_service_temp_target", "float_value": {{value}} })";
+    autoconfPayload["entity_category"] = "config";
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["cmd_t"] = TOPIC_COMMAND;
+    autoconfPayload["name"] = stdIdentifier + " Auto-sleep after";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_auto_sleep_min";
+    autoconfPayload["unit_of_meas"] = "minutes";
+    autoconfPayload["ic"] = "hass:sleep";
+    autoconfPayload["step"] = 1;
+    autoconfPayload["min"] = 0;
+    autoconfPayload["max"] = 300;
+    autoconfPayload["val_tpl"] = R"({{ value_json.conf.auto_sleep_min }})";
+    autoconfPayload["cmd_tpl"] = R"({"cmd": "set_auto_sleep_min", "int_value": {{value}} })";
+    autoconfPayload["entity_category"] = "config";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_AUTO_SLEEP_MIN[0], mqttPayload.c_str(), true);
+    autoconfPayload.clear();
+    mqttPayload.clear();
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
@@ -795,7 +823,7 @@ void NetworkController::publishAutoconfigure() {
 
 
     serializeJson(autoconfPayload, mqttPayload);
-    mqtt.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload.c_str());
+    mqtt.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 }

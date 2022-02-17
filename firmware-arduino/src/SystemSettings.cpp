@@ -7,7 +7,7 @@
 #include <hardware/watchdog.h>
 
 #define SETTING_FILENAME ("/fs/settings.dat")
-#define SETTING_VERSION ((uint8_t)4)
+#define SETTING_VERSION ((uint8_t)5)
 
 SystemSettings::SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, FileIO* fileIO): _commandQueue(commandQueue), _fileIO(fileIO) {
 
@@ -34,6 +34,11 @@ void SystemSettings::initialize() {
 
 void SystemSettings::setBrewTemperatureOffset(float offset) {
     currentSettings.brewTemperatureOffset = offset;
+    writeSettings();
+}
+
+void SystemSettings::setAutoSleepMin(uint16_t minutes) {
+    currentSettings.autoSleepMin = minutes;
     writeSettings();
 }
 

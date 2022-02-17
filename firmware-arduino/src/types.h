@@ -53,6 +53,7 @@ struct SettingStruct {
     bool ecoMode = false;
     float brewTemperatureTarget = 105;
     float serviceTemperatureTarget = 120;
+    uint16_t autoSleepMin = 0;
     PidSettings brewPidParameters = PidSettings{.Kp = 0.8, .Ki = 0.12, .Kd = 12.0, .windupLow = -7.f, .windupHigh = 7.f};
     PidSettings servicePidParameters = PidSettings{.Kp = 0.6, .Ki = 0.1, .Kd = 1.0, .windupLow = -10.f, .windupHigh = 10.f};
 };

@@ -16,11 +16,13 @@ public:
     void initialize();
 
     inline float getBrewTemperatureOffset() const { return currentSettings.brewTemperatureOffset; };
+    inline uint8_t getAutoSleepMin() const { return currentSettings.autoSleepMin; };
 
     void setBrewTemperatureOffset(float offset);
     void setEcoMode(bool ecoMode);
     void setSleepMode(bool sleepMode);
     void setTargetBrewTemp(float targetBrewTemp);
+    void setAutoSleepMin(uint16_t minutes);
     inline void setOffsetTargetBrewTemp(float offsetTargetBrewTemp) { setTargetBrewTemp(offsetTargetBrewTemp - currentSettings.brewTemperatureOffset); };
     void setTargetServiceTemp(float targetServiceTemp);
     void setBrewPidParameters(PidSettings params);

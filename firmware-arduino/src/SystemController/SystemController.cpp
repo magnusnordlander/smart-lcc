@@ -181,10 +181,6 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
     brewTempAverage.addValue(latestParsedPacket.brew_boiler_temperature);
     serviceTempAverage.addValue(latestParsedPacket.service_boiler_temperature);
 
-    if (latestParsedPacket.brew_switch && sleepModeRequested) {
-        sleepModeRequested = false;
-    }
-
     bool brewing = false;
 
     if (!waterTankEmptyLatch.get()) {
