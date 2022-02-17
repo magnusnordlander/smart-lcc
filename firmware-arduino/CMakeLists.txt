@@ -87,20 +87,40 @@ add_custom_target(compile COMMAND
         --build-property \"build.eeprom_start=285208576\"
         --build-property \"build.fs_start=281014272\"
         --build-property \"build.fs_end=285208576\"
-#        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
-#        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
         --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
-#        --show-properties
         ${CMAKE_SOURCE_DIR}
         -e --output-dir ${CMAKE_BINARY_DIR}/build
         --config-file ../arduino-config.yaml
         )
-# --build-property \"compiler.define=-DARDUINO= -DPICO_USE_STACK_GUARDS=1\"
+
+add_custom_target(compile-usb-debug COMMAND
+        arduino-cli compile
+        -v
+        -b rp2040:rp2040:arduino_nano_connect
+        --build-property \"upload.maximum_size=12578816\"
+        --build-property \"build.flash_length=12578816\"
+        --build-property \"build.eeprom_start=285208576\"
+        --build-property \"build.fs_start=281014272\"
+        --build-property \"build.fs_end=285208576\"
+        --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
+        --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
+        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
+        ${CMAKE_SOURCE_DIR}
+        -e --output-dir ${CMAKE_BINARY_DIR}/build
+        --config-file ../arduino-config.yaml
+        )
 
 add_custom_target(copy COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
 add_custom_target(compile-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
+add_custom_target(compile-usb-debug-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
-add_custom_target(upload-ota COMMAND
+add_custom_target(upload-ota-prod COMMAND
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
         ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.164 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
+add_custom_target(upload-ota-dev-1 COMMAND
+        python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
+        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.159 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
+add_custom_target(upload-ota-dev-2 COMMAND
+        python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
+        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.159 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)

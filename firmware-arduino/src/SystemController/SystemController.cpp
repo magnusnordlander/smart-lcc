@@ -160,6 +160,7 @@ void SystemController::loop() {
                 .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,
                 .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on && currentLccParsedPacket.service_boiler_solenoid_open,
                 .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
+                .lastSleepModeExitAt = lastSleepModeExitAt
         };
 
         if (!outgoingQueue->isFull()) {
@@ -309,6 +310,9 @@ void SystemController::handleCommands() {
                 break;
             case COMMAND_SET_SLEEP_MODE:
                 sleepModeRequested = command.bool1;
+                if (!command.bool1) {
+                    lastSleepModeExitAt = get_absolute_time();
+                }
                 break;
             case COMMAND_UNBAIL:
                 unbail();

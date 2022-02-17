@@ -113,6 +113,7 @@ struct SystemControllerStatusMessage{
     bool currentlyBrewing{};
     bool currentlyFillingServiceBoiler{};
     bool waterTankLow{};
+    absolute_time_t lastSleepModeExitAt = nil_time;
 };
 
 typedef enum {

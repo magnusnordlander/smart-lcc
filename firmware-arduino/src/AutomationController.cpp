@@ -21,14 +21,24 @@ void AutomationController::loop() {
         absolute_time_t timeout;
         uint32_t ms = (uint32_t)settings->getAutoSleepMin() * 60 * 1000;
 
-        if (status->lastBrewStartedAt.has_value()) {
+        if (status->lastBrewStartedAt.has_value() && absolute_time_diff_us(status->lastBrewStartedAt.value(), status->getLastSleepModeExitAt())) {
             timeout = delayed_by_ms(status->lastBrewStartedAt.value(), ms);
         } else {
-            timeout = delayed_by_ms(nil_time, ms);
+            timeout = delayed_by_ms(status->getLastSleepModeExitAt(), ms);
         }
 
-        if (absolute_time_diff_us(timeout, get_absolute_time()) > 0) {
+        if (absolute_time_diff_us(timeout, get_absolute_time()) > 0 && !status->isInSleepMode() && !isInSleepActivationGrace()) {
+            DEBUGV("Entering auto-sleep. Current time is %u\n", to_ms_since_boot(get_absolute_time()));
             settings->setSleepMode(true);
+            sleepActivationGrace = make_timeout_time_ms(10000);
         }
     }
+}
+
+bool AutomationController::isInSleepActivationGrace() {
+    if (!sleepActivationGrace.has_value()) {
+        return false;
+    }
+
+    return absolute_time_diff_us(sleepActivationGrace.value(), get_absolute_time()) <= 0;
 }

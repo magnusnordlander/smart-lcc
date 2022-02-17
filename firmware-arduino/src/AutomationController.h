@@ -18,6 +18,10 @@ public:
 private:
     SystemStatus* status;
     SystemSettings* settings;
+
+    nonstd::optional<absolute_time_t> sleepActivationGrace;
+
+    bool isInSleepActivationGrace();
 };
 
 
