@@ -5,6 +5,7 @@
 #include <hardware/regs/intctrl.h>
 #include <U8g2lib.h>
 #include <hardware/watchdog.h>
+#include "src/AutomationController.h"
 #include "src/NetworkController.h"
 #include "src/SystemController/SystemController.h"
 #include "src/SystemSettings.h"
@@ -41,6 +42,7 @@ SafePacketSender safePacketSender(uart0);
 SystemSettings settings(queue0, fileIO);
 SystemStatus status(&settings);
 NetworkController networkController(fileIO, &status, &settings);
+AutomationController automationController(&status, &settings);
 
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &settings, &u8g2, MINUS_BUTTON, PLUS_BUTTON);
@@ -86,6 +88,7 @@ void setup()
     } else {
         networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
         settings.initialize();
+        automationController.init();
 
         watchdog_enable(3000, false);
 
@@ -100,6 +103,8 @@ void loop()
 
     if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
         safePacketSender.loop();
+    } else {
+        automationController.loop();
     }
 
     SystemControllerStatusMessage message;

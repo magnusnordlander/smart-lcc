@@ -57,6 +57,8 @@ public:
     inline PidRuntimeParameters getBrewPidRuntimeParameters() const { return latestStatusMessage.brewPidParameters; }
     inline PidRuntimeParameters getServicePidRuntimeParameters() const { return latestStatusMessage.servicePidParameters; }
 
+    inline absolute_time_t getLastSleepModeExitAt() const { return latestStatusMessage.lastSleepModeExitAt; };
+
     void updateStatusMessage(SystemControllerStatusMessage message);
 private:
     SystemSettings* settings;

@@ -160,6 +160,7 @@ void SystemController::loop() {
                 .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,
                 .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on && currentLccParsedPacket.service_boiler_solenoid_open,
                 .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
+                .lastSleepModeExitAt = lastSleepModeExitAt
         };
 
         if (!outgoingQueue->isFull()) {
@@ -180,10 +181,6 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     brewTempAverage.addValue(latestParsedPacket.brew_boiler_temperature);
     serviceTempAverage.addValue(latestParsedPacket.service_boiler_temperature);
-
-    if (latestParsedPacket.brew_switch && sleepModeRequested) {
-        sleepModeRequested = false;
-    }
 
     bool brewing = false;
 
@@ -313,6 +310,9 @@ void SystemController::handleCommands() {
                 break;
             case COMMAND_SET_SLEEP_MODE:
                 sleepModeRequested = command.bool1;
+                if (!command.bool1) {
+                    lastSleepModeExitAt = get_absolute_time();
+                }
                 break;
             case COMMAND_UNBAIL:
                 unbail();
