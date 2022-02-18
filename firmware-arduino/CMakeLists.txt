@@ -116,6 +116,7 @@ add_custom_target(compile-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Vo
 add_custom_target(compile-usb-debug-and-copy DEPENDS compile-usb-debug COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
 add_custom_target(upload-ota-prod COMMAND
+        mkdir -p ../prod-ota-uploads && cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 ../prod-ota-uploads/`date +%Y%m%dT%H%M%S`.uf2 &&
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
         ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.164 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
 add_custom_target(upload-ota-dev-1 COMMAND
