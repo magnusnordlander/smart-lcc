@@ -125,6 +125,8 @@ In this firmware, a custom firmware for the Ublox Nina W102 will be developed to
   * Minimum on/off-time seems to be around 100-120 ms
   * When in eco mode, a warmup consists of running the coffee boiler full blast, holding the temperature around 130°C for 4 minutes, then dropping to the set point
   * When in regular mode, there is a kind of time slot system for which boiler is used. The time slots are 1 second wide.
+  * Shot saving seems to be implemented by simply blocking new brews from starting when the tank is empty. There's no fanciness with allowing it to run for a certain amount of time or anything.
+  * It takes about 3 seconds for the LCC to pick up on an empty water tank (presumably to debounce the signal)
 
 ## Licensing
 
