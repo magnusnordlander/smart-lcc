@@ -184,20 +184,25 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
 
     bool brewing = false;
 
-    if (!waterTankEmptyLatch.get()) {
+    // If we're not already brewing, don't start a brew or fill the service boiler if there is no water in the tank
+    if (!brewStartedAt.has_value()) {
+        if (!waterTankEmptyLatch.get()) {
+            if (latestParsedPacket.brew_switch) {
+                lcc.pump_on = true;
+                brewing = true;
+                brewStartedAt = get_absolute_time();
+            } else if (serviceBoilerLowLatch.get()) { // Starting a brew has priority over filling the service boiler
+                lcc.pump_on = true;
+                lcc.service_boiler_solenoid_open = true;
+            }
+        }
+    } else { // If we are brewing, keep brewing even if there is no water in the tank
         if (latestParsedPacket.brew_switch) {
             lcc.pump_on = true;
             brewing = true;
-        } else if (serviceBoilerLowLatch.get()) {
-            lcc.pump_on = true;
-            lcc.service_boiler_solenoid_open = true;
+        } else { // Filling the service boiler is not an option while brewing
+            brewStartedAt.reset();
         }
-    }
-
-    if (brewing && !brewStartedAt.has_value()) {
-        brewStartedAt = get_absolute_time();
-    } else if (!brewing && brewStartedAt.has_value()) {
-        brewStartedAt.reset();
     }
 
     /*
