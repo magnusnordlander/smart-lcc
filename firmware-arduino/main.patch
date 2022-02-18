@@ -1,0 +1,11 @@
+--- arduino/data/packages/rp2040/hardware/rp2040/1.9.14/cores/rp2040/main.cpp
++++ arduino/data/packages/rp2040/hardware/rp2040/1.9.14/cores/rp2040/main.cpp
+@@ -41,7 +41,7 @@
+ // Optional 2nd core setup and loop
+ extern void setup1() __attribute__((weak));
+ extern void loop1() __attribute__((weak));
+-static void main1() {
++extern "C" void main1() {
+     rp2040.fifo.registerCore();
+     if (setup1) {
+         setup1();

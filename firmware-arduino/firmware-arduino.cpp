@@ -2,7 +2,6 @@
 #include <pins_arduino.h>
 #include <hardware/uart.h>
 #include <hardware/irq.h>
-#include <hardware/regs/intctrl.h>
 #include <U8g2lib.h>
 #include <hardware/watchdog.h>
 #include "src/AutomationController.h"
@@ -47,8 +46,9 @@ AutomationController automationController(&status, &settings);
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &settings, &u8g2, MINUS_BUTTON, PLUS_BUTTON);
 
-void setup()
-{
+volatile SystemMode systemMode = SYSTEM_MODE_UNDETERMINED;
+
+void setup() {
     u8g2.begin();
 
     u8g2.clearBuffer();
@@ -58,14 +58,12 @@ void setup()
 #ifdef DEBUG_RP2040_CORE
     Serial.begin(115200);
     while(!Serial) { sleep_ms(1); }
+    sleep_ms(500);
 #endif
 
-    fileSystem->begin();
-
     u8g2.clearBuffer();
-    u8g2.drawDisc(64, 32, 20);
+    u8g2.drawDisc(48, 32, 20);
     u8g2.sendBuffer();
-
 
     gpio_set_dir(PLUS_BUTTON, false);
     gpio_pull_down(PLUS_BUTTON);
@@ -82,26 +80,44 @@ void setup()
     uart_init(uart0, 9600);
 
     if (gpio_get(PLUS_BUTTON)) {
-        networkController.init(SYSTEM_MODE_OTA);
+        systemMode = SYSTEM_MODE_OTA;
     } else if (gpio_get(MINUS_BUTTON)) {
-        networkController.init(SYSTEM_MODE_CONFIG);
+        systemMode = SYSTEM_MODE_CONFIG;
     } else {
-        networkController.init(SYSTEM_MODE_NORMAL);
+        systemMode = SYSTEM_MODE_NORMAL;
+        watchdog_enable(3000, false);
+    }
+}
+
+
+void setup1()
+{
+    while (systemMode == SYSTEM_MODE_UNDETERMINED) {
+        tight_loop_contents();
+    }
+
+    DEBUGV("Setup1\n");
+
+    fileSystem->begin();
+
+    u8g2.clearBuffer();
+    u8g2.drawDisc(64, 32, 20);
+    u8g2.sendBuffer();
+
+    networkController.init(systemMode);
+
+    if (systemMode == SYSTEM_MODE_NORMAL) {
         settings.initialize();
         automationController.init();
-
-        watchdog_enable(3000, false);
 
         SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
         queue0->addBlocking(&beginCmd);
     }
 }
 
-void loop()
+void loop1()
 {
-    //DEBUGV("Loop. Memfree: %u\n", freeMemory());
-
-    if (networkController.getMode() != SYSTEM_MODE_NORMAL) {
+    if (systemMode != SYSTEM_MODE_NORMAL) {
         safePacketSender.loop();
     } else {
         automationController.loop();
@@ -126,6 +142,6 @@ void loop()
     uiController.loop();
 }
 
-void loop1() {
+void loop() {
     systemController.loop();
 }

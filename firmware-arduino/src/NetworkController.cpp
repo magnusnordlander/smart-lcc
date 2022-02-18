@@ -504,7 +504,7 @@ void NetworkController::publishMqtt() {
     stat_internal["rx"] = status->hasReceivedControlBoardPacket;
     stat_internal["tx"] = status->hasSentLccPacket;
     stat_internal["bailed"] = status->hasBailed();
-    stat_internal["watchdog_reset"] = watchdog_caused_reboot();
+    stat_internal["watchdog_reset"] = watchdog_enable_caused_reboot();
 
     switch (status->bailReason()) {
         case BAIL_REASON_NONE:

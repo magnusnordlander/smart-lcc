@@ -17,7 +17,7 @@ void SystemSettings::initialize() {
     readSettings();
 
     // If we've reset due to the watchdog, use the previous sleep mode setting, otherwise reset it to false
-    if (currentSettings.sleepMode && !watchdog_caused_reboot()) {
+    if (currentSettings.sleepMode && !watchdog_enable_caused_reboot()) {
         currentSettings.sleepMode = false;
         writeSettings();
     }

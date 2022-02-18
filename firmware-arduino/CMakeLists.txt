@@ -77,6 +77,7 @@ add_custom_target(install-libraries COMMAND
         )
 add_custom_target(install-core COMMAND
         arduino-cli core install rp2040:rp2040@1.9.14 --config-file ../arduino-config.yaml &&
+        patch -p0 main.patch &&
         arduino-cli core install arduino:avr --config-file ../arduino-config.yaml)
 add_custom_target(compile COMMAND
         arduino-cli compile

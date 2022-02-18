@@ -12,6 +12,8 @@
 #include <hardware/irq.h>
 #include <hardware/regs/intctrl.h>
 
+extern "C" void main1();
+
 static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
     timeout_state_t ts;
     check_timeout_fn timeout_check = init_single_timeout_until(&ts, timeout_time);
@@ -45,14 +47,26 @@ SystemController::SystemController(
 }
 
 void SystemController::loop() {
-    while (!readyToGo) {
+    if (!readyToGo) {
+        if (watchdog_get_count() > 0) {
+            watchdog_update();
+        }
+
         handleCommands();
         return;
     }
 
-        if (core0Alive) {
-            watchdog_update();
-        }
+    if (watchdog_get_count() > 0) {
+        watchdog_update();
+    }
+
+    if (core1RebootTimer.has_value() && absolute_time_diff_us(core1RebootTimer.value(), get_absolute_time()) > 0) {
+        DEBUGV("Resetting Core1\n");
+        multicore_reset_core1();
+        multicore_launch_core1(main1);
+        DEBUGV("Reset done\n");
+        core1RebootTimer = make_timeout_time_ms(5000);
+    }
 
         if(uart_is_readable(uart)) {
 //            printf("There's cruft inside the UART. That's weird. Wait a little. Clear that out, and wait a little.\n");
@@ -164,10 +178,13 @@ void SystemController::loop() {
         };
 
         if (!outgoingQueue->isFull()) {
+            core1RebootTimer.reset();
             outgoingQueue->tryAdd(&message);
         } else {
-//            printf("Core0 isn't handling our messages :/ \n");
-            core0Alive = false;
+            if (!core1RebootTimer.has_value()) {
+                DEBUGV("Core1 stopped handling our messages\n");
+                core1RebootTimer = make_timeout_time_ms(2000);
+            }
         }
 
         sleep_until(timeout);

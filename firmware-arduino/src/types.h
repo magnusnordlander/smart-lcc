@@ -8,6 +8,7 @@
 #include <pico/time.h>
 
 typedef enum {
+    SYSTEM_MODE_UNDETERMINED,
     SYSTEM_MODE_NORMAL,
     SYSTEM_MODE_CONFIG,
     SYSTEM_MODE_OTA
