@@ -113,7 +113,7 @@ add_custom_target(compile-usb-debug COMMAND
 add_custom_target(copy COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
 add_custom_target(compile-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
-add_custom_target(compile-usb-debug-and-copy DEPENDS compile COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
+add_custom_target(compile-usb-debug-and-copy DEPENDS compile-usb-debug COMMAND bash -c \"if [ -d /Volumes/RPI-RP2 ]\; then cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 /Volumes/RPI-RP2/ \; else echo Pico not mounted\; fi\")
 
 add_custom_target(upload-ota-prod COMMAND
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
