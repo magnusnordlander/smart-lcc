@@ -23,7 +23,7 @@ public:
     nonstd::optional<absolute_time_t> lastBrewEndedAt;
     nonstd::optional<absolute_time_t> plannedAutoSleepAt;
 
-    NetworkControllerMode mode;
+    SystemMode mode;
     bool wifiConnected = false;
     bool mqttConnected = false;
     nonstd::optional<IPAddress> ipAddress;

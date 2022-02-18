@@ -82,11 +82,11 @@ void setup()
     uart_init(uart0, 9600);
 
     if (gpio_get(PLUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_OTA);
+        networkController.init(SYSTEM_MODE_OTA);
     } else if (gpio_get(MINUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
+        networkController.init(SYSTEM_MODE_CONFIG);
     } else {
-        networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
+        networkController.init(SYSTEM_MODE_NORMAL);
         settings.initialize();
         automationController.init();
 
@@ -101,7 +101,7 @@ void loop()
 {
     //DEBUGV("Loop. Memfree: %u\n", freeMemory());
 
-    if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
+    if (networkController.getMode() != SYSTEM_MODE_NORMAL) {
         safePacketSender.loop();
     } else {
         automationController.loop();

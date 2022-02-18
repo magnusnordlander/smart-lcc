@@ -40,7 +40,7 @@ void UIController::loop() {
     minus = gpio_get(minus_gpio);
     plus = gpio_get(plus_gpio);
 
-    if (status->mode == NETWORK_CONTROLLER_MODE_NORMAL) {
+    if (status->mode == SYSTEM_MODE_NORMAL) {
         // Exit sleep mode on any button press
         if (status->isInSleepMode() && ((plus && !previousPlus) || (minus && !previousMinus))) {
             settings->setSleepMode(false);
@@ -95,11 +95,11 @@ void UIController::loop() {
 
     drawStatusIcons();
 
-    if (status->mode == NETWORK_CONTROLLER_MODE_CONFIG) {
+    if (status->mode == SYSTEM_MODE_CONFIG) {
         display->setFont(u8g2_font_9x15_tf);
         display->drawStr(X_START + 10, Y_START + 20, "Network");
         display->drawStr(X_START + 10, Y_START + 35, "Config");
-    } else if (status->mode == NETWORK_CONTROLLER_MODE_OTA) {
+    } else if (status->mode == SYSTEM_MODE_OTA) {
         display->setFont(u8g2_font_9x15_tf);
         display->drawStr(X_START + 10, Y_START + 20, "OTA mode");
         if (status->ipAddress.has_value()) {

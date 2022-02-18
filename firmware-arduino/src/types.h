@@ -8,10 +8,10 @@
 #include <pico/time.h>
 
 typedef enum {
-    NETWORK_CONTROLLER_MODE_NORMAL,
-    NETWORK_CONTROLLER_MODE_CONFIG,
-    NETWORK_CONTROLLER_MODE_OTA
-} NetworkControllerMode;
+    SYSTEM_MODE_NORMAL,
+    SYSTEM_MODE_CONFIG,
+    SYSTEM_MODE_OTA
+} SystemMode;
 
 typedef enum {
     SYSTEM_CONTROLLER_STATE_UNDETERMINED = 0,

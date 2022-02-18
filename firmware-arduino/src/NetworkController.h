@@ -25,19 +25,19 @@ class NetworkController {
 public:
     explicit NetworkController(FileIO* _fileIO, SystemStatus* _status, SystemSettings* _settings);
 
-    void init(NetworkControllerMode mode);
+    void init(SystemMode mode);
 
     bool hasConfiguration();
     bool isConnectedToWifi() const;
     nonstd::optional<IPAddress> getIPAddress();
     bool isConnectedToMqtt();
-    NetworkControllerMode getMode() {
+    SystemMode getMode() {
         return mode;
     }
 
     void loop();
 private:
-    NetworkControllerMode mode;
+    SystemMode mode;
     FileIO* fileIO;
     SystemStatus* status;
     SystemSettings* settings;
