@@ -18,20 +18,22 @@ void AutomationController::loop() {
     }
 
     if (settings->getAutoSleepMin() > 0) {
-        absolute_time_t timeout;
         uint32_t ms = (uint32_t)settings->getAutoSleepMin() * 60 * 1000;
 
         if (status->lastBrewStartedAt.has_value() && absolute_time_diff_us(status->lastBrewStartedAt.value(), status->getLastSleepModeExitAt())) {
-            timeout = delayed_by_ms(status->lastBrewStartedAt.value(), ms);
+            status->plannedAutoSleepAt = delayed_by_ms(status->lastBrewStartedAt.value(), ms);
         } else {
-            timeout = delayed_by_ms(status->getLastSleepModeExitAt(), ms);
+            status->plannedAutoSleepAt = delayed_by_ms(status->getLastSleepModeExitAt(), ms);
         }
 
-        if (absolute_time_diff_us(timeout, get_absolute_time()) > 0 && !status->isInSleepMode() && !isInSleepActivationGrace()) {
+        if (absolute_time_diff_us(status->plannedAutoSleepAt.value(), get_absolute_time()) > 0 && !status->isInSleepMode() && !isInSleepActivationGrace()) {
             DEBUGV("Entering auto-sleep. Current time is %u\n", to_ms_since_boot(get_absolute_time()));
+            DEBUGV("Last sleep mode exit: %u\n", to_ms_since_boot(status->getLastSleepModeExitAt()));
             settings->setSleepMode(true);
             sleepActivationGrace = make_timeout_time_ms(10000);
         }
+    } else {
+        status->plannedAutoSleepAt.reset();
     }
 }
 

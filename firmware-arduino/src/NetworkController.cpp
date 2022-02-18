@@ -433,6 +433,7 @@ void NetworkController::ensureTopicsFormatted() {
         snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_AUTO_SLEEP_MIN, 127, "homeassistant/number/%s/%s_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_PLANNED_AUTO_SLEEP_MIN, 127, "homeassistant/sensor/%s/%s_planned_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
 
         topicsFormatted = true;
     }
@@ -559,6 +560,18 @@ void NetworkController::publishMqtt() {
     stat["brew_temp"] = status->getOffsetBrewTemperature();
     stat["service_temp"] = status->getServiceTemperature();
     stat["water_tank_empty"] = status->isWaterTankEmpty();
+
+    if (!status->plannedAutoSleepAt.has_value()) {
+        stat["auto_sleep_in"] = false;
+    } else {
+        double sleepTime = (double)absolute_time_diff_us(get_absolute_time(), status->plannedAutoSleepAt.value()) / 60000000.f;
+        if (sleepTime >= 0.f) {
+            stat["auto_sleep_in"] = sleepTime;
+        } else {
+            stat["auto_sleep_in"] = false;
+        }
+    }
+
 
     if (status->hasPreviousBrew()) {
         stat["last_shot_duration"] = (float)status->previousBrewDurationMs() / 1000.f;
@@ -826,6 +839,24 @@ void NetworkController::publishAutoconfigure() {
     mqtt.publish(&TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
+
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " Planned Auto Sleep in";
+    autoconfPayload["uniq_id"] = stdIdentifier + "_planned_auto_sleep";
+    autoconfPayload["val_tpl"] = "{{value_json.stat.auto_sleep_in | round(0) }}";
+    autoconfPayload["unit_of_meas"] = "minutes";
+    autoconfPayload["ic"] = "hass:sleep";
+    autoconfPayload["entity_category"] = "diagnostic";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_PLANNED_AUTO_SLEEP_MIN[0], mqttPayload.c_str(), true);
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
 }
 
 nonstd::optional<IPAddress> NetworkController::getIPAddress() {

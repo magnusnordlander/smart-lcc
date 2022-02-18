@@ -94,6 +94,7 @@ private:
     char TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR[128];
     char TOPIC_AUTOCONF_WIFI_SENSOR[128];
     char TOPIC_AUTOCONF_AUTO_SLEEP_MIN[128];
+    char TOPIC_AUTOCONF_PLANNED_AUTO_SLEEP_MIN[128];
 
     void callback(char *topic, byte *payload, unsigned int length);
 
