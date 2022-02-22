@@ -126,12 +126,17 @@ void NetworkController::loopNormal() {
             case WL_DISCONNECTED:
                 _isConnectedToWifi = false;
                 return attemptWifiConnection();
+            case WL_NO_MODULE:
+                DEBUGV("No module. De-initing and re-initing.\n");
+                WiFiDrv::wifiDriverDeinit();
+                sleep_ms(50);
+                WiFiDrv::wifiDriverInit();
+                return;
             case WL_AP_LISTENING:
             case WL_AP_CONNECTED:
             case WL_AP_FAILED:
-            case WL_NO_MODULE:
                 _isConnectedToWifi = false;
-                DEBUGV("Unexpected Wifi mode\n");
+                DEBUGV("Unexpected Wifi mode %u\n", WiFi.status());
                 return;
         }
 
@@ -214,10 +219,15 @@ void NetworkController::loopOta() {
             case WL_DISCONNECTED:
                 _isConnectedToWifi = false;
                 return attemptWifiConnection();
+            case WL_NO_MODULE:
+                DEBUGV("No module. De-initing and re-initing.\n");
+                WiFiDrv::wifiDriverDeinit();
+                sleep_ms(50);
+                WiFiDrv::wifiDriverInit();
+                return;
             case WL_AP_LISTENING:
             case WL_AP_CONNECTED:
             case WL_AP_FAILED:
-            case WL_NO_MODULE:
                 _isConnectedToWifi = false;
                 DEBUGV("Unexpected Wifi mode\n");
                 return;

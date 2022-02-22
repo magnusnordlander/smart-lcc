@@ -105,7 +105,7 @@ add_custom_target(compile-usb-debug COMMAND
         --build-property \"build.fs_end=285208576\"
         --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
         --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
-        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
+        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL= -DPICO_USE_STACK_GUARDS=\"
         ${CMAKE_SOURCE_DIR}
         -e --output-dir ${CMAKE_BINARY_DIR}/build
         --config-file ../arduino-config.yaml
