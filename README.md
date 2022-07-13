@@ -1,6 +1,6 @@
 # Smart LCC
 
-A smarter LCC for the Lelit Bianca, with Wi-Fi and stuff.
+A smarter LCC for the Lelit Bianca V2, with Wi-Fi and stuff.
 
 Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-protocol](https://github.com/magnusnordlander/lelit-bianca-protocol).
 
@@ -11,6 +11,10 @@ Consider this project beta quality.
 The revision B PCB works well. Manufacturing files are available in the `pcb/` directory. Unless you're *very* good at soldering fine pitch by hand, I suggest manufacturing with SMT assembly. I've used JLCPCB for my manufacturing runs, and the files have worked well there. I do have some spares of both the Rev A PCB (just the PCB) and the Rev B PCB (the difficult components already soldered, but does need a connector, buttons, a display and an Arduino). If you have experience of embedded programming, want to help with the project and you want one of the PCBs, reach out.
 
 Considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. Your machine uses both line voltage power, high pressured hot water, steam and other dangerous components. There is a risk of both damaging the machine, personal injury and property damage, the liability for which you assume yourself. This is not the stage to get on board with this project if you aren't willing to deal with those risks. 
+
+### A note on Bianca versions
+
+This project has only been tested on a Bianca V2. There are (at the time of writing) three versions of the Bianca, V1, V2, and V3. To my understanding it should work on a Bianca V1, but it's untested. As for the Bianca V3, it features upgraded hardware (a different solenoid valve with high/low flow signals), which this project doesn't support. Since I don't have access to a Bianca V3 (for reverse engineering or otherwise), support is currently not on the roadmap.
 
 ## Project goals
 
