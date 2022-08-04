@@ -10,11 +10,22 @@ Consider this project beta quality.
 
 The revision B PCB works well. Manufacturing files are available in the `pcb/` directory. Unless you're *very* good at soldering fine pitch by hand, I suggest manufacturing with SMT assembly. I've used JLCPCB for my manufacturing runs, and the files have worked well there. I do have some spares of both the Rev A PCB (just the PCB) and the Rev B PCB (the difficult components already soldered, but does need a connector, buttons, a display and an Arduino). If you have experience of embedded programming, want to help with the project and you want one of the PCBs, reach out.
 
+I am considering making a Rev C PCB that doesn't use an Arduino, but rather RP2040 and ESP32 chips directly. This would allow for a relocated display connector (similar to the original LCC) and a better antenna, which is useful since the board is located inside a metal enclosure. We'll have to see though.
+
 Considering this plugs in to an expensive machine it bears to mention: Anything you do with this, you do at your own risk. Components have been fried already during the course of this project. Your machine uses both line voltage power, high pressured hot water, steam and other dangerous components. There is a risk of both damaging the machine, personal injury and property damage, the liability for which you assume yourself. This is not the stage to get on board with this project if you aren't willing to deal with those risks. 
 
 ### A note on Bianca versions
 
 This project has only been tested on a Bianca V2. There are (at the time of writing) three versions of the Bianca, V1, V2, and V3. To my understanding it should work on a Bianca V1, but it's untested. As for the Bianca V3, it features upgraded hardware (a different solenoid valve with high/low flow signals), which this project doesn't support. Since I don't have access to a Bianca V3 (for reverse engineering or otherwise), support is currently not on the roadmap.
+
+The LCC-relevant hardware differences between a V2 and a V3 Bianca (to my understanding) are the following:
+
+* A new solenoid to control full/low flow from the pump (upgradable via the V3 upgrade kit)
+* The power light now an LED and software controlled (not a part of the V3 upgrade kit)
+
+Most notably, the Gicar box is the same, which is very interesting.
+
+Like I said, I do not have access to a Bianca V3, so reverse engineering the protocol changes for the V3 would be difficult, and validation would be impossible. That being said, if someone were to reverse engineer the protocol changes, a new version of this firmware could be made that would be backwards-compatible with the Bianca V2. That is absolutely an interesting proposition.
 
 ## Project goals
 
@@ -109,6 +120,7 @@ In this firmware, a custom firmware for the Ublox Nina W102 will be developed to
 (In no particular order)
 
 * https://github.com/improv-wifi/sdk-cpp
+* https://www.youtube.com/watch?v=fAEDHOUJCEo
 * Random facts about the stock implementation:
   * Some implementation details are available in https://www.1st-line.com/wp-content/uploads/2018/12/Parameter-settings-technical-menu-Bianca-PL162T.pdf
     * Original parameters (not necessarily applicable since PID parameters are hightly implementation dependent):
