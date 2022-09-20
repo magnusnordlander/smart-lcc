@@ -70,14 +70,11 @@ add_custom_target(install-libraries COMMAND
         rm -rf ../arduino/user/libraries/PubSubClient &&
         mkdir ../arduino/user/libraries/PubSubClient &&
         git clone https://github.com/magnusnordlander/pubsubclient.git ../arduino/user/libraries/PubSubClient/ &&
-        rm -rf ../arduino/user/libraries/ArduinoOTA &&
-        mkdir ../arduino/user/libraries/ArduinoOTA &&
-        git clone https://github.com/jandrassy/ArduinoOTA.git ../arduino/user/libraries/ArduinoOTA/ &&
-        cd ../arduino/user/libraries/ArduinoOTA && git checkout fbfeb4bf4211b8bf2837a59d1359818feab3d9e8
+        arduino-cli lib install ArduinoOTA@1.0.8  --config-file ../arduino-config.yaml
         )
 add_custom_target(install-core COMMAND
         arduino-cli core install rp2040:rp2040@1.9.14 --config-file ../arduino-config.yaml &&
-        patch -p0 main.patch &&
+        patch -p0 -i main.patch &&
         arduino-cli core install arduino:avr --config-file ../arduino-config.yaml)
 add_custom_target(compile COMMAND
         arduino-cli compile
@@ -94,6 +91,22 @@ add_custom_target(compile COMMAND
         --config-file ../arduino-config.yaml
         )
 
+add_custom_target(compile-dev COMMAND
+        arduino-cli compile
+        -v
+        --build-property \"upload.maximum_size=12578816\"
+        --build-property \"build.flash_length=12578816\"
+        --build-property \"build.eeprom_start=285208576\"
+        --build-property \"build.fs_start=281014272\"
+        --build-property \"build.fs_end=285208576\"
+        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL=\"
+        ${CMAKE_SOURCE_DIR}
+        -e --output-dir ${CMAKE_BINARY_DIR}/build
+        --config-file ../arduino-config.yaml
+        --profile arduino_nano_connect
+
+        )
+
 add_custom_target(compile-usb-debug COMMAND
         arduino-cli compile
         -v
@@ -105,7 +118,7 @@ add_custom_target(compile-usb-debug COMMAND
         --build-property \"build.fs_end=285208576\"
         --build-property \"build.debug_port=-DDEBUG_RP2040_PORT=Serial\"
         --build-property \"build.debug_level=-DDEBUG_RP2040_CORE\"
-        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL= -DPICO_USE_STACK_GUARDS=\"
+        --build-property \"compiler.cpp.extra_flags=-DPUBSUB_USE_FUNCTIONAL= -DPICO_USE_STACK_GUARDS= -DKH_WIFININA_SPI_DEBUG=2\"
         ${CMAKE_SOURCE_DIR}
         -e --output-dir ${CMAKE_BINARY_DIR}/build
         --config-file ../arduino-config.yaml
@@ -119,10 +132,7 @@ add_custom_target(compile-usb-debug-and-copy DEPENDS compile-usb-debug COMMAND b
 add_custom_target(upload-ota-prod COMMAND
         mkdir -p ../prod-ota-uploads && cp ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 ../prod-ota-uploads/`date +%Y%m%dT%H%M%S`.uf2 &&
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
-        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.164 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
+        ../arduinoOTA/arduinoOTA -address 192.168.11.83 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
 add_custom_target(upload-ota-dev-1 COMMAND
         python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
-        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.159 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
-add_custom_target(upload-ota-dev-2 COMMAND
-        python3 ../uf2conv.py ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.uf2 -o ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin &&
-        ../arduino/data/packages/arduino/tools/arduinoOTA/1.3.0/bin/arduinoOTA -address 192.168.10.159 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)
+        ../arduinoOTA/arduinoOTA -address 192.168.20.86 -port 65280 -username arduino -password password -sketch ${CMAKE_BINARY_DIR}/build/firmware-arduino.ino.bin -upload /sketch -b)

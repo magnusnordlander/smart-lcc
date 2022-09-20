@@ -1,0 +1,14 @@
+profile:
+  arduino_nano_connect:
+    fqbn: rp2040:rp2040:arduino_nano_connect
+    platforms:
+      - platform: rp2040:rp2040 (1.9.14)
+        platform_index_url: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+    libraries:
+      - U8g2 (2.31.2)
+      - WiFiNINA_Generic (1.8.14-5)
+      - ArduinoOTA (1.0.8)
+      - CRC32 (2.0.0)
+      - WiFiWebServer (1.5.5-1)
+      - Functional-Vlpp (1.0.2)
+      - ArduinoJson (6.19.1)

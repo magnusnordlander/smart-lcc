@@ -216,7 +216,7 @@ void UIController::loop() {
     }
 
     if (blip < 25) {
-        display->drawDisc(100, 5, 2);
+        display->drawDisc(104, 10, 2);
     }
     blip = (blip + 1) % 50;
 

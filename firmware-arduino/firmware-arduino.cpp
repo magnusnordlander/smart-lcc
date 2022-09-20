@@ -52,7 +52,9 @@ void setup() {
     u8g2.begin();
 
     u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
     u8g2.drawDisc(32, 32, 20);
+    u8g2.drawStr(32, 64, "AA");
     u8g2.sendBuffer();
 
 #ifdef DEBUG_RP2040_CORE
@@ -62,7 +64,9 @@ void setup() {
 #endif
 
     u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
     u8g2.drawDisc(48, 32, 20);
+    u8g2.drawStr(48, 64, "BB");
     u8g2.sendBuffer();
 
     gpio_set_dir(PLUS_BUTTON, false);
@@ -101,14 +105,28 @@ void setup1()
     fileSystem->begin();
 
     u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
     u8g2.drawDisc(64, 32, 20);
+    u8g2.drawStr(64, 64, "CC");
     u8g2.sendBuffer();
 
     networkController.init(systemMode);
 
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
+    u8g2.drawDisc(72, 32, 20);
+    u8g2.drawStr(72, 64, "DD");
+    u8g2.sendBuffer();
+
     if (systemMode == SYSTEM_MODE_NORMAL) {
         settings.initialize();
         automationController.init();
+
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_9x15_tf);
+        u8g2.drawDisc(80, 32, 20);
+        u8g2.drawStr(80, 64, "EE");
+        u8g2.sendBuffer();
 
         SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
         queue0->addBlocking(&beginCmd);
@@ -117,14 +135,18 @@ void setup1()
 
 void loop1()
 {
+    /* @todo This should not be in a timer */
     if (systemMode != SYSTEM_MODE_NORMAL) {
         safePacketSender.loop();
     } else {
         automationController.loop();
     }
 
+    /* @todo We can either use hardware_timer or pico_time/repeating_timer. Regardless, we'll have to create a core1 alarm pool */
+
     SystemControllerStatusMessage message;
 
+    /* @todo Check if pico_queue is interrupt safe */
     while (!queue1->isEmpty()) {
         queue1->removeBlocking(&message);
         status.updateStatusMessage(message);
@@ -139,6 +161,11 @@ void loop1()
     status.mqttConnected = networkController.isConnectedToMqtt();
     status.ipAddress = networkController.getIPAddress();
 
+    /*
+     * @todo
+     * This is *not* interrupt safe, because it can trigger LittleFS-writes. That'll have to be handled by writing
+     * to some kind of shadow config and updating LittleFS from within loop1.
+     */
     uiController.loop();
 }
 

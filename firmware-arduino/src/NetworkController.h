@@ -47,7 +47,11 @@ private:
     nonstd::optional<WiFiNINA_Configuration> config;
     nonstd::optional<absolute_time_t> wifiConnectTimeoutTime;
     nonstd::optional<absolute_time_t> mqttConnectTimeoutTime;
-    nonstd::optional<absolute_time_t> mqttNextPublishTime;
+    nonstd::optional<absolute_time_t> mqttNextStatPublishTime;
+    nonstd::optional<absolute_time_t> mqttNextInfoPublishTime;
+    nonstd::optional<absolute_time_t> mqttNextConfigPublishTime;
+
+    bool configChanged = true;
 
     ArduinoOTAMdnsClass <WiFiServer, WiFiClient, WiFiUDP> ArduinoOTA;
     WiFiClient client = WiFiClient();
@@ -71,10 +75,15 @@ private:
     void attemptReadConfig();
     void writeConfig(WiFiNINA_Configuration newConfig);
 
-    void ensureMqttClient();
+    void resetModule();
+
+    bool ensureConnectedMqttClient();
     void ensureTopicsFormatted();
 
     void publishMqtt();
+    void publishMqttStat();
+    void publishMqttConf();
+    void publishMqttInfo();
 
     void handleConfigHTTPRequest();
     void sendHTTPHeaders();
@@ -82,6 +91,8 @@ private:
 
     char TOPIC_LWT[TOPIC_LENGTH];
     char TOPIC_STATE[TOPIC_LENGTH];
+    char TOPIC_CONFIG[TOPIC_LENGTH];
+    char TOPIC_INFO[TOPIC_LENGTH];
     char TOPIC_COMMAND[TOPIC_LENGTH];
 
     char TOPIC_AUTOCONF_STATE_SENSOR[128];
