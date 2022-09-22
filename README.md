@@ -38,6 +38,22 @@ This project is using the Arduino RP2040 Connect, a dual core ARM Cortex-M0+ boa
 
 A custom PCB has been designed (see `pcb/`) that is designed to fit in the original LCC enclosure. A BOM for components is also available. Aside from the Arduino RP2040 Connect, the PCB has push buttons for + and -, a resistor divider for the 5V Control Board UART signal, and a flat flex connector for a SSD1309 based OLED. The PCB has been designed with surface mount components, but uses relatively large 1206 caps and resistors, which are somewhat simple to hand solder.
 
+#### Possible future revision
+I have been considering a new hardware revision, which instead of using an Arduino RP2040 Connect, uses just a plain RP2040, and a plain ESP32 (of some kind, though if I know myself, it'll probably be an ESP32-S3).
+
+The main motivations are the following: 
+
+* Allowing a better WiFi antenna (the Bianca is basically a faraday cage, so a better antenna would be beneficial)
+* Allowing for separate programming ports on the board for the ESP32 and the RP2040
+* Possibly attaching the RP2040 QSPI Flash to the ESP32 as well, for easier OTA updates
+* Allowing for a cutout for the display ribbon cable, similar to the cutout on the original LCC board
+
+There's also a couple of more errata like things I would add in a new revision:
+
+* Use just a Zener instead of resistor divider to shift the 5V UART to 3V3
+
+This being said, I haven't made up my mind about whether to do a future revision at all.
+
 ### Firmware (1.0.0, current)
 The project is using arduino-cli, with earlephilhower/arduino-pico. Core 0 runs UI and external communications, and will communicate with core 1 through `pico_util/queue`. Core1 does not *store* it's parameters. Core0 reads them from LittleFS, and passes them to Core1 through regular message passing.
 
