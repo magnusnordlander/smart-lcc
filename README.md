@@ -1,5 +1,7 @@
 # Smart LCC
 
+[![Join the chat at https://gitter.im/smart-lcc/community](https://badges.gitter.im/smart-lcc/community.svg)](https://gitter.im/smart-lcc/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A smarter LCC for the Lelit Bianca V2, with Wi-Fi and stuff.
 
 Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-protocol](https://github.com/magnusnordlander/lelit-bianca-protocol).
