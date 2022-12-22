@@ -4,6 +4,7 @@
 #include <hardware/irq.h>
 #include <U8g2lib.h>
 #include <hardware/watchdog.h>
+#include <hardware/adc.h>
 #include "src/AutomationController.h"
 #include "src/NetworkController.h"
 #include "src/SystemController/SystemController.h"
@@ -83,6 +84,9 @@ void setup() {
 
     uart_init(uart0, 9600);
 
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+
     if (gpio_get(PLUS_BUTTON)) {
         systemMode = SYSTEM_MODE_OTA;
     } else if (gpio_get(MINUS_BUTTON)) {
@@ -119,6 +123,8 @@ void setup1()
     u8g2.sendBuffer();
 
     if (systemMode == SYSTEM_MODE_NORMAL) {
+        /* @todo If current time is more than 60 seconds, set some flag, because that's weird */
+
         settings.initialize();
         automationController.init();
 
@@ -131,6 +137,15 @@ void setup1()
         SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
         queue0->addBlocking(&beginCmd);
     }
+}
+
+float rp2040Temperature() {
+    adc_select_input(4);
+
+    auto raw = (float)adc_read();
+    const float conversion_factor = 3.3f / (1<<12);
+    float result = raw * conversion_factor;
+    return 27.f - (result -0.706)/0.001721;
 }
 
 void loop1()
@@ -160,6 +175,9 @@ void loop1()
     status.wifiConnected = networkController.isConnectedToWifi();
     status.mqttConnected = networkController.isConnectedToMqtt();
     status.ipAddress = networkController.getIPAddress();
+
+    /* @todo This should also not be run in an interrupt */
+    status.rp2040Temperature = rp2040Temperature();
 
     /*
      * @todo

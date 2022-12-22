@@ -42,6 +42,7 @@ void UIController::loop() {
 
     if (status->mode == SYSTEM_MODE_NORMAL) {
         // Exit sleep mode on any button press
+        /* @todo This is a candidate for the random sleep exits */
         if (status->isInSleepMode() && ((plus && !previousPlus) || (minus && !previousMinus))) {
             settings->setSleepMode(false);
             sleepModeButtonPressBlock = make_timeout_time_ms(2000);

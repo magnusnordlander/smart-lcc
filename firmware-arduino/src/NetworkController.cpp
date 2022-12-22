@@ -459,6 +459,7 @@ void NetworkController::ensureTopicsFormatted() {
         snprintf(TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_serv_temp_target/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_RP2040_TEMP_SENSOR, 127, "homeassistant/sensor/%s/%s_rp2040_temp/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_AUTO_SLEEP_MIN, 127, "homeassistant/number/%s/%s_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_PLANNED_AUTO_SLEEP_MIN, 127, "homeassistant/sensor/%s/%s_planned_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
 
@@ -563,6 +564,9 @@ void NetworkController::publishMqttStat() {
     statDoc["st"] = status->getServiceTemperature();
     statDoc["wt"] = status->isWaterTankEmpty();
 
+    statDoc["tsb"] = ((double)to_us_since_boot(status->getCurrentTime())) / 60000000.f;
+    statDoc["lsea"] = ((double)to_us_since_boot(status->getLastSleepModeExitAt())) / 60000000.f;
+
     if (!status->plannedAutoSleepAt.has_value()) {
         statDoc["asi"] = false;
     } else {
@@ -574,12 +578,13 @@ void NetworkController::publishMqttStat() {
         }
     }
 
-
     if (status->hasPreviousBrew()) {
         statDoc["ls"] = (float)status->previousBrewDurationMs() / 1000.f;
     } else {
         statDoc["ls"] = false;
     }
+
+    statDoc["rt"] = status->rp2040Temperature;
 
     std::string statOutput;
     serializeJson(statDoc, statOutput);
@@ -781,6 +786,23 @@ void NetworkController::publishAutoconfigure() {
 
     serializeJson(autoconfPayload, mqttPayload);
     mqtt.publish(&TOPIC_AUTOCONF_WIFI_SENSOR[0], mqttPayload.c_str(), true);
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " RP2040 Temperature";
+    autoconfPayload["uniq_id"] = stdIdentifier +"_rp2040_temp";
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["val_tpl"] = "{{ value_json.rt | round(1) }}";
+    autoconfPayload["entity_category"] = "diagnostic";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_RP2040_TEMP_SENSOR[0], mqttPayload.c_str(), true);
     autoconfPayload.clear();
     mqttPayload.clear();
 
