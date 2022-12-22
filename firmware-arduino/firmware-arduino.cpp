@@ -2,9 +2,9 @@
 #include <pins_arduino.h>
 #include <hardware/uart.h>
 #include <hardware/irq.h>
-#include <hardware/regs/intctrl.h>
 #include <U8g2lib.h>
 #include <hardware/watchdog.h>
+#include <hardware/adc.h>
 #include "src/AutomationController.h"
 #include "src/NetworkController.h"
 #include "src/SystemController/SystemController.h"
@@ -47,25 +47,28 @@ AutomationController automationController(&status, &settings);
 U8G2_SSD1306_128X64_NONAME_F_4W_HW_SPI u8g2(U8G2_R2, /* cs=*/ OLED_CS, /* dc=*/ OLED_DC, /* reset=*/ OLED_RST);
 UIController uiController(&status, &settings, &u8g2, MINUS_BUTTON, PLUS_BUTTON);
 
-void setup()
-{
+volatile SystemMode systemMode = SYSTEM_MODE_UNDETERMINED;
+
+void setup() {
     u8g2.begin();
 
     u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
     u8g2.drawDisc(32, 32, 20);
+    u8g2.drawStr(32, 64, "AA");
     u8g2.sendBuffer();
 
 #ifdef DEBUG_RP2040_CORE
     Serial.begin(115200);
     while(!Serial) { sleep_ms(1); }
+    sleep_ms(500);
 #endif
 
-    fileSystem->begin();
-
     u8g2.clearBuffer();
-    u8g2.drawDisc(64, 32, 20);
+    u8g2.setFont(u8g2_font_9x15_tf);
+    u8g2.drawDisc(48, 32, 20);
+    u8g2.drawStr(48, 64, "BB");
     u8g2.sendBuffer();
-
 
     gpio_set_dir(PLUS_BUTTON, false);
     gpio_pull_down(PLUS_BUTTON);
@@ -81,34 +84,84 @@ void setup()
 
     uart_init(uart0, 9600);
 
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
+
     if (gpio_get(PLUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_OTA);
+        systemMode = SYSTEM_MODE_OTA;
     } else if (gpio_get(MINUS_BUTTON)) {
-        networkController.init(NETWORK_CONTROLLER_MODE_CONFIG);
+        systemMode = SYSTEM_MODE_CONFIG;
     } else {
-        networkController.init(NETWORK_CONTROLLER_MODE_NORMAL);
+        systemMode = SYSTEM_MODE_NORMAL;
+        watchdog_enable(3000, false);
+    }
+}
+
+
+void setup1()
+{
+    while (systemMode == SYSTEM_MODE_UNDETERMINED) {
+        tight_loop_contents();
+    }
+
+    DEBUGV("Setup1\n");
+
+    fileSystem->begin();
+
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
+    u8g2.drawDisc(64, 32, 20);
+    u8g2.drawStr(64, 64, "CC");
+    u8g2.sendBuffer();
+
+    networkController.init(systemMode);
+
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_9x15_tf);
+    u8g2.drawDisc(72, 32, 20);
+    u8g2.drawStr(72, 64, "DD");
+    u8g2.sendBuffer();
+
+    if (systemMode == SYSTEM_MODE_NORMAL) {
+        /* @todo If current time is more than 60 seconds, set some flag, because that's weird */
+
         settings.initialize();
         automationController.init();
 
-        watchdog_enable(3000, false);
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_9x15_tf);
+        u8g2.drawDisc(80, 32, 20);
+        u8g2.drawStr(80, 64, "EE");
+        u8g2.sendBuffer();
 
         SystemControllerCommand beginCmd = SystemControllerCommand{.type = COMMAND_BEGIN};
         queue0->addBlocking(&beginCmd);
     }
 }
 
-void loop()
-{
-    //DEBUGV("Loop. Memfree: %u\n", freeMemory());
+float rp2040Temperature() {
+    adc_select_input(4);
 
-    if (networkController.getMode() != NETWORK_CONTROLLER_MODE_NORMAL) {
+    auto raw = (float)adc_read();
+    const float conversion_factor = 3.3f / (1<<12);
+    float result = raw * conversion_factor;
+    return 27.f - (result -0.706)/0.001721;
+}
+
+void loop1()
+{
+    /* @todo This should not be in a timer */
+    if (systemMode != SYSTEM_MODE_NORMAL) {
         safePacketSender.loop();
     } else {
         automationController.loop();
     }
 
+    /* @todo We can either use hardware_timer or pico_time/repeating_timer. Regardless, we'll have to create a core1 alarm pool */
+
     SystemControllerStatusMessage message;
 
+    /* @todo Check if pico_queue is interrupt safe */
     while (!queue1->isEmpty()) {
         queue1->removeBlocking(&message);
         status.updateStatusMessage(message);
@@ -123,9 +176,17 @@ void loop()
     status.mqttConnected = networkController.isConnectedToMqtt();
     status.ipAddress = networkController.getIPAddress();
 
+    /* @todo This should also not be run in an interrupt */
+    status.rp2040Temperature = rp2040Temperature();
+
+    /*
+     * @todo
+     * This is *not* interrupt safe, because it can trigger LittleFS-writes. That'll have to be handled by writing
+     * to some kind of shadow config and updating LittleFS from within loop1.
+     */
     uiController.loop();
 }
 
-void loop1() {
+void loop() {
     systemController.loop();
 }

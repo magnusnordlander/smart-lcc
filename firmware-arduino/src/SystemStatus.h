@@ -19,17 +19,21 @@ public:
     bool hasSentLccPacket = false;
     bool hasReceivedControlBoardPacket = false;
 
+    float rp2040Temperature = 0.f;
+
     nonstd::optional<absolute_time_t> lastBrewStartedAt;
     nonstd::optional<absolute_time_t> lastBrewEndedAt;
     nonstd::optional<absolute_time_t> plannedAutoSleepAt;
 
-    NetworkControllerMode mode;
+    SystemMode mode;
     bool wifiConnected = false;
     bool mqttConnected = false;
     nonstd::optional<IPAddress> ipAddress;
 
     inline bool hasBailed() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_BAILED; }
     inline SystemControllerBailReason bailReason() const { return latestStatusMessage.bailReason; }
+
+    inline absolute_time_t getCurrentTime() const { return latestStatusMessage.timestamp; }
 
     inline float getOffsetTargetBrewTemperature() const { return getTargetBrewTemp() + getBrewTempOffset(); }
     inline float getOffsetBrewTemperature() const { return getBrewTemperature() + getBrewTempOffset(); }

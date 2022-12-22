@@ -64,6 +64,7 @@ private:
     float feedForwardK = -0.00025f;
     float feedForwardM = 5.0f;
 
+    nonstd::optional<absolute_time_t> core1RebootTimer{};
     nonstd::optional<absolute_time_t> unbailTimer{};
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
     nonstd::optional<absolute_time_t> brewStartedAt{};
@@ -86,8 +87,6 @@ private:
 
     MovingAverage<float> brewTempAverage = MovingAverage<float>(5);
     MovingAverage<float> serviceTempAverage = MovingAverage<float>(5);
-
-    bool core0Alive = true;
 
     LccParsedPacket currentLccParsedPacket;
     ControlBoardParsedPacket currentControlBoardParsedPacket;

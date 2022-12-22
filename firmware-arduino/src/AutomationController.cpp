@@ -13,6 +13,10 @@ void AutomationController::init() {
 }
 
 void AutomationController::loop() {
+    if (status->hasBailed()) {
+        return;
+    }
+
     if (status->currentlyBrewing() && status->isInSleepMode()) {
         settings->setSleepMode(false);
     }
@@ -20,7 +24,7 @@ void AutomationController::loop() {
     if (settings->getAutoSleepMin() > 0) {
         uint32_t ms = (uint32_t)settings->getAutoSleepMin() * 60 * 1000;
 
-        if (status->lastBrewStartedAt.has_value() && absolute_time_diff_us(status->lastBrewStartedAt.value(), status->getLastSleepModeExitAt())) {
+        if (status->lastBrewStartedAt.has_value() && absolute_time_diff_us(status->getLastSleepModeExitAt(), status->lastBrewStartedAt.value()) > 0) {
             status->plannedAutoSleepAt = delayed_by_ms(status->lastBrewStartedAt.value(), ms);
         } else {
             status->plannedAutoSleepAt = delayed_by_ms(status->getLastSleepModeExitAt(), ms);

@@ -63,12 +63,16 @@ NetworkController::NetworkController(FileIO* _fileIO, SystemStatus* _status, Sys
     fileIO(_fileIO), status(_status), settings(_settings) {
 }
 
-void NetworkController::init(NetworkControllerMode _mode) {
+void NetworkController::init(SystemMode _mode) {
+    resetModule();
+
     mode = _mode;
     attemptReadConfig();
 
     uint8_t mac[WL_MAC_ADDR_LENGTH];
     WiFi.macAddress(mac);
+
+    WiFi.lowPowerMode();
 
     snprintf(identifier, sizeof(identifier), "LCC-%02X%02X%02X", mac[2], mac[1], mac[0]);
     stdIdentifier = std::string(identifier);
@@ -76,10 +80,10 @@ void NetworkController::init(NetworkControllerMode _mode) {
     WiFi.setHostname(identifier);
 
     switch (mode) {
-        case NETWORK_CONTROLLER_MODE_NORMAL:
-        case NETWORK_CONTROLLER_MODE_OTA:
+        case SYSTEM_MODE_NORMAL:
+        case SYSTEM_MODE_OTA:
             break;
-        case NETWORK_CONTROLLER_MODE_CONFIG:
+        case SYSTEM_MODE_CONFIG:
             initConfigMode();
             break;
     }
@@ -93,11 +97,11 @@ void NetworkController::loop() {
     }
 
     switch (mode) {
-        case NETWORK_CONTROLLER_MODE_NORMAL:
+        case SYSTEM_MODE_NORMAL:
             return loopNormal();
-        case NETWORK_CONTROLLER_MODE_CONFIG:
+        case SYSTEM_MODE_CONFIG:
             return loopConfig();
-        case NETWORK_CONTROLLER_MODE_OTA:
+        case SYSTEM_MODE_OTA:
             return loopOta();
     }
 
@@ -110,6 +114,13 @@ inline void NetworkController::initOTA() {
         ArduinoOTA.begin(WiFi.localIP(), "Arduino", "password", InternalStorage);
         otaInited = true;
     }
+}
+
+void NetworkController::resetModule() {
+    DEBUGV("Resetting module by de-initing and re-initing.\n");
+    WiFiDrv::wifiDriverDeinit();
+    sleep_ms(100);
+    WiFiDrv::wifiDriverInit();
 }
 
 void NetworkController::loopNormal() {
@@ -126,31 +137,38 @@ void NetworkController::loopNormal() {
             case WL_DISCONNECTED:
                 _isConnectedToWifi = false;
                 return attemptWifiConnection();
+            case WL_NO_MODULE:
+                DEBUGV("No module. \n");
+                resetModule();
+                return;
             case WL_AP_LISTENING:
             case WL_AP_CONNECTED:
             case WL_AP_FAILED:
-            case WL_NO_MODULE:
                 _isConnectedToWifi = false;
-                DEBUGV("Unexpected Wifi mode\n");
+                DEBUGV("Unexpected Wifi mode %u\n", WiFi.status());
                 return;
         }
 
         if (_isConnectedToWifi) {
-            ensureMqttClient();
-            mqtt.loop();
+            bool hasClient = ensureConnectedMqttClient();
 
-            if (mqtt.connected()) {
-                if (!mqttNextPublishTime.has_value() || absolute_time_diff_us(mqttNextPublishTime.value(), get_absolute_time()) > 0) {
+            if (hasClient) {
+                bool success = mqtt.loop();
+
+                if (!success && !mqttConnectTimeoutTime.has_value()) {
+                    mqttConnectTimeoutTime = make_timeout_time_ms(5000);
+                } else if (mqtt.connected()) {
                     publishMqtt();
-                    mqttNextPublishTime = make_timeout_time_ms(1000);
                 }
             }
         }
     }
 }
 
-void NetworkController::ensureMqttClient() {
-    if (!mqtt.connected()) {
+bool NetworkController::ensureConnectedMqttClient() {
+    if (mqtt.connected()) {
+        return true;
+    } else {
         if (!mqttConnectTimeoutTime.has_value()) {
             ensureTopicsFormatted();
             DEBUGV("Attempting to connect to MQTT\n");
@@ -176,7 +194,7 @@ void NetworkController::ensureMqttClient() {
                 DEBUGV("Couldn't connect to MQTT server. Reconnecting in 5 s.\n");
                 mqtt.disconnect();
                 mqttConnectTimeoutTime = make_timeout_time_ms(5000);
-                return;
+                return false;
             }
             DEBUGV("MQTT connection successful, changing buffer size.\n");
             mqtt.setBufferSize(4096);
@@ -185,11 +203,15 @@ void NetworkController::ensureMqttClient() {
             mqtt.subscribe(&TOPIC_COMMAND[0]);
 
             publishAutoconfigure();
+
+            return true;
         } else {
             if (absolute_time_diff_us(mqttConnectTimeoutTime.value(), get_absolute_time()) > 0) {
                 mqttConnectTimeoutTime.reset();
             }
         }
+
+        return false;
     }
 }
 
@@ -214,10 +236,13 @@ void NetworkController::loopOta() {
             case WL_DISCONNECTED:
                 _isConnectedToWifi = false;
                 return attemptWifiConnection();
+            case WL_NO_MODULE:
+                DEBUGV("No module. \n");
+                resetModule();
+                return;
             case WL_AP_LISTENING:
             case WL_AP_CONNECTED:
             case WL_AP_FAILED:
-            case WL_NO_MODULE:
                 _isConnectedToWifi = false;
                 DEBUGV("Unexpected Wifi mode\n");
                 return;
@@ -421,6 +446,8 @@ void NetworkController::ensureTopicsFormatted() {
     if (!topicsFormatted && config.has_value()) {
         snprintf(TOPIC_LWT, TOPIC_LENGTH - 1, "%s/%s/lwt", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_STATE, TOPIC_LENGTH - 1, "%s/%s/state", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_CONFIG, TOPIC_LENGTH - 1, "%s/%s/conf", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_INFO, TOPIC_LENGTH - 1, "%s/%s/info", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_COMMAND, TOPIC_LENGTH - 1, "%s/%s/cmd", config->mqttConfig.prefix, identifier);
 
         snprintf(TOPIC_AUTOCONF_STATE_SENSOR, 127, "homeassistant/sensor/%s/%s_state/config", config->mqttConfig.prefix, identifier);
@@ -432,6 +459,7 @@ void NetworkController::ensureTopicsFormatted() {
         snprintf(TOPIC_AUTOCONF_SERVICE_TEMPERATURE_TARGET_NUMBER, 127, "homeassistant/number/%s/%s_serv_temp_target/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WATER_TANK_LOW_BINARY_SENSOR, 127, "homeassistant/binary_sensor/%s/%s_water_tank_low/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_WIFI_SENSOR, 127, "homeassistant/sensor/%s/%s_wifi/config", config->mqttConfig.prefix, identifier);
+        snprintf(TOPIC_AUTOCONF_RP2040_TEMP_SENSOR, 127, "homeassistant/sensor/%s/%s_rp2040_temp/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_AUTO_SLEEP_MIN, 127, "homeassistant/number/%s/%s_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
         snprintf(TOPIC_AUTOCONF_PLANNED_AUTO_SLEEP_MIN, 127, "homeassistant/sensor/%s/%s_planned_auto_sleep_min/config", config->mqttConfig.prefix, identifier);
 
@@ -440,106 +468,164 @@ void NetworkController::ensureTopicsFormatted() {
 }
 
 void NetworkController::publishMqtt() {
-    mqtt.publish(TOPIC_LWT, "online");
+    if (configChanged || !mqttNextConfigPublishTime.has_value() || absolute_time_diff_us(mqttNextConfigPublishTime.value(), get_absolute_time()) > 0) {
+        mqtt.publish(TOPIC_LWT, "online");
 
-    DynamicJsonDocument doc(1024);
+        publishMqttConf();
+        mqttNextConfigPublishTime = make_timeout_time_ms(10320);
+        configChanged = false;
+    } else if (!mqttNextInfoPublishTime.has_value() || absolute_time_diff_us(mqttNextInfoPublishTime.value(), get_absolute_time()) > 0) {
+        mqtt.publish(TOPIC_LWT, "online");
 
-    JsonObject conf = doc.createNestedObject("conf");
+        publishMqttInfo();
+        mqttNextInfoPublishTime = make_timeout_time_ms(59300);
+    } else if (!mqttNextStatPublishTime.has_value() || absolute_time_diff_us(mqttNextStatPublishTime.value(), get_absolute_time()) > 0) {
+        mqtt.publish(TOPIC_LWT, "online");
 
-    JsonObject conf_brew = conf.createNestedObject("brew");
-    conf_brew["temp_target"] = status->getOffsetTargetBrewTemperature();
-    conf_brew["temp_offset"] = status->getBrewTempOffset();
+        publishMqttStat();
+        mqttNextStatPublishTime = make_timeout_time_ms(4950);
+    }
+}
 
-    JsonObject conf_brew_pid = conf_brew.createNestedObject("pid");
-    conf_brew_pid["Kp"] = status->getBrewPidSettings().Kp;
-    conf_brew_pid["Ki"] = status->getBrewPidSettings().Ki;
-    conf_brew_pid["Kd"] = status->getBrewPidSettings().Kd;
-    conf_brew_pid["windupHigh"] = status->getBrewPidSettings().windupHigh;
-    conf_brew_pid["windupLow"] = status->getBrewPidSettings().windupLow;
-
-    JsonObject conf_service = conf.createNestedObject("service");
-    conf_service["temp_target"] = status->getTargetServiceTemp();
-
-    JsonObject conf_service_pid = conf_service.createNestedObject("pid");
-    conf_service_pid["Kp"] = status->getServicePidSettings().Kp;
-    conf_service_pid["Ki"] = status->getServicePidSettings().Ki;
-    conf_service_pid["Kd"] = status->getServicePidSettings().Kd;
-    conf_service_pid["windupHigh"] = status->getServicePidSettings().windupHigh;
-    conf_service_pid["windupLow"] = status->getServicePidSettings().windupLow;
-
-    conf["eco_mode"] = status->isInEcoMode();
-    conf["sleep_mode"] = status->isInSleepMode();
-    conf["auto_sleep_min"] = settings->getAutoSleepMin();
-
-    JsonObject stat = doc.createNestedObject("stat");
+void NetworkController::publishMqttStat() {
+    DynamicJsonDocument statDoc(1024);
 
     switch (status->getState()) {
         case SYSTEM_CONTROLLER_STATE_UNDETERMINED:
-            stat["state"] = "Undetermined";
+            statDoc["s"] = "Undetermined";
             break;
         case SYSTEM_CONTROLLER_STATE_HEATUP:
-            stat["state"] = "Heatup";
+            statDoc["s"] = "Heatup";
             break;
         case SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING:
-            stat["state"] = "Temperatures normalizing";
+            statDoc["s"] = "Temperatures normalizing";
             break;
         case SYSTEM_CONTROLLER_STATE_WARM:
-            stat["state"] = "Warm";
+            statDoc["s"] = "Warm";
             break;
         case SYSTEM_CONTROLLER_STATE_SLEEPING:
-            stat["state"] = "Sleeping";
+            statDoc["s"] = "Sleeping";
             break;
         case SYSTEM_CONTROLLER_STATE_BAILED:
-            stat["state"] = "Bailed";
+            statDoc["s"] = "Bailed";
             break;
         case SYSTEM_CONTROLLER_STATE_FIRST_RUN:
-            stat["state"] = "First run";
+            statDoc["s"] = "First run";
             break;
         default:
-            stat["state"] = std::string("Unknown (") + std::to_string((uint8_t)status->getState()) + ")";
+            statDoc["s"] = std::string("Unknown (") + std::to_string((uint8_t)status->getState()) + ")";
             break;
     }
 
-    JsonObject stat_internal = stat.createNestedObject("internal");
+    JsonObject stat_internal = statDoc.createNestedObject("i");
     stat_internal["rx"] = status->hasReceivedControlBoardPacket;
     stat_internal["tx"] = status->hasSentLccPacket;
-    stat_internal["bailed"] = status->hasBailed();
-    stat_internal["watchdog_reset"] = watchdog_caused_reboot();
+    stat_internal["b"] = status->hasBailed();
+    stat_internal["wr"] = watchdog_enable_caused_reboot();
 
     switch (status->bailReason()) {
         case BAIL_REASON_NONE:
-            stat_internal["bail_reason"] = "None";
+            stat_internal["br"] = "None";
             break;
         case BAIL_REASON_CB_UNRESPONSIVE:
-            stat_internal["bail_reason"] = "CB unresponsive";
+            stat_internal["br"] = "CB unresponsive";
             break;
         case BAIL_REASON_CB_PACKET_INVALID:
-            stat_internal["bail_reason"] = "CB packet invalid";
+            stat_internal["br"] = "CB packet invalid";
             break;
         case BAIL_REASON_LCC_PACKET_INVALID:
-            stat_internal["bail_reason"] = "LCC packet invalid";
+            stat_internal["br"] = "LCC packet invalid";
             break;
         case BAIL_REASON_SSR_QUEUE_EMPTY:
-            stat_internal["bail_reason"] = "SSR queue empty";
+            stat_internal["br"] = "SSR queue empty";
             break;
         default:
-            stat_internal["bail_reason"] = std::string("Unknown (") + std::to_string((uint8_t)status->bailReason()) + ")";
+            stat_internal["br"] = std::string("Unknown (") + std::to_string((uint8_t)status->bailReason()) + ")";
             break;
     }
 
-    JsonObject stat_brew_pid = stat.createNestedObject("brew_pid");
+    JsonObject stat_brew_pid = statDoc.createNestedObject("bp");
     stat_brew_pid["p"] = status->getBrewPidRuntimeParameters().p;
     stat_brew_pid["i"] = status->getBrewPidRuntimeParameters().i;
     stat_brew_pid["d"] = status->getBrewPidRuntimeParameters().d;
-    stat_brew_pid["integral"] = status->getBrewPidRuntimeParameters().integral;
-    stat_brew_pid["hysteresisMode"] = status->getBrewPidRuntimeParameters().hysteresisMode;
+    stat_brew_pid["in"] = status->getBrewPidRuntimeParameters().integral;
+    stat_brew_pid["hm"] = status->getBrewPidRuntimeParameters().hysteresisMode;
 
-    JsonObject stat_service_pid = stat.createNestedObject("service_pid");
+    JsonObject stat_service_pid = statDoc.createNestedObject("sp");
     stat_service_pid["p"] = status->getServicePidRuntimeParameters().p;
     stat_service_pid["i"] = status->getServicePidRuntimeParameters().i;
     stat_service_pid["d"] = status->getServicePidRuntimeParameters().d;
-    stat_service_pid["integral"] = status->getServicePidRuntimeParameters().integral;
-    stat_service_pid["hysteresisMode"] = status->getServicePidRuntimeParameters().hysteresisMode;
+    stat_service_pid["in"] = status->getServicePidRuntimeParameters().integral;
+    stat_service_pid["hm"] = status->getServicePidRuntimeParameters().hysteresisMode;
+
+    statDoc["r"] = WiFi.RSSI();
+
+    statDoc["bt"] = status->getOffsetBrewTemperature();
+    statDoc["st"] = status->getServiceTemperature();
+    statDoc["wt"] = status->isWaterTankEmpty();
+
+    statDoc["tsb"] = ((double)to_us_since_boot(status->getCurrentTime())) / 60000000.f;
+    statDoc["lsea"] = ((double)to_us_since_boot(status->getLastSleepModeExitAt())) / 60000000.f;
+
+    if (!status->plannedAutoSleepAt.has_value()) {
+        statDoc["asi"] = false;
+    } else {
+        double sleepTime = (double)absolute_time_diff_us(get_absolute_time(), status->plannedAutoSleepAt.value()) / 60000000.f;
+        if (sleepTime >= 0.f) {
+            statDoc["asi"] = sleepTime;
+        } else {
+            statDoc["asi"] = false;
+        }
+    }
+
+    if (status->hasPreviousBrew()) {
+        statDoc["ls"] = (float)status->previousBrewDurationMs() / 1000.f;
+    } else {
+        statDoc["ls"] = false;
+    }
+
+    statDoc["rt"] = status->rp2040Temperature;
+
+    std::string statOutput;
+    serializeJson(statDoc, statOutput);
+    mqtt.publish(TOPIC_STATE, statOutput.c_str(), false);
+}
+
+void NetworkController::publishMqttConf() {
+    DynamicJsonDocument confDoc(1024);
+
+    JsonObject conf_brew = confDoc.createNestedObject("b");
+    conf_brew["tt"] = status->getOffsetTargetBrewTemperature();
+    conf_brew["to"] = status->getBrewTempOffset();
+
+    JsonObject conf_brew_pid = conf_brew.createNestedObject("p");
+    conf_brew_pid["Kp"] = status->getBrewPidSettings().Kp;
+    conf_brew_pid["Ki"] = status->getBrewPidSettings().Ki;
+    conf_brew_pid["Kd"] = status->getBrewPidSettings().Kd;
+    conf_brew_pid["wh"] = status->getBrewPidSettings().windupHigh;
+    conf_brew_pid["wl"] = status->getBrewPidSettings().windupLow;
+
+    JsonObject conf_service = confDoc.createNestedObject("s");
+    conf_service["tt"] = status->getTargetServiceTemp();
+
+    JsonObject conf_service_pid = conf_service.createNestedObject("p");
+    conf_service_pid["Kp"] = status->getServicePidSettings().Kp;
+    conf_service_pid["Ki"] = status->getServicePidSettings().Ki;
+    conf_service_pid["Kd"] = status->getServicePidSettings().Kd;
+    conf_service_pid["wh"] = status->getServicePidSettings().windupHigh;
+    conf_service_pid["wl"] = status->getServicePidSettings().windupLow;
+
+    confDoc["em"] = status->isInEcoMode();
+    confDoc["sm"] = status->isInSleepMode();
+    confDoc["asm"] = settings->getAutoSleepMin();
+
+    std::string confOutput;
+    serializeJson(confDoc, confOutput);
+    mqtt.publish(TOPIC_CONFIG, confOutput.c_str(), false);
+}
+
+void NetworkController::publishMqttInfo() {
+    DynamicJsonDocument infoDoc(1024);
 
     IPAddress ip = WiFi.localIP();
     uint8_t mac[WL_MAC_ADDR_LENGTH];
@@ -550,38 +636,15 @@ void NetworkController::publishMqtt() {
     char macAddress[19];
     snprintf(macAddress, sizeof(macAddress), "%02X:%02X:%02X:%02X:%02X:%02X", mac[5], mac[4], mac[3], mac[2], mac[1], mac[0]);
 
-    JsonObject stat_wifi = stat.createNestedObject("wifi");
-    stat_wifi["ssid"] = WiFi.SSID();
-    stat_wifi["ip"] = ipString;
-    stat_wifi["rssi"] = WiFi.RSSI();
-    stat_wifi["mac"] = macAddress;
-    stat_wifi["nina_firmware"] = WiFi.firmwareVersion();
+    JsonObject stat_wifi = infoDoc.createNestedObject("w");
+    stat_wifi["s"] = WiFi.SSID();
+    stat_wifi["i"] = ipString;
+    stat_wifi["m"] = macAddress;
+    stat_wifi["n"] = WiFi.firmwareVersion();
 
-    stat["brew_temp"] = status->getOffsetBrewTemperature();
-    stat["service_temp"] = status->getServiceTemperature();
-    stat["water_tank_empty"] = status->isWaterTankEmpty();
-
-    if (!status->plannedAutoSleepAt.has_value()) {
-        stat["auto_sleep_in"] = false;
-    } else {
-        double sleepTime = (double)absolute_time_diff_us(get_absolute_time(), status->plannedAutoSleepAt.value()) / 60000000.f;
-        if (sleepTime >= 0.f) {
-            stat["auto_sleep_in"] = sleepTime;
-        } else {
-            stat["auto_sleep_in"] = false;
-        }
-    }
-
-
-    if (status->hasPreviousBrew()) {
-        stat["last_shot_duration"] = (float)status->previousBrewDurationMs() / 1000.f;
-    } else {
-        stat["last_shot_duration"] = false;
-    }
-
-    std::string output;
-    serializeJson(doc, output);
-    mqtt.publish(TOPIC_STATE, output.c_str(), false);
+    std::string infoOutput;
+    serializeJson(infoDoc, infoOutput);
+    mqtt.publish(TOPIC_INFO, infoOutput.c_str(), false);
 }
 
 void NetworkController::callback(char *topic, byte *payload, unsigned int length) {
@@ -597,6 +660,9 @@ void NetworkController::callback(char *topic, byte *payload, unsigned int length
     }
 
     std::string cmd = doc["cmd"];
+
+    // @todo Move this to check if config has actually changed
+    configChanged = true;
 
     if (cmd == "set_brew_temp_target") {
         settings->setOffsetTargetBrewTemp(doc["float_value"]);
@@ -663,8 +729,8 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["name"] = stdIdentifier + " State";
     autoconfPayload["uniq_id"] = stdIdentifier + "_state";
     autoconfPayload["ic"] = "mdi:eye";
-    autoconfPayload["val_tpl"] = "{{ value_json.stat.state }}";
-    autoconfPayload["json_attr_tpl"] = R"({"bail_reason": "{{value_json.stat.internal.bail_reason}}", "watchdog_reset": "{{value_json.stat.internal.watchdog_reset}}"})";
+    autoconfPayload["val_tpl"] = "{{ value_json.s }}";
+    autoconfPayload["json_attr_tpl"] = R"({"bail_reason": "{{value_json.i.br}}", "watchdog_reset": "{{value_json.i.wr}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
     mqtt.publish(&TOPIC_AUTOCONF_STATE_SENSOR[0], mqttPayload.c_str(), true);
@@ -680,8 +746,8 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
     autoconfPayload["dev_cla"] = "temperature";
-    autoconfPayload["val_tpl"] = "{{ value_json.stat.brew_temp | round(1) }}";
-    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.brew_pid.p}}", "i": "{{value_json.stat.brew_pid.i}}", "d": "{{value_json.stat.brew_pid.d}}", "integral": "{{value_json.stat.brew_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.brew_pid.hysteresisMode}}"})";
+    autoconfPayload["val_tpl"] = "{{ value_json.bt | round(1) }}";
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.bp.p}}", "i": "{{value_json.bp.i}}", "d": "{{value_json.bp.d}}", "integral": "{{value_json.bp.in}}",  "hysteresis_mode": "{{value_json.bp.hm}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
     mqtt.publish(&TOPIC_AUTOCONF_BREW_BOILER_SENSOR[0], mqttPayload.c_str(), true);
@@ -698,8 +764,8 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["unit_of_meas"] = "°C";
     autoconfPayload["ic"] = "mdi:thermometer";
     autoconfPayload["dev_cla"] = "temperature";
-    autoconfPayload["val_tpl"] = "{{ value_json.stat.service_temp | round(1) }}";
-    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.stat.service_pid.p}}", "i": "{{value_json.stat.service_pid.i}}", "d": "{{value_json.stat.service_pid.d}}", "integral": "{{value_json.stat.service_pid.integral}}",  "hysteresis_mode": "{{value_json.stat.service_pid.hysteresisMode}}"})";
+    autoconfPayload["val_tpl"] = "{{ value_json.st | round(1) }}";
+    autoconfPayload["json_attr_tpl"] = R"({"p": "{{value_json.sp.p}}", "i": "{{value_json.sp.i}}", "d": "{{value_json.sp.d}}", "integral": "{{value_json.sp.in}}",  "hysteresis_mode": "{{value_json.sp.hm}}"})";
 
     serializeJson(autoconfPayload, mqttPayload);
     mqtt.publish(&TOPIC_AUTOCONF_SERVICE_BOILER_SENSOR[0], mqttPayload.c_str(), true);
@@ -709,12 +775,12 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
     autoconfPayload["stat_t"] = TOPIC_STATE;
-    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["json_attr_t"] = TOPIC_INFO;
     autoconfPayload["name"] = stdIdentifier + " WiFi";
     autoconfPayload["uniq_id"] = stdIdentifier + "_wifi";
-    autoconfPayload["val_tpl"] = "{{value_json.stat.wifi.rssi}}";
+    autoconfPayload["val_tpl"] = "{{value_json.r}}";
     autoconfPayload["unit_of_meas"] = "dBm";
-    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.stat.wifi.ssid}}", "ip": "{{value_json.stat.wifi.ip}}"})";
+    autoconfPayload["json_attr_tpl"] = R"({"ssid": "{{value_json.w.s}}", "ip": "{{value_json.w.i}}"})";
     autoconfPayload["ic"] = "mdi:wifi";
     autoconfPayload["entity_category"] = "diagnostic";
 
@@ -727,11 +793,28 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["avty_t"] = TOPIC_LWT;
     autoconfPayload["stat_t"] = TOPIC_STATE;
     autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["name"] = stdIdentifier + " RP2040 Temperature";
+    autoconfPayload["uniq_id"] = stdIdentifier +"_rp2040_temp";
+    autoconfPayload["unit_of_meas"] = "°C";
+    autoconfPayload["ic"] = "mdi:thermometer";
+    autoconfPayload["dev_cla"] = "temperature";
+    autoconfPayload["val_tpl"] = "{{ value_json.rt | round(1) }}";
+    autoconfPayload["entity_category"] = "diagnostic";
+
+    serializeJson(autoconfPayload, mqttPayload);
+    mqtt.publish(&TOPIC_AUTOCONF_RP2040_TEMP_SENSOR[0], mqttPayload.c_str(), true);
+    autoconfPayload.clear();
+    mqttPayload.clear();
+
+    autoconfPayload["dev"] = devObj;
+    autoconfPayload["avty_t"] = TOPIC_LWT;
+    autoconfPayload["stat_t"] = TOPIC_CONFIG;
+    autoconfPayload["json_attr_t"] = TOPIC_CONFIG;
     autoconfPayload["cmd_t"] = TOPIC_COMMAND;
     autoconfPayload["name"] = stdIdentifier + " Eco Mode";
     autoconfPayload["uniq_id"] = stdIdentifier + "_eco_mode";
     autoconfPayload["ic"] = "hass:leaf";
-    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.conf.eco_mode else 'OFF' }})";
+    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.em else 'OFF' }})";
     autoconfPayload["pl_on"] = R"({"cmd": "set_eco_mode", "bool_value": true})";
     autoconfPayload["pl_off"] = R"({"cmd": "set_eco_mode", "bool_value": false})";
     autoconfPayload["stat_on"] = "ON";
@@ -746,13 +829,13 @@ void NetworkController::publishAutoconfigure() {
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
-    autoconfPayload["stat_t"] = TOPIC_STATE;
-    autoconfPayload["json_attr_t"] = TOPIC_STATE;
+    autoconfPayload["stat_t"] = TOPIC_CONFIG;
+    autoconfPayload["json_attr_t"] = TOPIC_CONFIG;
     autoconfPayload["cmd_t"] = TOPIC_COMMAND;
     autoconfPayload["name"] = stdIdentifier + " Sleep Mode";
     autoconfPayload["uniq_id"] = stdIdentifier + "_sleep_mode";
     autoconfPayload["ic"] = "hass:sleep";
-    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.conf.sleep_mode else 'OFF' }})";
+    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.sm else 'OFF' }})";
     autoconfPayload["pl_on"] = R"({"cmd": "set_sleep_mode", "bool_value": true})";
     autoconfPayload["pl_off"] = R"({"cmd": "set_sleep_mode", "bool_value": false})";
     autoconfPayload["stat_on"] = "ON";
@@ -766,7 +849,7 @@ void NetworkController::publishAutoconfigure() {
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
-    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["stat_t"] = TOPIC_CONFIG;
     autoconfPayload["cmd_t"] = TOPIC_COMMAND;
     autoconfPayload["name"] = stdIdentifier + " Brew Boiler Temperature Target";
     autoconfPayload["uniq_id"] = stdIdentifier + "_brew_temp_target";
@@ -775,7 +858,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["step"] = 0.1;
     autoconfPayload["min"] = 0;
     autoconfPayload["max"] = 100;
-    autoconfPayload["val_tpl"] = R"({{ value_json.conf.brew.temp_target | round(1) }})";
+    autoconfPayload["val_tpl"] = R"({{ value_json.b.tt | round(1) }})";
     autoconfPayload["cmd_tpl"] = R"({"cmd": "set_brew_temp_target", "float_value": {{value}} })";
     autoconfPayload["entity_category"] = "config";
 
@@ -786,7 +869,7 @@ void NetworkController::publishAutoconfigure() {
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
-    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["stat_t"] = TOPIC_CONFIG;
     autoconfPayload["cmd_t"] = TOPIC_COMMAND;
     autoconfPayload["name"] = stdIdentifier + " Service Boiler Temperature Target";
     autoconfPayload["uniq_id"] = stdIdentifier + "_service_temp_target";
@@ -795,7 +878,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["step"] = 0.1;
     autoconfPayload["min"] = 0;
     autoconfPayload["max"] = 150;
-    autoconfPayload["val_tpl"] = R"({{ value_json.conf.service.temp_target | round(1) }})";
+    autoconfPayload["val_tpl"] = R"({{ value_json.s.tt | round(1) }})";
     autoconfPayload["cmd_tpl"] = R"({"cmd": "set_service_temp_target", "float_value": {{value}} })";
     autoconfPayload["entity_category"] = "config";
 
@@ -806,7 +889,7 @@ void NetworkController::publishAutoconfigure() {
 
     autoconfPayload["dev"] = devObj;
     autoconfPayload["avty_t"] = TOPIC_LWT;
-    autoconfPayload["stat_t"] = TOPIC_STATE;
+    autoconfPayload["stat_t"] = TOPIC_CONFIG;
     autoconfPayload["cmd_t"] = TOPIC_COMMAND;
     autoconfPayload["name"] = stdIdentifier + " Auto-sleep after";
     autoconfPayload["uniq_id"] = stdIdentifier + "_auto_sleep_min";
@@ -815,7 +898,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["step"] = 1;
     autoconfPayload["min"] = 0;
     autoconfPayload["max"] = 300;
-    autoconfPayload["val_tpl"] = R"({{ value_json.conf.auto_sleep_min }})";
+    autoconfPayload["val_tpl"] = R"({{ value_json.asm }})";
     autoconfPayload["cmd_tpl"] = R"({"cmd": "set_auto_sleep_min", "int_value": {{value}} })";
     autoconfPayload["entity_category"] = "config";
 
@@ -832,7 +915,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["uniq_id"] = stdIdentifier + "_water_tank_low";
     autoconfPayload["ic"] = "mdi:water-alert";
     autoconfPayload["dev_cla"] = "problem";
-    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.stat.water_tank_empty else 'OFF' }})";
+    autoconfPayload["val_tpl"] = R"({{ 'ON' if value_json.wt else 'OFF' }})";
 
 
     serializeJson(autoconfPayload, mqttPayload);
@@ -847,7 +930,7 @@ void NetworkController::publishAutoconfigure() {
     autoconfPayload["json_attr_t"] = TOPIC_STATE;
     autoconfPayload["name"] = stdIdentifier + " Planned Auto Sleep in";
     autoconfPayload["uniq_id"] = stdIdentifier + "_planned_auto_sleep";
-    autoconfPayload["val_tpl"] = "{{value_json.stat.auto_sleep_in | round(0) }}";
+    autoconfPayload["val_tpl"] = "{{value_json.asi | round(0) }}";
     autoconfPayload["unit_of_meas"] = "minutes";
     autoconfPayload["ic"] = "hass:sleep";
     autoconfPayload["entity_category"] = "diagnostic";
