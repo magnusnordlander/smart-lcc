@@ -5,11 +5,11 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_DEBUG "-g2 -O0 -ggdb2")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 #set(CMAKE_C_FLAGS "-Wall -Wextra")
-set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_DEBUG "-g2 -O0 -ggdb2")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 set(CMAKE_C_STANDARD 11)
@@ -126,9 +126,35 @@ set(U8G2_SRCS
 add_executable(smart_lcc
         ${U8G2_SRCS}
         src/smart_lcc.cpp
-        src/double_tap.cpp src/u8g2functions.c src/u8g2functions.h src/pins.h)
+        src/double_tap.cpp
+        src/u8g2functions.c
+        src/SystemStatus.cpp
+        src/SystemSettings.cpp
+        src/utils/checksum.cpp
+        src/utils/hex_format.cpp
+        src/utils/polymath.cpp
+        src/utils/triplet.cpp
+        src/MulticoreSupport.cpp src/MulticoreSupport.h
+        src/Controller/Core0/control_board_protocol.cpp
+        src/Controller/Core0/HybridController.cpp
+        src/Controller/Core0/HysteresisController.cpp
+        src/Controller/Core0/lcc_protocol.cpp
+        src/Controller/Core0/PIDController.cpp
+        src/Controller/Core0/SafePacketSender.cpp
+        src/Controller/Core0/SystemController.cpp
+        src/Controller/Core0/TimedLatch.cpp
+        src/Controller/Core0/Utils/UartReadBlockingTimeout.h
+        lib/slip/slip.cpp lib/slip/slip.h
+        src/Controller/SingleCore/EspBootloader.cpp src/Controller/SingleCore/EspBootloader.h
+        src/Controller/Core0/Utils/ClearUartCruft.h
+        stub/stub.h
+        esphome/boot_app0.bin.h
+        esphome/bootloader.bin.h
+        esphome/firmware.bin.h
+        esphome/partitions.bin.h
+        )
 
-target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc )
+target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip src stub)
 
 # pull in common dependencies
 target_link_libraries(smart_lcc pico_stdlib)
@@ -149,3 +175,7 @@ pico_enable_stdio_uart(smart_lcc 0)
 pico_add_extra_outputs(smart_lcc)
 
 pico_set_linker_script(smart_lcc ${CMAKE_SOURCE_DIR}/memmap.ld)
+
+add_custom_target(Upload-JLink COMMAND /Applications/SEGGER/JLink/JLinkExe -device RP2040_M0_0 -CommandFile ../upload.jlink DEPENDS smart_lcc)
+
+add_custom_target(__DUMMY COMMAND echo foo)

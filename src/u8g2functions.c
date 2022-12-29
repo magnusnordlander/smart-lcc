@@ -16,7 +16,7 @@
 #define PIN_MOSI OLED_MOSI
 #define PIN_DC OLED_DC
 #define PIN_RST OLED_RST
-#define SPI_SPEED 8000000UL
+#define SPI_SPEED 10000000UL
 
 uint8_t u8x8_byte_pico_hw_spi(u8x8_t *u8x8, uint8_t msg,
                               uint8_t arg_int, void *arg_ptr) {

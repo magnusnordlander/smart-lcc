@@ -1,0 +1,7 @@
+Power off
+Power on
+SelectInterface SWD
+Speed 4000
+Connect
+LoadFile /Users/magnus/Developer/lcc-pico-sdk/cmake-build-debug/smart_lcc.hex
+Exit
