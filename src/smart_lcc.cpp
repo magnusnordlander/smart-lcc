@@ -12,6 +12,24 @@
 #include "Controller/SingleCore/EspBootloader.h"
 #include "Controller/Core0/Utils/ClearUartCruft.h"
 
+#define U8G2_DISP_STR(__STR__) \
+u8g2_ClearBuffer(&u8g2); \
+u8g2_DrawStr(&u8g2, 16, 16, __STR__); \
+u8g2_SendBuffer(&u8g2);
+
+#define WAIT_FOR_PLUS() \
+while (gpio_get(PLUS_BUTTON) != 1) { \
+sleep_ms(10); \
+}
+
+#define ESP_ERR_HANDLE(__err__, __name__) \
+if (__err__ == 0x00) { \
+U8G2_DISP_STR(__name__); \
+} else { \
+U8G2_DISP_STR("Err " __name__); \
+WAIT_FOR_PLUS(); \
+}
+
 repeating_timer_t safePacketBootupTimer;
 u8g2_t u8g2;
 SystemController* systemController;
@@ -59,17 +77,33 @@ void initGpio() {
 
 void initEsp() {
     gpio_put(NINA_GPIO0, true);
-    gpio_put(NINA_RESETN, true);
+    gpio_put(NINA_RESETN, false);
+
+    u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
+
+    u8g2_ClearBuffer(&u8g2);
+    u8g2_DrawStr(&u8g2, 16, 16, "ESP32 Boot mode");
+    u8g2_DrawStr(&u8g2, 16, 24, "Press - to boot");
+    u8g2_DrawStr(&u8g2, 16, 32, "Press + to flash");
+    u8g2_SendBuffer(&u8g2);
 
     bool correctVersion = false;
+
+    while (gpio_get(PLUS_BUTTON) != 1 && gpio_get(MINUS_BUTTON) != 1) {
+        sleep_ms(10);
+    }
+
+    if (gpio_get(PLUS_BUTTON)) {
+        correctVersion = false;
+    } else if (gpio_get(MINUS_BUTTON)) {
+        correctVersion = true;
+    }
 
     if (!correctVersion) {
         gpio_put(NINA_RESETN, false);
         gpio_put(NINA_GPIO0, false);
 
         sleep_ms(50);
-
-        u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
 
         u8g2_ClearBuffer(&u8g2);
         u8g2_DrawStr(&u8g2, 16, 16, "Incorrect ESP32");
@@ -80,8 +114,6 @@ void initEsp() {
 /*        while (gpio_get(PLUS_BUTTON) != 1) {
             sleep_ms(10);
         }*/
-
-        absolute_time_t time0 = get_absolute_time();
 
         //sleep_ms(1000);
 
@@ -99,117 +131,54 @@ void initEsp() {
         esp_bootloader_error_t err;
         uint32_t magicAddr = 0x40001000;
 
-        u8g2_ClearBuffer(&u8g2);
-        u8g2_DrawStr(&u8g2, 16, 16, "Syncing");
-        u8g2_SendBuffer(&u8g2);
+        U8G2_DISP_STR("Syncing");
 
         while (!bootloader.sync()) {}
+
+        sleep_ms(100);
+
+        uart_clear_cruft(uart1, true);
 
         uint32_t regVal;
 
         err = bootloader.readReg(magicAddr, &regVal);
 
         if (err != 0x00) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Bootloader error");
-            u8g2_SendBuffer(&u8g2);
-
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
+            U8G2_DISP_STR("Bootloader error");
+            WAIT_FOR_PLUS()
         } else if (regVal == 0x00F01D83) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Magic correct");
-            u8g2_SendBuffer(&u8g2);
+            U8G2_DISP_STR("Magic correct");
         } else {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Magic wrong");
-            u8g2_SendBuffer(&u8g2);
-
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
-        }
-/*
-        err = bootloader.spiSetParamsNinaW102();
-
-        if (err == 0x00) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "SPI params");
-            u8g2_SendBuffer(&u8g2);
-        } else {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Err SPI params");
-            u8g2_SendBuffer(&u8g2);
-
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
+            U8G2_DISP_STR("Magic wrong");
+            WAIT_FOR_PLUS()
         }
 
-        err = bootloader.spiAttach();
-
-        if (err == 0x00) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "SPI attach");
-            u8g2_SendBuffer(&u8g2);
-        } else {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Err SPI attach");
-            u8g2_SendBuffer(&u8g2);
-
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
-        }
-
-        esp_bootloader_md5_t md5{};
-        err = bootloader.spiFlashMd5(0x10000, 1024, &md5);
-
-        absolute_time_t time1 = get_absolute_time();
-
-        if (err == 0x00) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "MD5");
-            char timeStr[10];
-
-            snprintf(timeStr, sizeof(timeStr), "%lli", absolute_time_diff_us(time0, time1)/1000);
-            u8g2_DrawStr(&u8g2, 0, 24, timeStr);
-
-            u8g2_SendBuffer(&u8g2);
-        } else {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Err MD5");
-            char errStr[10];
-
-            snprintf(errStr, sizeof(errStr), "%i", err);
-            u8g2_DrawStr(&u8g2, 0, 24, errStr);
-            u8g2_SendBuffer(&u8g2);
-
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
-        }
-*/
         err = bootloader.uploadStub();
+        ESP_ERR_HANDLE(err, "Stub");
 
-        if (err == 0x00) {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Stub");
-            u8g2_SendBuffer(&u8g2);
-        } else {
-            u8g2_ClearBuffer(&u8g2);
-            u8g2_DrawStr(&u8g2, 16, 16, "Err Stub");
-            u8g2_SendBuffer(&u8g2);
+        err = bootloader.spiSetParamsNinaW102();
+        ESP_ERR_HANDLE(err, "SPI params");
 
-            while (gpio_get(PLUS_BUTTON) != 1) {
-                sleep_ms(10);
-            }
-        }
+        err = bootloader.spiAttach(true);
+        ESP_ERR_HANDLE(err, "SPI attach");
 
-        while (gpio_get(PLUS_BUTTON) != 1) {
-            sleep_ms(10);
-        }
+/*        esp_bootloader_md5_t md5{};
+        err = bootloader.spiFlashMd5(0x10000, 1024, &md5);
+        ESP_ERR_HANDLE(err, "MD5"); */
+
+        WAIT_FOR_PLUS()
+
+        err = bootloader.uploadFirmware();
+        ESP_ERR_HANDLE(err, "Firmware");
+
+        WAIT_FOR_PLUS();
+    } else {
+        sleep_ms(1000);
+
+        gpio_put(NINA_RESETN, true);
+
+        U8G2_DISP_STR("Esphome?");
+        WAIT_FOR_PLUS();
     }
 }
 
@@ -292,20 +261,8 @@ void u8g2Int(uint8_t i) {
         uart_write_blocking(uart1, reinterpret_cast<const uint8_t *>(&sm), sizeof(SystemControllerStatusMessage));
     }
 
-    // Core 1 - UI Controller, ESP UART controller, USB-ESP bridge
+    // Core 1 - UI Controller, ESP UART controller
 
-    /*uart_init(uart1, 115200);
-
-    while (true) {
-        gpio_put(NINA_RESETN, gpio_get(PLUS_BUTTON));
-        gpio_put(NINA_GPIO0, gpio_get(MINUS_BUTTON));
-
-        gpio_put(LED_BUILTIN, gpio_get(PLUS_BUTTON));
-
-        while (uart_is_readable(uart1)) {
-            printf("%c", uart_getc(uart1));
-        }
-    }*/
 }
 
 bool repeating_timer_callback(repeating_timer_t *t) {

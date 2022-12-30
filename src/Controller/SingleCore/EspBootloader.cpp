@@ -9,6 +9,10 @@
 #include <Controller/Core0/Utils/ClearUartCruft.h>
 #include <Controller/Core0/Utils/UartReadBlockingTimeout.h>
 #include <stub.h>
+#include <bootloader.bin.h>
+#include <partitions.bin.h>
+#include <boot_app0.bin.h>
+#include <firmware.bin.h>
 
 // Must be less than uint16_t
 #define COMMAND_PACKAGE_LENGTH 255
@@ -70,15 +74,29 @@ esp_bootloader_error_t EspBootloader::spiSetParamsNinaW102() {
     return 0x00;
 }
 
-esp_bootloader_error_t EspBootloader::spiAttach() {
+esp_bootloader_error_t EspBootloader::spiAttach(bool stubRunning) {
     EspBootloaderResponseHeader response{};
-    uint32_t data[2] = {
-            0x00, // normal flash
-            0x00, // redundant word
-    };
+    uint32_t *data;
+    size_t dataLen;
+
+    if (stubRunning) {
+        dataLen = 1*sizeof(uint32_t);
+        data = static_cast<uint32_t *>(malloc(dataLen));
+
+        data[0] = 0x00; // normal flash
+    } else {
+        dataLen = 2*sizeof(uint32_t);
+        data = static_cast<uint32_t *>(malloc(dataLen));
+
+        data[0] = 0x00; // normal flash
+        data[1] = 0x00; // redundant word
+    }
+
     uint8_t responseData[COMMAND_PACKAGE_LENGTH];
 
-    size_t responseSize = sendCommand(0x0d, reinterpret_cast<uint8_t *>(&data), sizeof(data), &response, responseData, sizeof(responseData));
+    size_t responseSize = sendCommand(0x0d, reinterpret_cast<uint8_t *>(data), dataLen, &response, responseData, sizeof(responseData));
+
+    free(data);
 
     esp_bootloader_error_t err = checkResponse(responseSize, &response, responseData, sizeof(responseData));
 
@@ -227,59 +245,19 @@ esp_bootloader_error_t EspBootloader::memBeginAndData(uint32_t addr, const uint8
 }
 
 esp_bootloader_error_t EspBootloader::uploadStub() {
-//    memBeginAndData(stub_text_start, stub_text, sizeof(stub_text));
-
     esp_bootloader_error_t err;
-    uint32_t blockSize = 0x1800;
 
-    // Text
-    size_t textLen = sizeof(stub_text);
-    uint32_t textBlocks = (textLen + blockSize - 1) / blockSize;
-
-    err = memBegin(textLen, textBlocks, blockSize, stub_text_start);
+    err = memBeginAndData(stub_text_start, stub_text, sizeof(stub_text));
 
     if (err != 0x00) {
         return err;
     }
 
-    for (int seq = 0; seq < textBlocks; seq++) {
-        uint32_t fromOffs = seq * blockSize;
-        size_t actualLen = textLen - fromOffs;
-        if (actualLen > blockSize) {
-            actualLen = blockSize;
-        }
-
-        err = memData(seq, const_cast<uint8_t *>(stub_text + fromOffs), actualLen, blockSize);
-
-        if (err != 0x00) {
-            return err;
-        }
-    }
-
-    // Data
-    size_t dataLen = sizeof(stub_data);
-    uint32_t dataBlocks = (textLen + blockSize - 1) / blockSize;
-
-    err = memBegin(dataLen, dataBlocks, blockSize, stub_data_start);
+    err = memBeginAndData(stub_data_start, stub_data, sizeof(stub_data));
 
     if (err != 0x00) {
         return err;
     }
-
-    for (int seq = 0; seq < dataBlocks; seq++) {
-        uint32_t fromOffs = seq * blockSize;
-        size_t actualLen = dataLen - fromOffs;
-        if (actualLen > blockSize) {
-            actualLen = blockSize;
-        }
-
-        err = memData(seq, const_cast<uint8_t *>(stub_data + fromOffs), actualLen, blockSize);
-
-        if (err != 0x00) {
-            return err;
-        }
-    }
-
 
     err = memEnd(stub_entry);
 
@@ -287,7 +265,7 @@ esp_bootloader_error_t EspBootloader::uploadStub() {
         return err;
     }
 
-    uint8_t expected[6] = {
+/*    uint8_t expected[6] = {
             0xc0,
             'O',
             'H',
@@ -303,7 +281,139 @@ esp_bootloader_error_t EspBootloader::uploadStub() {
         return 0x01;
     }
 
-    return memcmp(ohai, expected, sizeof(ohai)) == 0 ? 0x00 : 0x01;
+    return memcmp(ohai, expected, sizeof(ohai)) == 0 ? 0x00 : 0x01;*/
+
+    return 0x00;
+}
+
+esp_bootloader_error_t EspBootloader::uploadFirmware() {
+    esp_bootloader_error_t err;
+
+    err = flashBeginAndData(0x1000, bootloader_bin, sizeof(bootloader_bin));
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    err = flashBeginAndData(0x8000, partitions_bin, sizeof(partitions_bin));
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    err = flashBeginAndData(0xe000, boot_app0_bin, sizeof(boot_app0_bin));
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    err = flashBeginAndData(0x10000, firmware_bin, sizeof(firmware_bin));
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    err = flashEnd(false);
+
+    return err;
+}
+
+esp_bootloader_error_t EspBootloader::flashBegin(uint32_t size, uint32_t blocks, uint32_t blocksize, uint32_t offset) {
+    EspBootloaderResponseHeader response{};
+    uint32_t data[4] = {
+            size,
+            blocks,
+            blocksize,
+            offset
+    };
+    uint8_t responseData[COMMAND_PACKAGE_LENGTH];
+
+    size_t responseSize = sendCommand(0x02, reinterpret_cast<uint8_t *>(&data), sizeof(data), &response, responseData, sizeof(responseData));
+
+    esp_bootloader_error_t err = checkResponse(responseSize, &response, responseData, sizeof(responseData));
+
+    if (err != 0) {
+        return err;
+    }
+
+    return 0x00;
+}
+
+esp_bootloader_error_t EspBootloader::flashData(uint32_t seq, uint8_t *uploadData, size_t actualLen, size_t padLen) {
+    EspBootloaderResponseHeader response{};
+    uint32_t data[4] = {
+            padLen,
+            seq,
+            0,
+            0
+    };
+    uint8_t responseData[COMMAND_PACKAGE_LENGTH];
+
+    size_t fullDataLen = padLen + sizeof(data);
+
+    auto *fullData = static_cast<uint8_t*>(malloc(fullDataLen));
+    memset(fullData, 0xFF, fullDataLen);
+    memcpy(fullData, data, sizeof(data));
+    memcpy(fullData + sizeof(data), uploadData, actualLen);
+
+    size_t responseSize = sendCommand(0x03, fullData, fullDataLen, &response, responseData, sizeof(responseData), checksum(uploadData, actualLen));
+
+    free(fullData);
+
+    esp_bootloader_error_t err = checkResponse(responseSize, &response, responseData, sizeof(responseData));
+
+    if (err != 0) {
+        return err;
+    }
+
+    return 0x00;
+}
+
+esp_bootloader_error_t EspBootloader::flashEnd(bool reboot) {
+    EspBootloaderResponseHeader response{};
+    uint32_t data[1] = {
+            reboot ? (uint32_t)0 : (uint32_t)1,
+    };
+    uint8_t responseData[COMMAND_PACKAGE_LENGTH];
+
+    size_t responseSize = sendCommand(0x04, reinterpret_cast<uint8_t *>(&data), sizeof(data), &response, responseData, sizeof(responseData));
+
+    esp_bootloader_error_t err = checkResponse(responseSize, &response, responseData, sizeof(responseData));
+
+    if (err != 0) {
+        return err;
+    }
+
+    return 0x00;
+}
+
+esp_bootloader_error_t EspBootloader::flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len) {
+    esp_bootloader_error_t err;
+    uint32_t blockSize = 0x1800;
+
+    uint32_t numBlocks = (len + blockSize - 1) / blockSize;
+
+    err = flashBegin(len, numBlocks, blockSize, addr);
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    for (int seq = 0; seq < numBlocks; seq++) {
+        uint32_t fromOffs = seq * blockSize;
+        size_t actualLen = len - fromOffs;
+        if (actualLen > blockSize) {
+            actualLen = blockSize;
+        }
+
+        err = flashData(seq, const_cast<uint8_t *>(data + fromOffs), actualLen, blockSize);
+
+        if (err != 0x00) {
+            return err;
+        }
+    }
+
+    return 0x00;
 }
 
 esp_bootloader_error_t EspBootloader::checkResponse(size_t responseSize, EspBootloaderResponseHeader *responseHeader,
@@ -368,8 +478,13 @@ size_t EspBootloader::sendCommand(uint8_t command, uint8_t *data, size_t dataLen
 
     chunk[i++] = uart_getc(uart);
 
-    while(uart_is_readable_within_us(uart, 1000) && i < COMMAND_PACKAGE_LENGTH) {
-        chunk[i++] = uart_getc(uart);
+    while(uart_is_readable_within_us(uart, timeoutMs*1000) && i < COMMAND_PACKAGE_LENGTH) {
+        char c = uart_getc(uart);
+        chunk[i++] = c;
+
+        if (c == 0xc0) {
+            break;
+        }
     }
 
     uint8_t returnedFrame[COMMAND_PACKAGE_LENGTH];
@@ -425,3 +540,4 @@ uint32_t EspBootloader::checksum(const uint8_t *data, size_t len) {
 
     return checksum;
 }
+

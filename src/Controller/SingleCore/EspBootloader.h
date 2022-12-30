@@ -34,16 +34,21 @@ public:
     bool sync();
     esp_bootloader_error_t readReg(uint32_t addr, uint32_t *value);
     esp_bootloader_error_t spiSetParamsNinaW102();
-    esp_bootloader_error_t spiAttach();
+    esp_bootloader_error_t spiAttach(bool stubRunning);
     esp_bootloader_error_t spiFlashMd5(uint32_t addr, uint32_t size, esp_bootloader_md5_t *md5);
     esp_bootloader_error_t memBegin(uint32_t size, uint32_t blocks, uint32_t blocksize, uint32_t offset);
     esp_bootloader_error_t memData(uint32_t seq, uint8_t *data, size_t actualLen, size_t padLen);
     esp_bootloader_error_t memEnd(uint32_t entrypoint);
+    esp_bootloader_error_t flashBegin(uint32_t size, uint32_t blocks, uint32_t blocksize, uint32_t offset);
+    esp_bootloader_error_t flashData(uint32_t seq, uint8_t *data, size_t actualLen, size_t padLen);
+    esp_bootloader_error_t flashEnd(bool reboot);
     esp_bootloader_error_t uploadStub();
+    esp_bootloader_error_t uploadFirmware();
 private:
     uart_inst_t *uart;
 
     esp_bootloader_error_t memBeginAndData(uint32_t addr, const uint8_t *data, size_t len);
+    esp_bootloader_error_t flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len);
 
     size_t sendCommand(uint8_t command, uint8_t *data, size_t dataLen, EspBootloaderResponseHeader *responseHeader, uint8_t *responseData, size_t responseDataLen, uint32_t checksum = 0, uint16_t timeoutMs = 3000);
     static bool validateHeader(EspBootloaderResponseHeader *responseHeader, uint8_t expectedCommand);

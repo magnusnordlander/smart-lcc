@@ -154,7 +154,7 @@ add_executable(smart_lcc
         esphome/partitions.bin.h
         )
 
-target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip src stub)
+target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip src stub esphome)
 
 # pull in common dependencies
 target_link_libraries(smart_lcc pico_stdlib)
