@@ -4,7 +4,7 @@
 
 #include "SystemStatus.h"
 
-SystemStatus::SystemStatus(SystemSettings *settings): settings(settings) {
+SystemStatus::SystemStatus() {
 
 }
 

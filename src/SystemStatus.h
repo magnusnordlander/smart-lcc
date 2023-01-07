@@ -14,7 +14,7 @@
 
 class SystemStatus {
 public:
-    explicit SystemStatus(SystemSettings *settings);
+    explicit SystemStatus();
 
     // Status
     bool hasSentLccPacket = false;
@@ -35,8 +35,8 @@ public:
 
     inline absolute_time_t getCurrentTime() const { return latestStatusMessage.timestamp; }
 
-    inline float getOffsetTargetBrewTemperature() const { return getTargetBrewTemp() + getBrewTempOffset(); }
-    inline float getOffsetBrewTemperature() const { return getBrewTemperature() + getBrewTempOffset(); }
+    inline float getOffsetTargetBrewTemperature() const { return latestStatusMessage.offsetBrewSetPoint; }
+    inline float getOffsetBrewTemperature() const { return latestStatusMessage.offsetBrewTemperature; }
     inline float getBrewTemperature() const { return latestStatusMessage.brewTemperature; }
     inline float getServiceTemperature() const { return latestStatusMessage.serviceTemperature; }
 
@@ -45,7 +45,7 @@ public:
     inline bool isBrewSsrOn() const { return latestStatusMessage.brewSSRActive; }
     inline bool isServiceSsrOn() const { return latestStatusMessage.serviceSSRActive; }
     inline bool isWaterTankEmpty() const { return latestStatusMessage.waterTankLow; }
-    inline bool isInSleepMode() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_SLEEPING; }
+    inline bool isInSleepMode() const { return latestStatusMessage.sleepMode; }
 
     inline bool hasPreviousBrew() const { return !currentlyBrewing() && lastBrewStartedAt.has_value() && lastBrewEndedAt.has_value(); }
     inline uint32_t previousBrewDurationMs() const { return absolute_time_diff_us(lastBrewStartedAt.value(), lastBrewEndedAt.value()) / 1000; }
@@ -55,7 +55,7 @@ public:
 
     inline float getTargetBrewTemp() const { return latestStatusMessage.brewSetPoint; }
     inline float getTargetServiceTemp() const { return latestStatusMessage.serviceSetPoint; }
-    inline float getBrewTempOffset() const { return settings->getBrewTemperatureOffset(); }
+    inline float getBrewTempOffset() const { return latestStatusMessage.brewTemperatureOffset; }
 
     inline PidSettings getBrewPidSettings() const { return latestStatusMessage.brewPidSettings; }
     inline PidSettings getServicePidSettings() const { return latestStatusMessage.servicePidSettings; }
@@ -66,7 +66,6 @@ public:
 
     void updateStatusMessage(SystemControllerStatusMessage message);
 private:
-    SystemSettings* settings;
     SystemControllerStatusMessage latestStatusMessage;
 };
 

@@ -107,7 +107,10 @@ void SystemController::loop() {
     SystemControllerStatusMessage message = {
             .timestamp = get_absolute_time(),
             .brewTemperature = static_cast<float>(brewTempAverage.average()),
+            .offsetBrewTemperature = static_cast<float>(brewTempAverage.average()) + settings->getBrewTemperatureOffset(),
+            .brewTemperatureOffset = settings->getBrewTemperatureOffset(),
             .brewSetPoint = settings->getTargetBrewTemp(),
+            .offsetBrewSetPoint = settings->getTargetBrewTemp() + settings->getBrewTemperatureOffset(),
             .brewPidSettings = settings->getBrewPidParameters(),
             .brewPidParameters = brewPidRuntimeParameters,
             .serviceTemperature = static_cast<float>(serviceTempAverage.average()),
@@ -117,6 +120,7 @@ void SystemController::loop() {
             .brewSSRActive = currentLccParsedPacket.brew_boiler_ssr_on,
             .serviceSSRActive = currentLccParsedPacket.service_boiler_ssr_on,
             .ecoMode = settings->getEcoMode(),
+            .sleepMode = settings->getSleepMode(),
             .state = externalState(),
             .bailReason = bail_reason,
             .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,

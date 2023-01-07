@@ -6,10 +6,19 @@
 #include "SystemSettings.h"
 #include <hardware/watchdog.h>
 #include <hardware/flash.h>
+#include <utils/crc32.h>
 
 // We're going to erase and reprogram a region 256k from the start of flash.
 // Once done, we can access this at XIP_BASE + 256k.
 #define FLASH_TARGET_OFFSET (256 * 1024)
+
+#define SETTINGS_CURRENT_VERSION 0x01
+
+struct SettingsHeader{
+    uint8_t version;
+    crc32_t crc;
+    size_t len;
+};
 
 const SettingStruct defaultSettings{
     .brewTemperatureOffset = -10,
@@ -23,6 +32,9 @@ const SettingStruct defaultSettings{
 };
 
 const uint8_t *flash_target_contents = (const uint8_t *) (XIP_BASE + FLASH_TARGET_OFFSET);
+
+const SettingsHeader *storedHeader = reinterpret_cast<const SettingsHeader*>(flash_target_contents);
+const SettingStruct *storedSettings = reinterpret_cast<const SettingStruct*>(flash_target_contents + sizeof(SettingsHeader));
 
 SystemSettings::SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, MulticoreSupport* multicoreSupport): _commandQueue(commandQueue), multicoreSupport(multicoreSupport) {
 
@@ -40,20 +52,42 @@ void SystemSettings::initialize() {
 void SystemSettings::readSettings() {
     currentSettings = SettingStruct{};
 
-//    memcpy(&currentSettings, flash_target_contents, sizeof(SettingStruct));
+    if (storedHeader->version == SETTINGS_CURRENT_VERSION && storedHeader->len == sizeof(SettingStruct)) {
+        crc32_t readCrc;
+        crc32(storedSettings, sizeof(SettingStruct), &readCrc);
+
+        if (readCrc == storedHeader->crc) {
+            memcpy(&currentSettings, storedSettings, sizeof(SettingStruct));
+            return;
+        }
+    }
+
     memcpy(&currentSettings, &defaultSettings, sizeof(SettingStruct));
 }
 
 void SystemSettings::writeSettingsIfChanged() {
-    if (memcmp(&currentSettings, flash_target_contents, sizeof(SettingStruct)) != 0) {
-        //writeToFlash();
+    if (memcmp(&currentSettings, storedSettings, sizeof(SettingStruct)) != 0) {
+        writeToFlash();
     }
 }
 
 void SystemSettings::writeToFlash() {
+    crc32_t crc;
+    crc32(&currentSettings, sizeof(SettingStruct), &crc);
+
+    static_assert(sizeof(SettingsHeader) + sizeof(SettingStruct) <= FLASH_PAGE_SIZE);
+
     uint8_t paddedData[FLASH_PAGE_SIZE];
     memset(paddedData, 0, FLASH_PAGE_SIZE);
-    memcpy(paddedData, &currentSettings, sizeof(SettingStruct));
+
+    SettingsHeader header{
+        .version = SETTINGS_CURRENT_VERSION,
+        .crc = crc,
+        .len = sizeof(SettingStruct),
+    };
+
+    memcpy(paddedData, &header, sizeof(SettingsHeader));
+    memcpy(paddedData + sizeof(SettingsHeader), &currentSettings, sizeof(SettingStruct));
 
     noInterrupts();
     multicoreSupport->idleOtherCore();

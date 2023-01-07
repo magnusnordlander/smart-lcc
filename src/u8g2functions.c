@@ -97,11 +97,11 @@ uint8_t u8x8_gpio_and_delay_template(u8x8_t *u8x8, uint8_t msg,
             break;                  // can be used to setup pins
         case U8X8_MSG_DELAY_NANO: // delay arg_int * 1 nano second
             // printf("U8X8_MSG_DELAY_NANO %d\n", arg_int);
-            sleep_us(1000 * arg_int);
+            sleep_us(arg_int / 1000);
             break;
         case U8X8_MSG_DELAY_100NANO: // delay arg_int * 100 nano seconds
             // printf("U8X8_MSG_DELAY_100NANO %d\n", arg_int);
-            sleep_us(1000 * 100 * arg_int);
+            sleep_us(arg_int / 10);
             break;
         case U8X8_MSG_DELAY_10MICRO: // delay arg_int * 10 micro seconds
             // printf("U8X8_MSG_DELAY_10MICRO %d\n", arg_int);

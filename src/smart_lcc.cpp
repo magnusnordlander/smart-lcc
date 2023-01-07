@@ -2,7 +2,7 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "pins.h"
-#include "u8g2.h"
+#include <u8g2.h>
 #include "u8g2functions.h"
 #include "Controller/Core0/SystemController.h"
 #include "utils/PicoQueue.h"
@@ -11,6 +11,10 @@
 #include "MulticoreSupport.h"
 #include "Controller/SingleCore/EspBootloader.h"
 #include "Controller/Core0/Utils/ClearUartCruft.h"
+#include "Controller/Core0/Utils/UartReadBlockingTimeout.h"
+#include "Controller/Core1/UIController.h"
+#include "Controller/SingleCore/EspFirmware.h"
+
 
 #define U8G2_DISP_STR(__STR__) \
 u8g2_ClearBuffer(&u8g2); \
@@ -33,9 +37,12 @@ WAIT_FOR_PLUS(); \
 repeating_timer_t safePacketBootupTimer;
 u8g2_t u8g2;
 SystemController* systemController;
+SystemStatus* status;
+UIController* uiController;
 PicoQueue<SystemControllerStatusMessage>* statusQueue;
 PicoQueue<SystemControllerCommand>* commandQueue;
 MulticoreSupport support;
+EspFirmware *espFirmware;
 extern "C" {
 volatile bool __otherCoreIdled = false;
 };
@@ -51,6 +58,14 @@ void initGpio() {
     gpio_init(NINA_RESETN);
     gpio_init(PLUS_BUTTON);
     gpio_init(MINUS_BUTTON);
+
+    gpio_init(AUX_RX);
+    gpio_set_dir(AUX_RX, true);
+    gpio_put(AUX_RX, false);
+
+    gpio_init(AUX_TX);
+    gpio_set_dir(AUX_TX, true);
+    gpio_put(AUX_TX, false);
 
 //    gpio_set_function(AUX_RX, GPIO_FUNC_UART);
 //    gpio_set_function(AUX_TX, GPIO_FUNC_UART);
@@ -79,15 +94,28 @@ void initEsp() {
     gpio_put(NINA_GPIO0, true);
     gpio_put(NINA_RESETN, false);
 
+//    sleep_ms(20000);
+
+//    bool success = espFirmware.pingBlocking();
+
+    bool success = false;
+
     u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
 
     u8g2_ClearBuffer(&u8g2);
     u8g2_DrawStr(&u8g2, 16, 16, "ESP32 Boot mode");
     u8g2_DrawStr(&u8g2, 16, 24, "Press - to boot");
     u8g2_DrawStr(&u8g2, 16, 32, "Press + to flash");
+    if (success) {
+        u8g2_DrawStr(&u8g2, 16, 48, "Comms successful");
+    } else {
+        u8g2_DrawStr(&u8g2, 16, 48, "Comms not successful");
+    }
     u8g2_SendBuffer(&u8g2);
 
-    bool correctVersion = false;
+
+
+    bool correctVersion = true;
 
     while (gpio_get(PLUS_BUTTON) != 1 && gpio_get(MINUS_BUTTON) != 1) {
         sleep_ms(10);
@@ -166,8 +194,6 @@ void initEsp() {
         err = bootloader.spiFlashMd5(0x10000, 1024, &md5);
         ESP_ERR_HANDLE(err, "MD5"); */
 
-        WAIT_FOR_PLUS()
-
         err = bootloader.uploadFirmware();
         ESP_ERR_HANDLE(err, "Firmware");
 
@@ -176,9 +202,6 @@ void initEsp() {
         sleep_ms(1000);
 
         gpio_put(NINA_RESETN, true);
-
-        U8G2_DISP_STR("Esphome?");
-        WAIT_FOR_PLUS();
     }
 }
 
@@ -229,6 +252,7 @@ void u8g2Int(uint8_t i) {
         }
 
         systemController->loop();
+//        espFirmware->loop();
 
         if (statusQueue->isFull())  {
             if (!core1RebootTimer.has_value()) {
@@ -245,20 +269,34 @@ void u8g2Int(uint8_t i) {
 
     u8g2Char('Y');
 
+    uiController = new UIController(status, commandQueue, &u8g2, MINUS_BUTTON, PLUS_BUTTON);
+
+    u8g2Char('Z');
+
     SystemControllerCommand beginCommand;
     beginCommand.type = COMMAND_BEGIN;
     commandQueue->tryAdd(&beginCommand);
 
-    u8g2Char('Z');
+    absolute_time_t nextSend = make_timeout_time_ms(1000);
+
+    espFirmware = new EspFirmware(uart1, commandQueue);
+    EspFirmware::initInterrupts(uart1);
+
+    //gpio_put(AUX_TX, true);
 
     while (true) {
-        u8g2Int(statusQueue->getLevelUnsafe());
-
         while (!statusQueue->isEmpty()) {
             statusQueue->removeBlocking(&sm);
         }
 
-        uart_write_blocking(uart1, reinterpret_cast<const uint8_t *>(&sm), sizeof(SystemControllerStatusMessage));
+        status->updateStatusMessage(sm);
+        uiController->loop();
+        espFirmware->loop();
+
+        if (time_reached(nextSend)) {
+            espFirmware->sendStatus(&sm);
+            nextSend = make_timeout_time_ms(1000);
+        }
     }
 
     // Core 1 - UI Controller, ESP UART controller
@@ -282,8 +320,10 @@ int main() {
     statusQueue = new PicoQueue<SystemControllerStatusMessage>(100);
     commandQueue = new PicoQueue<SystemControllerCommand>(100);
 
+    // Move inside SystemController
     SystemSettings settings(commandQueue, &support);
     settings.initialize();
+    // End move
 
     u8g2Char('C');
 
@@ -295,6 +335,8 @@ int main() {
     initEsp();
 
     u8g2Char('E');
+
+    status = new SystemStatus();
 
     multicore_reset_core1();
     multicore_launch_core1(main1);

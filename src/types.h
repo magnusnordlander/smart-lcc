@@ -23,7 +23,10 @@ struct SettingStruct {
 struct SystemControllerStatusMessage{
     absolute_time_t timestamp{};
     float brewTemperature{};
+    float offsetBrewTemperature{};
+    float brewTemperatureOffset{};
     float brewSetPoint{};
+    float offsetBrewSetPoint{};
     PidSettings brewPidSettings{};
     PidRuntimeParameters brewPidParameters{};
     float serviceTemperature{};
@@ -33,6 +36,7 @@ struct SystemControllerStatusMessage{
     bool brewSSRActive{};
     bool serviceSSRActive{};
     bool ecoMode{};
+    bool sleepMode{};
     SystemControllerState state{};
     SystemControllerBailReason bailReason{};
     bool currentlyBrewing{};

@@ -1,0 +1,4 @@
+#define eco_mode_width  8
+#define eco_mode_height 8
+static unsigned char eco_mode_bits[] = {
+        0x0f,0x19,0x35,0x69,0x53,0x66,0xfc,0xc0};

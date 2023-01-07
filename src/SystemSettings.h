@@ -11,9 +11,7 @@
 
 class SystemSettings {
 public:
-    explicit SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, MulticoreSupport, MulticoreSupport* support);
-
-    SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, MulticoreSupport *multicoreSupport);
+    explicit SystemSettings(PicoQueue<SystemControllerCommand> *commandQueue, MulticoreSupport *multicoreSupport);
 
     void initialize();
 

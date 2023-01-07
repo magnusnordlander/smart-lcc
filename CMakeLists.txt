@@ -144,17 +144,20 @@ add_executable(smart_lcc
         src/Controller/Core0/SystemController.cpp
         src/Controller/Core0/TimedLatch.cpp
         src/Controller/Core0/Utils/UartReadBlockingTimeout.h
+        src/Controller/Core1/UIController.cpp
         lib/slip/slip.cpp lib/slip/slip.h
         src/Controller/SingleCore/EspBootloader.cpp src/Controller/SingleCore/EspBootloader.h
+        src/Controller/SingleCore/EspFirmware.cpp src/Controller/SingleCore/EspFirmware.h
         src/Controller/Core0/Utils/ClearUartCruft.h
         stub/stub.h
-        esphome/boot_app0.bin.h
-        esphome/bootloader.bin.h
-        esphome/firmware.bin.h
-        esphome/partitions.bin.h
-        )
+        esphome-output/boot_app0.bin.h
+        esphome-output/bootloader.bin.h
+        esphome-output/firmware.bin.h
+        esphome-output/partitions.bin.h
+        esphome/esp-protocol.h
+        src/utils/crc32.cpp src/utils/crc32.h)
 
-target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip src stub esphome)
+target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip lib/Ring-Buffer src stub esphome esphome-output xbm)
 
 # pull in common dependencies
 target_link_libraries(smart_lcc pico_stdlib)
