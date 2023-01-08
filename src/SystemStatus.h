@@ -9,7 +9,7 @@
 #include "Controller/Core0/lcc_protocol.h"
 #include "Controller/Core0/control_board_protocol.h"
 #include "Controller/Core0/PIDController.h"
-#include "SystemSettings.h"
+#include "Controller/Core0/SystemSettings.h"
 
 
 class SystemStatus {
@@ -30,7 +30,7 @@ public:
     bool wifiConnected = false;
     bool mqttConnected = false;
 
-    inline bool hasBailed() const { return latestStatusMessage.state == SYSTEM_CONTROLLER_STATE_BAILED; }
+    inline bool hasBailed() const { return latestStatusMessage.coalescedState == SYSTEM_CONTROLLER_COALESCED_STATE_BAILED; }
     inline SystemControllerBailReason bailReason() const { return latestStatusMessage.bailReason; }
 
     inline absolute_time_t getCurrentTime() const { return latestStatusMessage.timestamp; }
@@ -40,7 +40,7 @@ public:
     inline float getBrewTemperature() const { return latestStatusMessage.brewTemperature; }
     inline float getServiceTemperature() const { return latestStatusMessage.serviceTemperature; }
 
-    inline SystemControllerState getState() const { return latestStatusMessage.state; }
+    inline SystemControllerCoalescedState getState() const { return latestStatusMessage.coalescedState; }
     inline bool isInEcoMode() const { return latestStatusMessage.ecoMode; }
     inline bool isBrewSsrOn() const { return latestStatusMessage.brewSSRActive; }
     inline bool isServiceSsrOn() const { return latestStatusMessage.serviceSSRActive; }

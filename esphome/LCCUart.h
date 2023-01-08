@@ -21,6 +21,7 @@ class LCCUart : public esphome::Component, public esphome::uart::UARTDevice {
 public:
     esphome::sensor::Sensor *brewTemperatureSensor{nullptr};
     esphome::sensor::Sensor *serviceTemperatureSensor{nullptr};
+    esphome::text_sensor::TextSensor *coalescedStateSensor{nullptr};
     LambdaSwitch *ecoModeSwitch{nullptr};
     LambdaSwitch *sleepSwitch{nullptr};
     LambdaNumber *brewTemperatureSetPoint{nullptr};
@@ -45,21 +46,25 @@ public:
         serviceTemperatureSensor->set_accuracy_decimals(1);
         serviceTemperatureSensor->set_force_update(false);
 
+        coalescedStateSensor = new esphome::text_sensor::TextSensor();
+        coalescedStateSensor->set_name("State");
+        coalescedStateSensor->set_disabled_by_default(false);
+
         ecoModeSwitch = new LambdaSwitch([=](bool state) {
-            ESP_LOGD("custom", "Switching eco mode");
             sendCommand(ESP_SYSTEM_COMMAND_SET_ECO_MODE, state);
         });
         ecoModeSwitch->set_name("Eco mode");
         ecoModeSwitch->set_disabled_by_default(false);
 
         sleepSwitch = new LambdaSwitch([=](bool state) {
-            ESP_LOGD("custom", "Switching sleep mode");
             sendCommand(ESP_SYSTEM_COMMAND_SET_SLEEP_MODE, state);
         });
         sleepSwitch->set_name("Sleep mode");
         sleepSwitch->set_disabled_by_default(false);
 
-        brewTemperatureSetPoint = new LambdaNumber();
+        brewTemperatureSetPoint = new LambdaNumber([=](float state) {
+            sendCommand(ESP_SYSTEM_COMMAND_SET_BREW_SET_POINT, state);
+        });
         brewTemperatureSetPoint->set_name("Brew temperature set point");
         brewTemperatureSetPoint->set_disabled_by_default(false);
         brewTemperatureSetPoint->traits.set_min_value(0);
@@ -67,7 +72,9 @@ public:
         brewTemperatureSetPoint->traits.set_step(0.1f);
         brewTemperatureSetPoint->traits.set_unit_of_measurement("\302\260C");
 
-        serviceTemperatureSetPoint = new LambdaNumber();
+        serviceTemperatureSetPoint = new LambdaNumber([=](float state) {
+            sendCommand(ESP_SYSTEM_COMMAND_SET_SERVICE_SET_POINT, state);
+        });
         serviceTemperatureSetPoint->set_name("Service temperature set point");
         serviceTemperatureSetPoint->set_disabled_by_default(false);
         serviceTemperatureSetPoint->traits.set_min_value(0);
@@ -75,7 +82,9 @@ public:
         serviceTemperatureSetPoint->traits.set_step(0.1f);
         serviceTemperatureSetPoint->traits.set_unit_of_measurement("\302\260C");
 
-        brewTemperatureOffset = new LambdaNumber();
+        brewTemperatureOffset = new LambdaNumber([=](float state) {
+            sendCommand(ESP_SYSTEM_COMMAND_SET_BREW_OFFSET, state);
+        });
         brewTemperatureOffset->set_name("Brew temperature offset");
         brewTemperatureOffset->set_disabled_by_default(true);
         brewTemperatureOffset->traits.set_min_value(-20);
@@ -107,7 +116,7 @@ public:
             bool success = this->read_array(reinterpret_cast<uint8_t *>(&header), sizeof(ESPMessageHeader));
 
             if (!success) {
-                ESP_LOGD("custom", "There was stuff on the UART, but we didn't get a message");
+                ESP_LOGW("custom", "There was stuff on the UART, but we didn't get a message");
                 return;
             }
 
@@ -116,14 +125,19 @@ public:
                     return handlePingMessage(&header);
                 case ESP_MESSAGE_SYSTEM_STATUS:
                     return handleSystemStatusMessage(&header);
+                case ESP_MESSAGE_NACK:
+                    return handleNack(&header);
                 case ESP_MESSAGE_PONG:
                 case ESP_MESSAGE_ACK:
-                case ESP_MESSAGE_NACK:
                 case ESP_MESSAGE_SYSTEM_COMMAND:
                     ESP_LOGD("custom", "Non-ping message");
                     break;
             }
         }
+    }
+
+    void handleNack(ESPMessageHeader* header) {
+        ESP_LOGE("custom", "NACK message, error: %u", header->error);
     }
 
     void handlePingMessage(ESPMessageHeader* header) {
@@ -148,7 +162,7 @@ public:
                     this->write_array(reinterpret_cast<const uint8_t *>(&responseHeader), sizeof(ESPMessageHeader));
                     this->write_array(reinterpret_cast<const uint8_t *>(&responseMessage), sizeof(ESPPongMessage));
                 } else {
-                    ESP_LOGD("custom", "Incorrect message, sending error");
+                    ESP_LOGW("custom", "Incorrect message, sending error");
                     ESPMessageHeader responseHeader{
                             .direction = ESP_DIRECTION_ESP32_TO_RP2040,
                             .id = static_cast<uint16_t>(esp_random()),
@@ -176,8 +190,8 @@ public:
             if (success) {
                 ackMessage(header);
 
-                float brewTemp = ((float)message.brewBoilerTemperatureMilliCelsius) / 1000.f;
-                float serviceTemp = ((float)message.serviceBoilerTemperatureMilliCelsius) / 1000.f;
+                float brewTemp = message.brewBoilerTemperature;
+                float serviceTemp = message.serviceBoilerTemperature;
 
                 if (!brewTemperatureSensor->has_state() || fabs(brewTemp - brewTemperatureSensor->state) > 0.05) {
                     brewTemperatureSensor->publish_state(brewTemp);
@@ -187,9 +201,15 @@ public:
                     serviceTemperatureSensor->publish_state(serviceTemp);
                 }
 
-                float brewSetPoint = ((float)message.brewBoilerSetPointMilliCelsius) / 1000.f;
-                float serviceSetPoint = ((float)message.serviceBoilerSetPointMilliCelsius) / 1000.f;
-                float tempOffset = ((float)message.brewTemperatureOffsetMilliCelsius) / 1000.f;
+                std::string coalescedStateString = prettifyCoalescedStateString(message.coalescedState);
+
+                if (!coalescedStateSensor->has_state() || coalescedStateSensor->state != coalescedStateString) {
+                    coalescedStateSensor->publish_state(coalescedStateString);
+                }
+
+                float brewSetPoint = message.brewBoilerSetPoint;
+                float serviceSetPoint = message.serviceBoilerSetPoint;
+                float tempOffset = message.brewTemperatureOffset;
 
                 if (!brewTemperatureSetPoint->has_state() || fabs(brewSetPoint - brewTemperatureSetPoint->state) > 0.05) {
                     brewTemperatureSetPoint->publish_state(brewSetPoint);
@@ -223,7 +243,7 @@ public:
                     sleepSwitch->publish_state(message.sleepMode);
                 }
             } else {
-                ESP_LOGD("custom", "Didn't get complete data");
+                ESP_LOGW("custom", "Didn't get complete data");
 
                 nackMessage(header);
             }
@@ -262,11 +282,32 @@ public:
     {
         ESPSystemCommandPayload payload{
             .type = type,
-            .bool1 = boolArg
+            .bool1 = boolArg,
+            .float1 = 0.0f,
+            .float2 = 0.0f,
+            .float3 = 0.0f,
+            .float4 = 0.0f,
+            .float5 = 0.0f,
         };
 
         sendCommand(payload);
     }
+
+    void sendCommand(ESPSystemCommandType type, float floatArg)
+    {
+        ESPSystemCommandPayload payload{
+                .type = type,
+                .bool1 = false,
+                .float1 = floatArg,
+                .float2 = 0.0f,
+                .float3 = 0.0f,
+                .float4 = 0.0f,
+                .float5 = 0.0f,
+        };
+
+        sendCommand(payload);
+    }
+
 
     void sendCommand(ESPSystemCommandPayload payload)
     {
@@ -304,5 +345,26 @@ public:
             crc = table[(uint8_t)crc ^ ((uint8_t*)data)[i]] ^ crc >> 8;
 
         return crc;
+    }
+
+    std::string prettifyCoalescedStateString(ESPSystemCoalescedState state) {
+        switch (state) {
+            case ESP_SYSTEM_COALESCED_STATE_UNDETERMINED:
+                return "Undetermined";
+            case ESP_SYSTEM_COALESCED_STATE_HEATUP:
+                return "Heatup";
+            case ESP_SYSTEM_COALESCED_STATE_TEMPS_NORMALIZING:
+                return "Temperatures normalizing";
+            case ESP_SYSTEM_COALESCED_STATE_WARM:
+                return "Warm";
+            case ESP_SYSTEM_COALESCED_STATE_SLEEPING:
+                return "Sleeping";
+            case ESP_SYSTEM_COALESCED_STATE_BAILED:
+                return "Bailed";
+            case ESP_SYSTEM_COALESCED_STATE_FIRST_RUN:
+                return "First run";
+        }
+
+        return "Unknown";
     }
 };

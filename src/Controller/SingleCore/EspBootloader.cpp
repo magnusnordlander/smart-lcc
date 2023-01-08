@@ -6,13 +6,14 @@
 #include <slip.h>
 #include <cstring>
 #include <hardware/uart.h>
-#include <Controller/Core0/Utils/ClearUartCruft.h>
-#include <Controller/Core0/Utils/UartReadBlockingTimeout.h>
+#include "utils/ClearUartCruft.h"
+#include "utils/UartReadBlockingTimeout.h"
 #include <stub.h>
-#include <bootloader.bin.h>
+#include <bootloader_dio_40m.bin.h>
 #include <partitions.bin.h>
 #include <boot_app0.bin.h>
 #include <firmware.bin.h>
+#include <firmware_crc.h>
 
 // Must be less than uint16_t
 #define COMMAND_PACKAGE_LENGTH 255
@@ -286,28 +287,34 @@ esp_bootloader_error_t EspBootloader::uploadStub() {
     return 0x00;
 }
 
-esp_bootloader_error_t EspBootloader::uploadFirmware() {
+esp_bootloader_error_t EspBootloader::uploadFirmware(const std::function<void(uint16_t, uint16_t)>& progressCallback) {
     esp_bootloader_error_t err;
 
-    err = flashBeginAndData(0x1000, bootloader_bin, sizeof(bootloader_bin));
+    err = flashBeginAndData(0x1000, bootloader_dio_40m_bin, sizeof(bootloader_dio_40m_bin), progressCallback);
 
     if (err != 0x00) {
         return err;
     }
 
-    err = flashBeginAndData(0x8000, partitions_bin, sizeof(partitions_bin));
+    err = flashBeginAndData(0x8000, partitions_bin, sizeof(partitions_bin), progressCallback);
 
     if (err != 0x00) {
         return err;
     }
 
-    err = flashBeginAndData(0xe000, boot_app0_bin, sizeof(boot_app0_bin));
+    err = flashBeginAndData(0xe000, boot_app0_bin, sizeof(boot_app0_bin), progressCallback);
 
     if (err != 0x00) {
         return err;
     }
 
-    err = flashBeginAndData(0x10000, firmware_bin, sizeof(firmware_bin));
+    err = flashBeginAndData(0x10000, firmware_bin, sizeof(firmware_bin), progressCallback);
+
+    if (err != 0x00) {
+        return err;
+    }
+
+    err = flashBeginAndData(0x1E0000, reinterpret_cast<const uint8_t *>(&firmware_crc), sizeof(firmware_crc), progressCallback);
 
     if (err != 0x00) {
         return err;
@@ -387,7 +394,7 @@ esp_bootloader_error_t EspBootloader::flashEnd(bool reboot) {
     return 0x00;
 }
 
-esp_bootloader_error_t EspBootloader::flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len) {
+esp_bootloader_error_t EspBootloader::flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len, const std::function<void(uint16_t, uint16_t)>& progressCallback) {
     esp_bootloader_error_t err;
     uint32_t blockSize = 0x1800;
 
@@ -405,6 +412,8 @@ esp_bootloader_error_t EspBootloader::flashBeginAndData(uint32_t addr, const uin
         if (actualLen > blockSize) {
             actualLen = blockSize;
         }
+
+        progressCallback(seq, numBlocks);
 
         err = flashData(seq, const_cast<uint8_t *>(data + fromOffs), actualLen, blockSize);
 

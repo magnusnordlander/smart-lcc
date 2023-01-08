@@ -4,9 +4,9 @@
 
 #include <cstring>
 #include "SystemSettings.h"
-#include <hardware/watchdog.h>
-#include <hardware/flash.h>
-#include <utils/crc32.h>
+#include "hardware/watchdog.h"
+#include "hardware/flash.h"
+#include "utils/crc32.h"
 
 // We're going to erase and reprogram a region 256k from the start of flash.
 // Once done, we can access this at XIP_BASE + 256k.

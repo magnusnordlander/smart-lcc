@@ -7,8 +7,8 @@
 #include "pico/timeout_helper.h"
 #include <cmath>
 #include <hardware/timer.h>
-#include "Utils/UartReadBlockingTimeout.h"
-#include "Utils/ClearUartCruft.h"
+#include "utils/UartReadBlockingTimeout.h"
+#include "utils/ClearUartCruft.h"
 
 SystemController::SystemController(
         uart_inst_t * _uart,
@@ -121,7 +121,9 @@ void SystemController::loop() {
             .serviceSSRActive = currentLccParsedPacket.service_boiler_ssr_on,
             .ecoMode = settings->getEcoMode(),
             .sleepMode = settings->getSleepMode(),
-            .state = externalState(),
+            .internalState = internalState,
+            .runState = runState,
+            .coalescedState = externalState(),
             .bailReason = bail_reason,
             .currentlyBrewing = currentControlBoardParsedPacket.brew_switch && currentLccParsedPacket.pump_on,
             .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on &&
@@ -272,6 +274,12 @@ void SystemController::handleCommands() {
             case COMMAND_SET_BREW_SET_POINT:
                 settings->setTargetBrewTemp(command.float1);
                 break;
+            case COMMAND_SET_OFFSET_BREW_SET_POINT:
+                settings->setOffsetTargetBrewTemp(command.float1);
+                break;
+            case COMMAND_SET_BREW_OFFSET:
+                settings->setBrewTemperatureOffset(command.float1);
+                break;
             case COMMAND_SET_BREW_PID_PARAMETERS:
                 settings->setBrewPidParameters(PidSettings{
                     .Kp = command.float1,
@@ -347,30 +355,30 @@ void SystemController::hardBail(SystemControllerBailReason reason) {
     bail_reason = reason;
 }
 
-SystemControllerState SystemController::externalState() {
+SystemControllerCoalescedState SystemController::externalState() {
     switch (internalState) {
         case NOT_STARTED_YET:
-            return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
+            return SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED;
         case RUNNING:
             if (settings->getSleepMode()) {
-                return SYSTEM_CONTROLLER_STATE_SLEEPING;
+                return SYSTEM_CONTROLLER_COALESCED_STATE_SLEEPING;
             }
 
             switch (runState) {
                 case RUN_STATE_UNDETEMINED:
-                    return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
+                    return SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED;
                 case RUN_STATE_HEATUP_STAGE_1:
                 case RUN_STATE_HEATUP_STAGE_2:
-                    return SYSTEM_CONTROLLER_STATE_HEATUP;
+                    return SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP;
                 case RUN_STATE_NORMAL:
-                    return areTemperaturesAtSetPoint() ? SYSTEM_CONTROLLER_STATE_WARM : SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING;
+                    return areTemperaturesAtSetPoint() ? SYSTEM_CONTROLLER_COALESCED_STATE_WARM : SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING;
             }
         case SOFT_BAIL:
         case HARD_BAIL:
-            return SYSTEM_CONTROLLER_STATE_BAILED;
+            return SYSTEM_CONTROLLER_COALESCED_STATE_BAILED;
     }
 
-    return SYSTEM_CONTROLLER_STATE_UNDETERMINED;
+    return SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED;
 }
 
 void SystemController::unbail() {

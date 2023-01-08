@@ -8,6 +8,7 @@
 #include "hardware/regs/rosc.h"
 #include "hardware/regs/addressmap.h"
 #include "utils/crc32.h"
+#include "utils/USBDebug.h"
 
 jnk0le::Ringbuffer<uint8_t, 1024> EspFirmware::ringbuffer = {};
 uart_inst_t* EspFirmware::interruptedUart = nullptr;
@@ -132,11 +133,14 @@ bool EspFirmware::sendStatus(SystemControllerStatusMessage *systemControllerStat
     };
 
     ESPSystemStatusMessage statusMessage{
-            .brewBoilerTemperatureMilliCelsius = static_cast<uint32_t>(systemControllerStatusMessage->offsetBrewTemperature*1000),
-            .brewBoilerSetPointMilliCelsius = static_cast<uint32_t>(systemControllerStatusMessage->offsetBrewSetPoint*1000),
-            .serviceBoilerTemperatureMilliCelsius = static_cast<uint32_t>(systemControllerStatusMessage->serviceTemperature*1000),
-            .serviceBoilerSetPointMilliCelsius = static_cast<uint32_t>(systemControllerStatusMessage->serviceSetPoint*1000),
-            .brewTemperatureOffsetMilliCelsius = static_cast<int32_t>(systemControllerStatusMessage->brewTemperatureOffset*1000),
+            .internalState = getInternalState(systemControllerStatusMessage->internalState),
+            .runState = getRunState(systemControllerStatusMessage->runState),
+            .coalescedState = getCoalescedState(systemControllerStatusMessage->coalescedState),
+            .brewBoilerTemperature = systemControllerStatusMessage->offsetBrewTemperature,
+            .brewBoilerSetPoint = systemControllerStatusMessage->offsetBrewSetPoint,
+            .serviceBoilerTemperature = systemControllerStatusMessage->serviceTemperature,
+            .serviceBoilerSetPoint = systemControllerStatusMessage->serviceSetPoint,
+            .brewTemperatureOffset = systemControllerStatusMessage->brewTemperatureOffset,
             .autoSleepAfter = 0,
             .currentlyBrewing = systemControllerStatusMessage->currentlyBrewing,
             .currentlyFillingServiceBoiler = systemControllerStatusMessage->currentlyFillingServiceBoiler,
@@ -144,7 +148,7 @@ bool EspFirmware::sendStatus(SystemControllerStatusMessage *systemControllerStat
             .sleepMode = systemControllerStatusMessage->sleepMode,
             .waterTankLow = systemControllerStatusMessage->waterTankLow,
             .plannedAutoSleepInSeconds = 0,
-            .rp2040TemperatureMilliCelsius = 0,
+            .rp2040Temperature = 0,
     };
 
     ringbuffer.consumerClear();
@@ -217,10 +221,13 @@ void EspFirmware::handleCommand(ESPMessageHeader *header) {
                         type = COMMAND_SET_SLEEP_MODE;
                         break;
                     case ESP_SYSTEM_COMMAND_SET_BREW_SET_POINT:
-                        type = COMMAND_SET_BREW_SET_POINT;
+                        type = COMMAND_SET_OFFSET_BREW_SET_POINT;
                         break;
                     case ESP_SYSTEM_COMMAND_SET_BREW_PID_PARAMETERS:
                         type = COMMAND_SET_BREW_PID_PARAMETERS;
+                        break;
+                    case ESP_SYSTEM_COMMAND_SET_BREW_OFFSET:
+                        type = COMMAND_SET_BREW_OFFSET;
                         break;
                     case ESP_SYSTEM_COMMAND_SET_SERVICE_SET_POINT:
                         type = COMMAND_SET_SERVICE_SET_POINT;
@@ -243,6 +250,13 @@ void EspFirmware::handleCommand(ESPMessageHeader *header) {
                     .bool1 = message.payload.bool1,
                 };
 
+                USB_PRINTF("Message: \n");
+                USB_PRINT_BUF(&message, sizeof(message));
+                USB_PRINTF("\n");
+                USB_PRINT_BUF(&(message.payload.bool1), sizeof(message.payload.bool1));
+                USB_PRINTF("\n");
+                USB_PRINTF("System controller command: %u, B: %u\n", type, message.payload.bool1);
+
                 commandQueue->tryAdd(&command);
 
                 sendAck(header->id);
@@ -253,6 +267,7 @@ void EspFirmware::handleCommand(ESPMessageHeader *header) {
             sendNack(header->id, ESP_ERROR_INCOMPLETE_DATA);
         }
     } else {
+        USB_PRINTF("Unexpected message length. Expected: %u Received: %lu\n", sizeof(ESPSystemCommandMessage), header->length);
         sendNack(header->id, ESP_ERROR_UNEXPECTED_MESSAGE_LENGTH);
     }
 }

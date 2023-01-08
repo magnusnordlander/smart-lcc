@@ -2,8 +2,9 @@ esphome:
   name: rp2040-connect
   platformio_options:
     board_build.flash_mode: dio
-    board_build.f_flash: 20000000L
-    board_build.flash_size: 4MB
+    board_build.f_flash: 40000000L
+    board_build.flash_size: 2MB
+    board_build.partitions: ../../../partitions-nina.csv
   includes:
     - LambdaSwitch.h
     - LambdaNumber.h
@@ -48,6 +49,7 @@ custom_component:
       LCCUart *lcc = new LCCUart(id(uart_bus));
       App.register_sensor(lcc->brewTemperatureSensor);
       App.register_sensor(lcc->serviceTemperatureSensor);
+      App.register_text_sensor(lcc->coalescedStateSensor);
       App.register_switch(lcc->ecoModeSwitch);
       App.register_switch(lcc->sleepSwitch);
       App.register_number(lcc->brewTemperatureSetPoint);
@@ -67,9 +69,12 @@ api:
   encryption:
     key: !secret api_key
 
+esp32_improv:
+  authorizer: false
+
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+#  ssid: !secret wifi_ssid
+#  password: !secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:

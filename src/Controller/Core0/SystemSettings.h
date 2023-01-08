@@ -7,7 +7,7 @@
 
 #include "utils/PicoQueue.h"
 #include "types.h"
-#include <MulticoreSupport.h>
+#include "MulticoreSupport.h"
 
 class SystemSettings {
 public:

@@ -29,7 +29,7 @@ enum ESPError: uint32_t {
     ESP_ERROR_PING_WRONG_VERSION = 0x05,
 };
 
-struct ESPMessageHeader {
+struct __packed ESPMessageHeader {
     ESPDirection direction;
     uint32_t id;
     uint32_t responseTo;
@@ -46,12 +46,40 @@ struct ESPPongMessage {
     uint16_t version;
 };
 
-struct ESPSystemStatusMessage {
-    uint32_t brewBoilerTemperatureMilliCelsius;
-    uint32_t brewBoilerSetPointMilliCelsius;
-    uint32_t serviceBoilerTemperatureMilliCelsius;
-    uint32_t serviceBoilerSetPointMilliCelsius;
-    int32_t brewTemperatureOffsetMilliCelsius;
+enum ESPSystemInternalState: uint8_t {
+    ESP_SYSTEM_INTERNAL_STATE_NOT_STARTED_YET,
+    ESP_SYSTEM_INTERNAL_STATE_RUNNING,
+    ESP_SYSTEM_INTERNAL_STATE_SOFT_BAIL,
+    ESP_SYSTEM_INTERNAL_STATE_HARD_BAIL,
+};
+
+enum ESPSystemRunState: uint8_t {
+    ESP_SYSTEM_RUN_STATE_UNDETEMINED,
+    ESP_SYSTEM_RUN_STATE_NORMAL,
+    ESP_SYSTEM_RUN_STATE_HEATUP_STAGE_1,
+    ESP_SYSTEM_RUN_STATE_HEATUP_STAGE_2,
+    ESP_SYSTEM_RUN_STATE_FIRST_RUN,
+};
+
+enum ESPSystemCoalescedState: uint8_t {
+    ESP_SYSTEM_COALESCED_STATE_UNDETERMINED = 0,
+    ESP_SYSTEM_COALESCED_STATE_HEATUP,
+    ESP_SYSTEM_COALESCED_STATE_TEMPS_NORMALIZING,
+    ESP_SYSTEM_COALESCED_STATE_WARM,
+    ESP_SYSTEM_COALESCED_STATE_SLEEPING,
+    ESP_SYSTEM_COALESCED_STATE_BAILED,
+    ESP_SYSTEM_COALESCED_STATE_FIRST_RUN
+};
+
+struct __packed ESPSystemStatusMessage {
+    ESPSystemInternalState internalState;
+    ESPSystemRunState runState;
+    ESPSystemCoalescedState coalescedState;
+    float brewBoilerTemperature;
+    float brewBoilerSetPoint;
+    float serviceBoilerTemperature;
+    float serviceBoilerSetPoint;
+    float brewTemperatureOffset;
     uint8_t autoSleepAfter;
     bool currentlyBrewing;
     bool currentlyFillingServiceBoiler;
@@ -59,29 +87,26 @@ struct ESPSystemStatusMessage {
     bool sleepMode;
     bool waterTankLow;
     uint16_t plannedAutoSleepInSeconds;
-    uint32_t rp2040TemperatureMilliCelsius;
+    float rp2040Temperature;
     /*
      * To add:
-     * Internal state
-     * Run state
-     *
      * Pid settings and pid parameters
      */
 };
 
-typedef enum {
+enum ESPSystemCommandType: uint32_t {
     ESP_SYSTEM_COMMAND_SET_BREW_SET_POINT,
     ESP_SYSTEM_COMMAND_SET_BREW_PID_PARAMETERS,
+    ESP_SYSTEM_COMMAND_SET_BREW_OFFSET,
     ESP_SYSTEM_COMMAND_SET_SERVICE_SET_POINT,
     ESP_SYSTEM_COMMAND_SET_SERVICE_PID_PARAMETERS,
     ESP_SYSTEM_COMMAND_SET_ECO_MODE,
     ESP_SYSTEM_COMMAND_SET_SLEEP_MODE,
-} ESPSystemCommandType;
+};
 
-struct ESPSystemCommandPayload {
+struct __packed ESPSystemCommandPayload {
     ESPSystemCommandType type;
     bool bool1;
-    char pad[3];
     float float1;
     float float2;
     float float3;
@@ -89,7 +114,7 @@ struct ESPSystemCommandPayload {
     float float5;
 };
 
-struct ESPSystemCommandMessage {
+struct __packed ESPSystemCommandMessage {
     uint32_t checksum;
     ESPSystemCommandPayload payload;
 };

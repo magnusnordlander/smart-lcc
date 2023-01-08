@@ -3,6 +3,7 @@
 #include "hardware/uart.h"
 #include "pins.h"
 #include <u8g2.h>
+#include <cstring>
 #include "u8g2functions.h"
 #include "Controller/Core0/SystemController.h"
 #include "utils/PicoQueue.h"
@@ -10,15 +11,16 @@
 #include "hardware/watchdog.h"
 #include "MulticoreSupport.h"
 #include "Controller/SingleCore/EspBootloader.h"
-#include "Controller/Core0/Utils/ClearUartCruft.h"
-#include "Controller/Core0/Utils/UartReadBlockingTimeout.h"
+#include "utils/ClearUartCruft.h"
+#include "utils/UartReadBlockingTimeout.h"
 #include "Controller/Core1/UIController.h"
-#include "Controller/SingleCore/EspFirmware.h"
-
+#include "Controller/Core1/EspFirmware.h"
+#include "utils/USBDebug.h"
+#include "firmware_crc.h"
 
 #define U8G2_DISP_STR(__STR__) \
 u8g2_ClearBuffer(&u8g2); \
-u8g2_DrawStr(&u8g2, 16, 16, __STR__); \
+u8g2_DrawStr(&u8g2, 24, 24, __STR__); \
 u8g2_SendBuffer(&u8g2);
 
 #define WAIT_FOR_PLUS() \
@@ -91,118 +93,99 @@ void initGpio() {
 }
 
 void initEsp() {
+    u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
+
+    gpio_put(NINA_GPIO0, false);
+    gpio_put(NINA_RESETN, true);
+
+    sleep_ms(100);
+
+    uart_clear_cruft(uart1);
+
+    EspBootloader bootloader(uart1);
+    esp_bootloader_error_t err;
+    uint32_t magicAddr = 0x40001000;
+
+    U8G2_DISP_STR("Syncing");
+
+    while (!bootloader.sync()) {}
+
+    sleep_ms(100);
+
+    uart_clear_cruft(uart1, true);
+
+    uint32_t regVal;
+
+    err = bootloader.readReg(magicAddr, &regVal);
+
+    if (err != 0x00) {
+        U8G2_DISP_STR("Bootloader error");
+        WAIT_FOR_PLUS()
+    } else if (regVal == 0x00F01D83) {
+        U8G2_DISP_STR("Magic correct");
+    } else {
+        U8G2_DISP_STR("Magic wrong");
+        WAIT_FOR_PLUS()
+    }
+
+    err = bootloader.uploadStub();
+    ESP_ERR_HANDLE(err, "Stub");
+
+    err = bootloader.spiSetParamsNinaW102();
+    ESP_ERR_HANDLE(err, "SPI params");
+
+    err = bootloader.spiAttach(true);
+    ESP_ERR_HANDLE(err, "SPI attach");
+
+    esp_bootloader_md5_t md5{};
+
+    err = bootloader.spiFlashMd5(0x1E0000, sizeof(uint32_t), &md5);
+    ESP_ERR_HANDLE(err, "MD5");
+
+    bool success = memcmp(&md5, &firmware_crc_md5, sizeof(esp_bootloader_md5_t)) == 0;
+
+    if (!success) {
+        u8g2_ClearBuffer(&u8g2);
+        u8g2_DrawStr(&u8g2, 24, 24, "ESP32 Firmware mismatch");
+        u8g2_DrawStr(&u8g2, 24, 32, "Press - to boot");
+        u8g2_DrawStr(&u8g2, 24, 40, "Press + to flash");
+        u8g2_SendBuffer(&u8g2);
+
+        bool flash = false;
+
+        while (gpio_get(PLUS_BUTTON) != 1 && gpio_get(MINUS_BUTTON) != 1) {
+            sleep_ms(10);
+        }
+
+        if (gpio_get(PLUS_BUTTON)) {
+            flash = true;
+        }
+
+        if (flash) {
+            err = bootloader.uploadFirmware([=](uint16_t currentBlock, uint16_t numBlocks) {
+                char progressStr[30];
+                snprintf(progressStr, sizeof(progressStr), "Block %u of %u", currentBlock, numBlocks);
+
+                u8g2_ClearBuffer(&u8g2);
+                u8g2_DrawStr(&u8g2, 24, 24, "Flashing firmware");
+                u8g2_DrawStr(&u8g2, 24, 32, progressStr);
+                u8g2_SendBuffer(&u8g2);
+            });
+            ESP_ERR_HANDLE(err, "Firmware");
+        }
+    }
+
+    U8G2_DISP_STR("Booting ESP32");
+
     gpio_put(NINA_GPIO0, true);
     gpio_put(NINA_RESETN, false);
 
-//    sleep_ms(20000);
+    sleep_ms(50);
 
-//    bool success = espFirmware.pingBlocking();
+    gpio_put(NINA_RESETN, true);
 
-    bool success = false;
-
-    u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
-
-    u8g2_ClearBuffer(&u8g2);
-    u8g2_DrawStr(&u8g2, 16, 16, "ESP32 Boot mode");
-    u8g2_DrawStr(&u8g2, 16, 24, "Press - to boot");
-    u8g2_DrawStr(&u8g2, 16, 32, "Press + to flash");
-    if (success) {
-        u8g2_DrawStr(&u8g2, 16, 48, "Comms successful");
-    } else {
-        u8g2_DrawStr(&u8g2, 16, 48, "Comms not successful");
-    }
-    u8g2_SendBuffer(&u8g2);
-
-
-
-    bool correctVersion = true;
-
-    while (gpio_get(PLUS_BUTTON) != 1 && gpio_get(MINUS_BUTTON) != 1) {
-        sleep_ms(10);
-    }
-
-    if (gpio_get(PLUS_BUTTON)) {
-        correctVersion = false;
-    } else if (gpio_get(MINUS_BUTTON)) {
-        correctVersion = true;
-    }
-
-    if (!correctVersion) {
-        gpio_put(NINA_RESETN, false);
-        gpio_put(NINA_GPIO0, false);
-
-        sleep_ms(50);
-
-        u8g2_ClearBuffer(&u8g2);
-        u8g2_DrawStr(&u8g2, 16, 16, "Incorrect ESP32");
-        u8g2_DrawStr(&u8g2, 16, 24, "firmware version");
-        u8g2_DrawStr(&u8g2, 16, 32, "Press + to flash");
-        u8g2_SendBuffer(&u8g2);
-
-/*        while (gpio_get(PLUS_BUTTON) != 1) {
-            sleep_ms(10);
-        }*/
-
-        //sleep_ms(1000);
-
-/*        u8g2_ClearBuffer(&u8g2);
-        u8g2_DrawStr(&u8g2, 16, 16, "Detecting");
-        u8g2_SendBuffer(&u8g2);*/
-
-        gpio_put(NINA_RESETN, true);
-
-        sleep_ms(100);
-
-        uart_clear_cruft(uart1);
-
-        EspBootloader bootloader(uart1);
-        esp_bootloader_error_t err;
-        uint32_t magicAddr = 0x40001000;
-
-        U8G2_DISP_STR("Syncing");
-
-        while (!bootloader.sync()) {}
-
-        sleep_ms(100);
-
-        uart_clear_cruft(uart1, true);
-
-        uint32_t regVal;
-
-        err = bootloader.readReg(magicAddr, &regVal);
-
-        if (err != 0x00) {
-            U8G2_DISP_STR("Bootloader error");
-            WAIT_FOR_PLUS()
-        } else if (regVal == 0x00F01D83) {
-            U8G2_DISP_STR("Magic correct");
-        } else {
-            U8G2_DISP_STR("Magic wrong");
-            WAIT_FOR_PLUS()
-        }
-
-        err = bootloader.uploadStub();
-        ESP_ERR_HANDLE(err, "Stub");
-
-        err = bootloader.spiSetParamsNinaW102();
-        ESP_ERR_HANDLE(err, "SPI params");
-
-        err = bootloader.spiAttach(true);
-        ESP_ERR_HANDLE(err, "SPI attach");
-
-/*        esp_bootloader_md5_t md5{};
-        err = bootloader.spiFlashMd5(0x10000, 1024, &md5);
-        ESP_ERR_HANDLE(err, "MD5"); */
-
-        err = bootloader.uploadFirmware();
-        ESP_ERR_HANDLE(err, "Firmware");
-
-        WAIT_FOR_PLUS();
-    } else {
-        sleep_ms(1000);
-
-        gpio_put(NINA_RESETN, true);
-    }
+    sleep_ms(50);
+    uart_clear_cruft(uart1, false);
 }
 
 void initU8g2() {
@@ -309,6 +292,8 @@ bool repeating_timer_callback(repeating_timer_t *t) {
 }
 
 int main() {
+    INIT_USB_DEBUG();
+
     initGpio();
     initU8g2();
     u8g2Char('A');
@@ -326,6 +311,8 @@ int main() {
     // End move
 
     u8g2Char('C');
+
+    printf("Test\n");
 
     systemController = new SystemController(uart0, statusQueue, commandQueue, &settings);
     add_repeating_timer_ms(1000, repeating_timer_callback, NULL, &safePacketBootupTimer);

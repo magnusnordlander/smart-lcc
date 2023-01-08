@@ -129,7 +129,7 @@ add_executable(smart_lcc
         src/double_tap.cpp
         src/u8g2functions.c
         src/SystemStatus.cpp
-        src/SystemSettings.cpp
+        src/Controller/Core0/SystemSettings.cpp
         src/utils/checksum.cpp
         src/utils/hex_format.cpp
         src/utils/polymath.cpp
@@ -143,21 +143,21 @@ add_executable(smart_lcc
         src/Controller/Core0/SafePacketSender.cpp
         src/Controller/Core0/SystemController.cpp
         src/Controller/Core0/TimedLatch.cpp
-        src/Controller/Core0/Utils/UartReadBlockingTimeout.h
+        src/utils/UartReadBlockingTimeout.h
         src/Controller/Core1/UIController.cpp
         lib/slip/slip.cpp lib/slip/slip.h
         src/Controller/SingleCore/EspBootloader.cpp src/Controller/SingleCore/EspBootloader.h
-        src/Controller/SingleCore/EspFirmware.cpp src/Controller/SingleCore/EspFirmware.h
-        src/Controller/Core0/Utils/ClearUartCruft.h
+        src/Controller/Core1/EspFirmware.cpp src/Controller/Core1/EspFirmware.h
+        src/utils/ClearUartCruft.h
         stub/stub.h
         esphome-output/boot_app0.bin.h
         esphome-output/bootloader.bin.h
         esphome-output/firmware.bin.h
         esphome-output/partitions.bin.h
         esphome/esp-protocol.h
-        src/utils/crc32.cpp src/utils/crc32.h)
+        src/utils/crc32.cpp src/utils/crc32.h src/utils/USBDebug.h src/utils/compile_time_crc.hpp)
 
-target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip lib/Ring-Buffer src stub esphome esphome-output xbm)
+target_include_directories(smart_lcc PUBLIC lib/u8g2/csrc lib/slip lib/Ring-Buffer lib/optional-bare src stub esphome esphome-output xbm)
 
 # pull in common dependencies
 target_link_libraries(smart_lcc pico_stdlib)

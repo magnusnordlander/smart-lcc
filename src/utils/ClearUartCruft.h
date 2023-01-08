@@ -5,8 +5,8 @@
 #ifndef SMART_LCC_CLEARUARTCRUFT_H
 #define SMART_LCC_CLEARUARTCRUFT_H
 
-#include <hardware/uart.h>
-#include <hardware/timer.h>
+#include "hardware/uart.h"
+#include "hardware/timer.h"
 
 inline void uart_clear_cruft(uart_inst_t *uart, bool wait = true) {
     if(uart_is_readable(uart)) {

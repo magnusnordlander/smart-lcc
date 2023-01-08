@@ -53,7 +53,7 @@ void UIController::loop() {
             sleepModeButtonPressBlock = make_timeout_time_ms(2000);
         }
 
-        if (status->getState() == SYSTEM_CONTROLLER_STATE_HEATUP || status->getState() == SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING || status->getState() == SYSTEM_CONTROLLER_STATE_WARM) {
+        if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP || status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING || status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_WARM) {
             if (!minusStartedAt.has_value() && minus) {
                 minusStartedAt = get_absolute_time();
             } else if (minusStartedAt.has_value() && !minus) {
@@ -123,13 +123,13 @@ void UIController::loop() {
             std::string ipString = std::to_string(ip[0]) + "." + std::to_string(ip[1]) + "." + std::to_string(ip[2]) + "." + std::to_string(ip[3]);
             u8g2_DrawStr(display, X_START + 10, Y_START + 43, ipString.c_str());
         }*/
-    } else if (status->getState() == SYSTEM_CONTROLLER_STATE_UNDETERMINED) {
+    } else if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED) {
         u8g2_SetFont(display, u8g2_font_9x15_tf);
         u8g2_DrawStr(display, X_START + 10, Y_START + 20, "Undetermined");
-    } else if (status->getState() == SYSTEM_CONTROLLER_STATE_BAILED) {
+    } else if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_BAILED) {
         u8g2_SetFont(display, u8g2_font_9x15_tf);
         u8g2_DrawStr(display, X_START + 10, Y_START + 20, "Bailed");
-    } else if (status->getState() == SYSTEM_CONTROLLER_STATE_FIRST_RUN) {
+    } else if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_FIRST_RUN) {
         u8g2_SetFont(display, u8g2_font_9x15_tf);
         u8g2_DrawStr(display, X_START + 10, Y_START + 20, "First run");
     } else if (status->currentlyBrewing()) {
@@ -146,7 +146,7 @@ void UIController::loop() {
         auto seconds = (uint8_t)round((float)micros / 1000000.f);
 
         drawBrewScreen(BREW_SCREEN_IDLE, seconds);
-    } else if (status->getState() == SYSTEM_CONTROLLER_STATE_SLEEPING) {
+    } else if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_SLEEPING) {
         u8g2_SetFont(display, u8g2_font_9x15_tf);
         u8g2_DrawStr(display, X_START + 10, Y_START + 20, "Sleeping");
 
@@ -165,7 +165,7 @@ void UIController::loop() {
 
         uint8_t progressOffset = 1;
 
-        if (status->getState() == SYSTEM_CONTROLLER_STATE_HEATUP || status->getState() == SYSTEM_CONTROLLER_STATE_TEMPS_NORMALIZING) {
+        if (status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP || status->getState() == SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING) {
             drawProgressBar();
             progressOffset = 5;
         }

@@ -6,7 +6,62 @@
 #define FIRMWARE_TYPES_H
 
 #include <pico/time.h>
-#include "esp-shared-types.h"
+
+typedef enum {
+    SYSTEM_MODE_UNDETERMINED,
+    SYSTEM_MODE_NORMAL,
+    SYSTEM_MODE_CONFIG,
+    SYSTEM_MODE_OTA,
+    SYSTEM_MODE_ESP_FLASH
+} SystemMode;
+
+typedef enum {
+    BAIL_REASON_NONE = 0,
+    BAIL_REASON_CB_UNRESPONSIVE = 1,
+    BAIL_REASON_CB_PACKET_INVALID = 2,
+    BAIL_REASON_LCC_PACKET_INVALID = 3,
+    BAIL_REASON_SSR_QUEUE_EMPTY = 4,
+} SystemControllerBailReason;
+
+struct PidSettings {
+    float Kp{};
+    float Ki{};
+    float Kd{};
+    float windupLow{};
+    float windupHigh{};
+};
+
+struct PidRuntimeParameters {
+    bool hysteresisMode = false;
+    float p = 0;
+    float i = 0;
+    float d = 0;
+    float integral = 0;
+};
+
+typedef enum {
+    NOT_STARTED_YET,
+    RUNNING,
+    SOFT_BAIL,
+    HARD_BAIL,
+} SystemControllerInternalState;
+
+typedef enum {
+    RUN_STATE_UNDETEMINED,
+    RUN_STATE_HEATUP_STAGE_1, // Bring the Brew boiler up to 130, don't run the service boiler
+    RUN_STATE_HEATUP_STAGE_2, // Keep the Brew boiler at 130 for 4 minutes, run service boiler as normal
+    RUN_STATE_NORMAL,
+} SystemControllerRunState;
+
+typedef enum {
+    SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED = 0,
+    SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP,
+    SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING,
+    SYSTEM_CONTROLLER_COALESCED_STATE_WARM,
+    SYSTEM_CONTROLLER_COALESCED_STATE_SLEEPING,
+    SYSTEM_CONTROLLER_COALESCED_STATE_BAILED,
+    SYSTEM_CONTROLLER_COALESCED_STATE_FIRST_RUN
+} SystemControllerCoalescedState;
 
 struct SettingStruct {
     float brewTemperatureOffset = -10;
@@ -37,7 +92,9 @@ struct SystemControllerStatusMessage{
     bool serviceSSRActive{};
     bool ecoMode{};
     bool sleepMode{};
-    SystemControllerState state{};
+    SystemControllerInternalState internalState{};
+    SystemControllerRunState runState{};
+    SystemControllerCoalescedState coalescedState{};
     SystemControllerBailReason bailReason{};
     bool currentlyBrewing{};
     bool currentlyFillingServiceBoiler{};
@@ -47,6 +104,8 @@ struct SystemControllerStatusMessage{
 
 typedef enum {
     COMMAND_SET_BREW_SET_POINT,
+    COMMAND_SET_OFFSET_BREW_SET_POINT,
+    COMMAND_SET_BREW_OFFSET,
     COMMAND_SET_BREW_PID_PARAMETERS,
     COMMAND_SET_SERVICE_SET_POINT,
     COMMAND_SET_SERVICE_PID_PARAMETERS,

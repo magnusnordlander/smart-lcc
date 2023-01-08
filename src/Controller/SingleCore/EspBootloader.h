@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <hardware/uart.h>
 
 typedef uint8_t esp_bootloader_error_t;
@@ -43,12 +44,12 @@ public:
     esp_bootloader_error_t flashData(uint32_t seq, uint8_t *data, size_t actualLen, size_t padLen);
     esp_bootloader_error_t flashEnd(bool reboot);
     esp_bootloader_error_t uploadStub();
-    esp_bootloader_error_t uploadFirmware();
+    esp_bootloader_error_t uploadFirmware(const std::function<void(uint16_t, uint16_t)>& progressCallback);
 private:
     uart_inst_t *uart;
 
     esp_bootloader_error_t memBeginAndData(uint32_t addr, const uint8_t *data, size_t len);
-    esp_bootloader_error_t flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len);
+    esp_bootloader_error_t flashBeginAndData(uint32_t addr, const uint8_t *data, size_t len, const std::function<void(uint16_t, uint16_t)>& progressCallback);
 
     size_t sendCommand(uint8_t command, uint8_t *data, size_t dataLen, EspBootloaderResponseHeader *responseHeader, uint8_t *responseData, size_t responseDataLen, uint32_t checksum = 0, uint16_t timeoutMs = 3000);
     static bool validateHeader(EspBootloaderResponseHeader *responseHeader, uint8_t expectedCommand);

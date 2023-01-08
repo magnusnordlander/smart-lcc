@@ -20,20 +20,6 @@
 #include <utils/MovingAverage.h>
 
 typedef enum {
-    NOT_STARTED_YET,
-    RUNNING,
-    SOFT_BAIL,
-    HARD_BAIL,
-} SystemControllerInternalState;
-
-typedef enum {
-    RUN_STATE_UNDETEMINED,
-    RUN_STATE_HEATUP_STAGE_1, // Bring the Brew boiler up to 130, don't run the service boiler
-    RUN_STATE_HEATUP_STAGE_2, // Keep the Brew boiler at 130 for 4 minutes, run service boiler as normal
-    RUN_STATE_NORMAL,
-} SystemControllerRunState;
-
-typedef enum {
     BOTH_SSRS_OFF = 0,
     BREW_BOILER_SSR_ON,
     SERVICE_BOILER_SSR_ON,
@@ -93,7 +79,7 @@ private:
     ControlBoardParsedPacket currentControlBoardParsedPacket;
     ControlBoardRawPacket currentControlBoardRawPacket;
 
-    SystemControllerState externalState();
+    SystemControllerCoalescedState externalState();
 
     void softBail(SystemControllerBailReason reason);
     void hardBail(SystemControllerBailReason reason);

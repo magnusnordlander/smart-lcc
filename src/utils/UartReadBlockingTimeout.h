@@ -5,9 +5,9 @@
 #ifndef SMART_LCC_UARTREADBLOCKINGTIMEOUT_H
 #define SMART_LCC_UARTREADBLOCKINGTIMEOUT_H
 
-#include <hardware/uart.h>
-#include <hardware/gpio.h>
-#include <pico/timeout_helper.h>
+#include "hardware/uart.h"
+#include "hardware/gpio.h"
+#include "pico/timeout_helper.h"
 
 static inline bool uart_read_blocking_timeout(uart_inst_t *uart, uint8_t *dst, size_t len, absolute_time_t timeout_time) {
     timeout_state_t ts;
