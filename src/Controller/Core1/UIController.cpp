@@ -238,9 +238,9 @@ void UIController::loop() {
 }
 
 void UIController::drawStatusIcons() {
-    if (status->wifiConnected && status->mqttConnected) {
+    if (status->isWifiConnected() && status->mqttConnected) {
         u8g2_DrawXBM(display, X_END_MARGIN - wifi_mqtt_width, Y_START_MARGIN, wifi_mqtt_width, wifi_mqtt_height, wifi_mqtt_bits);
-    } else if (status->wifiConnected) {
+    } else if (status->isWifiConnected()) {
         u8g2_DrawXBM(display, X_END_MARGIN - wifi_no_mqtt_width, Y_START_MARGIN, wifi_no_mqtt_width, wifi_no_mqtt_height, wifi_no_mqtt_bits);
     }
 

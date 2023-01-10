@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
+#define ESP_RP2040_PROTOCOL_VERSION 0x0001
+
 enum ESPMessageType: uint32_t {
     ESP_MESSAGE_PING = 0x00000001,
     ESP_MESSAGE_PONG,
@@ -14,6 +16,7 @@ enum ESPMessageType: uint32_t {
     ESP_MESSAGE_NACK,
     ESP_MESSAGE_SYSTEM_STATUS,
     ESP_MESSAGE_SYSTEM_COMMAND,
+    ESP_MESSAGE_ESP_STATUS,
 };
 
 enum ESPDirection: uint32_t {
@@ -39,11 +42,11 @@ struct __packed ESPMessageHeader {
 };
 
 struct ESPPingMessage {
-    uint16_t version;
+    uint16_t version = ESP_RP2040_PROTOCOL_VERSION;
 };
 
 struct ESPPongMessage {
-    uint16_t version;
+    uint16_t version = ESP_RP2040_PROTOCOL_VERSION;
 };
 
 enum ESPSystemInternalState: uint8_t {
@@ -119,4 +122,8 @@ struct __packed ESPSystemCommandMessage {
     ESPSystemCommandPayload payload;
 };
 
+struct __packed ESPESPStatusMessage {
+    bool wifiConnected;
+    bool improvAuthorizationRequested;
+};
 #endif //SMART_LCC_ESP_PROTOCOL_H

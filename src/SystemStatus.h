@@ -10,6 +10,7 @@
 #include "Controller/Core0/control_board_protocol.h"
 #include "Controller/Core0/PIDController.h"
 #include "Controller/Core0/SystemSettings.h"
+#include <esp-protocol.h>
 
 
 class SystemStatus {
@@ -27,8 +28,6 @@ public:
     nonstd::optional<absolute_time_t> plannedAutoSleepAt;
 
     SystemMode mode;
-    bool wifiConnected = false;
-    bool mqttConnected = false;
 
     inline bool hasBailed() const { return latestStatusMessage.coalescedState == SYSTEM_CONTROLLER_COALESCED_STATE_BAILED; }
     inline SystemControllerBailReason bailReason() const { return latestStatusMessage.bailReason; }
@@ -64,9 +63,21 @@ public:
 
     inline absolute_time_t getLastSleepModeExitAt() const { return latestStatusMessage.lastSleepModeExitAt; };
 
+    bool mqttConnected = false;
+
+    inline bool isWifiConnected() const {
+        if (espStatusMessage.has_value()) {
+            return espStatusMessage.value().wifiConnected;
+        }
+
+        return false;
+    }
+
     void updateStatusMessage(SystemControllerStatusMessage message);
+    inline void updateEspStatusMessage(ESPESPStatusMessage message) { espStatusMessage = message; };
 private:
     SystemControllerStatusMessage latestStatusMessage;
+    nonstd::optional<ESPESPStatusMessage> espStatusMessage;
 };
 
 

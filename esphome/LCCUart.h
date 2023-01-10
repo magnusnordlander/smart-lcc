@@ -17,7 +17,7 @@
 
 uint32_t esp_random();
 
-class LCCUart : public esphome::Component, public esphome::uart::UARTDevice {
+class LCCUart : public esphome::PollingComponent, public esphome::uart::UARTDevice {
 public:
     esphome::sensor::Sensor *brewTemperatureSensor{nullptr};
     esphome::sensor::Sensor *serviceTemperatureSensor{nullptr};
@@ -31,7 +31,9 @@ public:
     esphome::binary_sensor::BinarySensor *currentlyBrewingSensor{nullptr};
     esphome::binary_sensor::BinarySensor *currentlyFillingServiceBoilerSensor{nullptr};
 
-    LCCUart(esphome::uart::UARTComponent *parent) : UARTDevice(parent) {
+    esphome::wifi::WiFiComponent *wifiComponent;
+
+    explicit LCCUart(esphome::uart::UARTComponent *parent, esphome::wifi::WiFiComponent *wifiComponent) : PollingComponent(10000), UARTDevice(parent), wifiComponent(wifiComponent) {
         brewTemperatureSensor = new esphome::sensor::Sensor();
         brewTemperatureSensor->set_name("Brew temperature");
         brewTemperatureSensor->set_disabled_by_default(false);
@@ -105,6 +107,32 @@ public:
         currentlyFillingServiceBoilerSensor->set_disabled_by_default(true);
     }
 
+    void update() override {
+        ESP_LOGD("custom", "Sending status message to RP2040");
+        if (wifiComponent->is_connected()) {
+            ESP_LOGD("custom", "Wifi is connected");
+        } else {
+            ESP_LOGD("custom", "Wifi is not connected");
+        }
+
+        ESPMessageHeader header{
+            .direction = ESP_DIRECTION_ESP32_TO_RP2040,
+            .id = esp_random(),
+            .responseTo = 0,
+            .type = ESP_MESSAGE_ESP_STATUS,
+            .error = ESP_ERROR_NONE,
+            .length = sizeof(ESPESPStatusMessage)
+        };
+
+        ESPESPStatusMessage message{
+            .wifiConnected = wifiComponent->is_connected(),
+            .improvAuthorizationRequested = false,
+        };
+
+        this->write_array(reinterpret_cast<const uint8_t *>(&header), sizeof(ESPMessageHeader));
+        this->write_array(reinterpret_cast<const uint8_t *>(&message), sizeof(ESPESPStatusMessage));
+    }
+
     void setup() override {
         ESP_LOGD("custom", "Component booting up");
         // nothing to do here
@@ -157,7 +185,7 @@ public:
                             .error = ESP_ERROR_NONE,
                             .length = sizeof(ESPPongMessage),
                     };
-                    ESPPongMessage responseMessage{.version = 0x0001};
+                    ESPPongMessage responseMessage{};
 
                     this->write_array(reinterpret_cast<const uint8_t *>(&responseHeader), sizeof(ESPMessageHeader));
                     this->write_array(reinterpret_cast<const uint8_t *>(&responseMessage), sizeof(ESPPongMessage));

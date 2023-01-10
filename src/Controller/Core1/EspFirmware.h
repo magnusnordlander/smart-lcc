@@ -13,10 +13,11 @@
 #include "types.h"
 #include "utils/PicoQueue.h"
 #include "ringbuffer.hpp"
+#include "SystemStatus.h"
 
 class EspFirmware {
 public:
-    explicit EspFirmware(uart_inst_t *uart, PicoQueue<SystemControllerCommand> *commandQueue);
+    explicit EspFirmware(uart_inst_t *uart, PicoQueue<SystemControllerCommand> *commandQueue, SystemStatus* status);
 
     void loop();
 
@@ -31,8 +32,10 @@ public:
 private:
     uart_inst_t *uart;
     PicoQueue<SystemControllerCommand> *commandQueue;
+    SystemStatus* status;
 
     bool waitForAck(uint32_t id);
+    void handleESPStatus(ESPMessageHeader *header);
     void handleCommand(ESPMessageHeader *header);
 
     void sendAck(uint32_t messageId);

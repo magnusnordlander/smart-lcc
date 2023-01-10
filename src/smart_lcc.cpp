@@ -262,7 +262,7 @@ void u8g2Int(uint8_t i) {
 
     absolute_time_t nextSend = make_timeout_time_ms(1000);
 
-    espFirmware = new EspFirmware(uart1, commandQueue);
+    espFirmware = new EspFirmware(uart1, commandQueue, status);
     EspFirmware::initInterrupts(uart1);
 
     //gpio_put(AUX_TX, true);

@@ -58,7 +58,7 @@ bool EspFirmware::readFromRingBufferBlockingWithTimeout(uint8_t *dst, size_t len
     return readLen == len;
 }
 
-EspFirmware::EspFirmware(uart_inst_t *uart, PicoQueue<SystemControllerCommand> *commandQueue) : uart(uart), commandQueue(commandQueue) {}
+EspFirmware::EspFirmware(uart_inst_t *uart, PicoQueue<SystemControllerCommand> *commandQueue, SystemStatus* status) : uart(uart), commandQueue(commandQueue), status(status) {}
 
 uint32_t rnd(void){
     int k, random=0;
@@ -84,9 +84,7 @@ bool EspFirmware::pingBlocking() {
             .length = sizeof(ESPPingMessage),
     };
 
-    ESPPingMessage pingMessage{
-            .version = 0x0001,
-    };
+    ESPPingMessage pingMessage{};
 
     ringbuffer.consumerClear();
 
@@ -183,7 +181,6 @@ bool EspFirmware::waitForAck(uint32_t id) {
 
 void EspFirmware::loop() {
     if (!ringbuffer.isEmpty()) {
-        gpio_put(21u, true);
         ESPMessageHeader header{};
         bool success = readFromRingBufferBlockingWithTimeout(reinterpret_cast<uint8_t *>(&header), sizeof(ESPMessageHeader), make_timeout_time_ms(10));
 
@@ -192,6 +189,8 @@ void EspFirmware::loop() {
                 switch(header.type) {
                     case ESP_MESSAGE_SYSTEM_COMMAND:
                         return handleCommand(&header);
+                    case ESP_MESSAGE_ESP_STATUS:
+                        return handleESPStatus(&header);
                     default:
                         ringbuffer.consumerClear();
                         return;
@@ -200,9 +199,25 @@ void EspFirmware::loop() {
         }
 
         ringbuffer.consumerClear();
-    } else {
-        gpio_put(21u, false);
     }
+}
+
+void EspFirmware::handleESPStatus(ESPMessageHeader *header) {
+    if (header->length != sizeof(ESPESPStatusMessage)) {
+        ringbuffer.consumerClear();
+        return sendNack(header->id, ESP_ERROR_UNEXPECTED_MESSAGE_LENGTH);
+    }
+
+    ESPESPStatusMessage message{};
+    bool success = readFromRingBufferBlockingWithTimeout(reinterpret_cast<uint8_t *>(&message), sizeof(ESPESPStatusMessage), make_timeout_time_ms(50));
+
+    if (!success) {
+        return sendNack(header->id, ESP_ERROR_INCOMPLETE_DATA);
+    }
+
+    status->updateEspStatusMessage(message);
+
+    sendAck(header->id);
 }
 
 void EspFirmware::handleCommand(ESPMessageHeader *header) {

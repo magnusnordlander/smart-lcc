@@ -46,7 +46,7 @@ binary_sensor:
 
 custom_component:
   - lambda: |-
-      LCCUart *lcc = new LCCUart(id(uart_bus));
+      LCCUart *lcc = new LCCUart(id(uart_bus), id(wifi_component));
       App.register_sensor(lcc->brewTemperatureSensor);
       App.register_sensor(lcc->serviceTemperatureSensor);
       App.register_text_sensor(lcc->coalescedStateSensor);
@@ -73,6 +73,7 @@ esp32_improv:
   authorizer: false
 
 wifi:
+  id: wifi_component
 #  ssid: !secret wifi_ssid
 #  password: !secret wifi_password
 
