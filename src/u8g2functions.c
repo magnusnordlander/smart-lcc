@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "u8g2.h"
+#include "pico/binary_info.h"
 
 #define SPI_PORT spi0
 #define PIN_MISO OLED_MISO
@@ -78,6 +79,7 @@ uint8_t u8x8_gpio_and_delay_template(u8x8_t *u8x8, uint8_t msg,
         case U8X8_MSG_GPIO_AND_DELAY_INIT: // called once during init phase of
             // u8g2/u8x8
             // printf("U8X8_MSG_GPIO_AND_DELAY_INIT\n");
+            bi_decl_if_func_used(bi_3pins_with_func(PIN_MISO, PIN_SCK, PIN_MOSI, GPIO_FUNC_SPI));
             spi_init(SPI_PORT, SPI_SPEED);
             gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
             gpio_set_function(PIN_CS, GPIO_FUNC_SIO);
@@ -85,6 +87,7 @@ uint8_t u8x8_gpio_and_delay_template(u8x8_t *u8x8, uint8_t msg,
             gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
             // spiInit = true;
             // Chip select is active-low, so we'll initialise it to a driven-high state
+            bi_decl_if_func_used(bi_3pins_with_names(PIN_DC, "SPI0 Display DC", PIN_CS, "SPI0 Display CS", PIN_RST, "SPI0 Display RST"));
             gpio_init(PIN_DC);
             gpio_init(PIN_CS);
             gpio_init(PIN_RST);

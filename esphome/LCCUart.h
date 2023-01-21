@@ -21,12 +21,14 @@ class LCCUart : public esphome::PollingComponent, public esphome::uart::UARTDevi
 public:
     esphome::sensor::Sensor *brewTemperatureSensor{nullptr};
     esphome::sensor::Sensor *serviceTemperatureSensor{nullptr};
+    esphome::sensor::Sensor *plannedAutoSleepSensor{nullptr};
     esphome::text_sensor::TextSensor *coalescedStateSensor{nullptr};
     LambdaSwitch *ecoModeSwitch{nullptr};
     LambdaSwitch *sleepSwitch{nullptr};
     LambdaNumber *brewTemperatureSetPoint{nullptr};
     LambdaNumber *serviceTemperatureSetPoint{nullptr};
     LambdaNumber *brewTemperatureOffset{nullptr};
+    LambdaNumber *autoSleepMinutes{nullptr};
     esphome::binary_sensor::BinarySensor *waterTankLowSensor{nullptr};
     esphome::binary_sensor::BinarySensor *currentlyBrewingSensor{nullptr};
     esphome::binary_sensor::BinarySensor *currentlyFillingServiceBoilerSensor{nullptr};
@@ -34,23 +36,6 @@ public:
     esphome::wifi::WiFiComponent *wifiComponent;
 
     explicit LCCUart(esphome::uart::UARTComponent *parent, esphome::wifi::WiFiComponent *wifiComponent) : PollingComponent(10000), UARTDevice(parent), wifiComponent(wifiComponent) {
-        brewTemperatureSensor = new esphome::sensor::Sensor();
-        brewTemperatureSensor->set_name("Brew temperature");
-        brewTemperatureSensor->set_disabled_by_default(false);
-        brewTemperatureSensor->set_unit_of_measurement("\302\260C");
-        brewTemperatureSensor->set_accuracy_decimals(1);
-        brewTemperatureSensor->set_force_update(false);
-
-        serviceTemperatureSensor = new esphome::sensor::Sensor();
-        serviceTemperatureSensor->set_name("Service temperature");
-        serviceTemperatureSensor->set_disabled_by_default(false);
-        serviceTemperatureSensor->set_unit_of_measurement("\302\260C");
-        serviceTemperatureSensor->set_accuracy_decimals(1);
-        serviceTemperatureSensor->set_force_update(false);
-
-        coalescedStateSensor = new esphome::text_sensor::TextSensor();
-        coalescedStateSensor->set_name("State");
-        coalescedStateSensor->set_disabled_by_default(false);
 
         ecoModeSwitch = new LambdaSwitch([=](bool state) {
             sendCommand(ESP_SYSTEM_COMMAND_SET_ECO_MODE, state);
@@ -94,17 +79,44 @@ public:
         brewTemperatureOffset->traits.set_step(0.1f);
         brewTemperatureOffset->traits.set_unit_of_measurement("\302\260C");
 
-        waterTankLowSensor = new esphome::binary_sensor::BinarySensor();
-        waterTankLowSensor->set_name("Water tank low");
-        waterTankLowSensor->set_disabled_by_default(false);
+        autoSleepMinutes = new LambdaNumber([=](float state) {
+            sendCommand(ESP_SYSTEM_COMMAND_SET_AUTO_SLEEP_MINUTES, state);
+        });
+        autoSleepMinutes->set_name("Auto-sleep after");
+        autoSleepMinutes->set_disabled_by_default(true);
+        autoSleepMinutes->traits.set_min_value(0);
+        autoSleepMinutes->traits.set_max_value(300);
+        autoSleepMinutes->traits.set_step(1.f);
+        autoSleepMinutes->traits.set_unit_of_measurement("min");
+    }
 
-        currentlyBrewingSensor = new esphome::binary_sensor::BinarySensor();
-        currentlyBrewingSensor->set_name("Currently Brewing");
-        currentlyBrewingSensor->set_disabled_by_default(false);
+    void set_brew_boiler_temp(esphome::sensor::Sensor *sensor) {
+        this->brewTemperatureSensor = sensor;
+    }
 
-        currentlyFillingServiceBoilerSensor = new esphome::binary_sensor::BinarySensor();
-        currentlyFillingServiceBoilerSensor->set_name("Currently filling service boiler");
-        currentlyFillingServiceBoilerSensor->set_disabled_by_default(true);
+    void set_service_boiler_temp(esphome::sensor::Sensor *sensor) {
+        this->serviceTemperatureSensor = sensor;
+    }
+
+    void set_planned_auto_sleep_sensor(esphome::sensor::Sensor *sensor) {
+        this->plannedAutoSleepSensor = sensor;
+    }
+
+
+    void set_coalesced_state_text_sensor(esphome::text_sensor::TextSensor *sensor) {
+        this->coalescedStateSensor = sensor;
+    }
+
+    void set_water_tank_low_binary_sensor(esphome::binary_sensor::BinarySensor *sensor) {
+        this->waterTankLowSensor = sensor;
+    }
+
+    void set_currently_brewing_binary_sensor(esphome::binary_sensor::BinarySensor *sensor) {
+        this->currentlyBrewingSensor = sensor;
+    }
+
+    void set_currently_filling_service_boiler_binary_sensor(esphome::binary_sensor::BinarySensor *sensor) {
+        this->currentlyFillingServiceBoilerSensor = sensor;
     }
 
     void update() override {
@@ -155,10 +167,16 @@ public:
                     return handleSystemStatusMessage(&header);
                 case ESP_MESSAGE_NACK:
                     return handleNack(&header);
-                case ESP_MESSAGE_PONG:
                 case ESP_MESSAGE_ACK:
+                    ESP_LOGD("custom", "Ack message");
+                    break;
+                case ESP_MESSAGE_PONG:
+                    ESP_LOGD("custom", "Pong message");
+                    break;
+                case ESP_MESSAGE_ESP_STATUS:
                 case ESP_MESSAGE_SYSTEM_COMMAND:
-                    ESP_LOGD("custom", "Non-ping message");
+                default:
+                    ESP_LOGE("custom", "Unexpected type of message: %x", header.type);
                     break;
             }
         }
@@ -210,7 +228,7 @@ public:
     }
 
     void handleSystemStatusMessage(ESPMessageHeader* header) {
-        ESP_LOGD("custom", "System status message");
+        ESP_LOGV("custom", "System status message");
         if (header->length == sizeof(ESPSystemStatusMessage)) {
             ESPSystemStatusMessage message{};
             bool success = this->read_array(reinterpret_cast<uint8_t *>(&message), sizeof(message));
@@ -218,15 +236,16 @@ public:
             if (success) {
                 ackMessage(header);
 
-                float brewTemp = message.brewBoilerTemperature;
-                float serviceTemp = message.serviceBoilerTemperature;
-
-                if (!brewTemperatureSensor->has_state() || fabs(brewTemp - brewTemperatureSensor->state) > 0.05) {
-                    brewTemperatureSensor->publish_state(brewTemp);
+                if (brewTemperatureSensor != nullptr) {
+                    brewTemperatureSensor->publish_state(message.brewBoilerTemperature);
                 }
 
-                if (!serviceTemperatureSensor->has_state() || fabs(serviceTemp - serviceTemperatureSensor->state) > 0.05) {
-                    serviceTemperatureSensor->publish_state(serviceTemp);
+                if (serviceTemperatureSensor != nullptr) {
+                    serviceTemperatureSensor->publish_state(message.serviceBoilerTemperature);
+                }
+
+                if (plannedAutoSleepSensor != nullptr) {
+                    plannedAutoSleepSensor->publish_state((float)message.plannedAutoSleepInSeconds);
                 }
 
                 std::string coalescedStateString = prettifyCoalescedStateString(message.coalescedState);
@@ -251,15 +270,19 @@ public:
                     brewTemperatureOffset->publish_state(tempOffset);
                 }
 
-                if (!waterTankLowSensor->has_state() || message.waterTankLow != waterTankLowSensor->state) {
+                if (!autoSleepMinutes->has_state() || fabs((float)message.autoSleepAfter - autoSleepMinutes->state) > 0.5) {
+                    autoSleepMinutes->publish_state((float)message.autoSleepAfter);
+                }
+
+                if (waterTankLowSensor != nullptr) {
                     waterTankLowSensor->publish_state(message.waterTankLow);
                 }
 
-                if (!currentlyBrewingSensor->has_state() || message.currentlyBrewing != currentlyBrewingSensor->state) {
+                if (currentlyBrewingSensor != nullptr) {
                     currentlyBrewingSensor->publish_state(message.currentlyBrewing);
                 }
 
-                if (!currentlyFillingServiceBoilerSensor->has_state() || message.currentlyFillingServiceBoiler != currentlyFillingServiceBoilerSensor->state) {
+                if (currentlyFillingServiceBoilerSensor != nullptr) {
                     currentlyFillingServiceBoilerSensor->publish_state(message.currentlyFillingServiceBoiler);
                 }
 

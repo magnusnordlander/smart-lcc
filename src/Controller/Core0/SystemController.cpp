@@ -2,6 +2,7 @@
 // Created by Magnus Nordlander on 2021-07-06.
 //
 
+#include <cstdio>
 #include <utils/hex_format.h>
 #include "SystemController.h"
 #include "pico/timeout_helper.h"
@@ -9,6 +10,7 @@
 #include <hardware/timer.h>
 #include "utils/UartReadBlockingTimeout.h"
 #include "utils/ClearUartCruft.h"
+#include "utils/USBDebug.h"
 
 SystemController::SystemController(
         uart_inst_t * _uart,
@@ -16,12 +18,13 @@ SystemController::SystemController(
         PicoQueue<SystemControllerCommand> *incomingQueue,
         SystemSettings *settings)
         :
+        uart(_uart),
         outgoingQueue(outgoingQueue),
         incomingQueue(incomingQueue),
-        uart(_uart),
         settings(settings),
         brewBoilerController(settings->getTargetBrewTemp(), 20.0f, settings->getBrewPidParameters(), 2.0f),
-        serviceBoilerController(settings->getTargetServiceTemp(), 0.5f){
+        serviceBoilerController(settings->getTargetServiceTemp(), 0.5f)
+        {
     safeLccRawPacket = create_safe_packet();
     currentLccParsedPacket = LccParsedPacket();
 }
@@ -76,21 +79,7 @@ void SystemController::loop() {
     } else if (internalState == RUNNING) {
         currentControlBoardParsedPacket = convert_raw_control_board_packet(currentControlBoardRawPacket);
 
-        if (runState == RUN_STATE_UNDETEMINED) {
-            if (currentControlBoardParsedPacket.brew_boiler_temperature < 65) {
-                initiateHeatup();
-            } else {
-                runState = RUN_STATE_NORMAL;
-            }
-        } else if (runState == RUN_STATE_HEATUP_STAGE_1) {
-            if (currentControlBoardParsedPacket.brew_boiler_temperature > 128) {
-                transitionToHeatupStage2();
-            }
-        } else if (runState == RUN_STATE_HEATUP_STAGE_2) {
-            if (absolute_time_diff_us(heatupStage2Timer.value(), get_absolute_time()) > 4 * 60 * 1000 * 1000) {
-                finishHeatup();
-            }
-        }
+        handleRunningStateAutomations();
     }
 
     // Reset the current raw packet.
@@ -102,6 +91,11 @@ void SystemController::loop() {
         currentLccParsedPacket = handleControlBoardPacket(currentControlBoardParsedPacket);
     } else {
         currentLccParsedPacket = convert_lcc_raw_to_parsed(safeLccRawPacket);
+    }
+
+    float sleepSeconds = plannedAutoSleepAt.has_value() ? (float)(absolute_time_diff_us(get_absolute_time(), plannedAutoSleepAt.value())) / 1000.f / 1000.f : INFINITY;
+    if (sleepSeconds < 0) {
+        sleepSeconds = 0.f;
     }
 
     SystemControllerStatusMessage message = {
@@ -129,6 +123,8 @@ void SystemController::loop() {
             .currentlyFillingServiceBoiler = currentLccParsedPacket.pump_on &&
                                              currentLccParsedPacket.service_boiler_solenoid_open,
             .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
+            .autoSleepMinutes = settings->getAutoSleepMin(),
+            .plannedSleepInSeconds = sleepSeconds,
             .lastSleepModeExitAt = lastSleepModeExitAt
     };
 
@@ -173,7 +169,8 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
             if (latestParsedPacket.brew_switch) {
                 lcc.pump_on = true;
                 brewing = true;
-                brewStartedAt = get_absolute_time();
+
+                onBrewStarted();
             } else if (serviceBoilerLowLatch.get()) { // Starting a brew has priority over filling the service boiler
                 lcc.pump_on = true;
                 lcc.service_boiler_solenoid_open = true;
@@ -184,7 +181,7 @@ LccParsedPacket SystemController::handleControlBoardPacket(ControlBoardParsedPac
             lcc.pump_on = true;
             brewing = true;
         } else { // Filling the service boiler is not an option while brewing
-            brewStartedAt.reset();
+            onBrewEnded();
         }
     }
 
@@ -307,6 +304,9 @@ void SystemController::handleCommands() {
             case COMMAND_SET_SLEEP_MODE:
                 setSleepMode(command.bool1);
                 break;
+            case COMMAND_SET_AUTO_SLEEP_MINUTES:
+                setAutoSleepMinutes(command.float1);
+                break;
             case COMMAND_UNBAIL:
                 unbail();
                 break;
@@ -371,10 +371,12 @@ SystemControllerCoalescedState SystemController::externalState() {
                 case RUN_STATE_HEATUP_STAGE_2:
                     return SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP;
                 case RUN_STATE_NORMAL:
+                default:
                     return areTemperaturesAtSetPoint() ? SYSTEM_CONTROLLER_COALESCED_STATE_WARM : SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING;
             }
         case SOFT_BAIL:
         case HARD_BAIL:
+        default:
             return SYSTEM_CONTROLLER_COALESCED_STATE_BAILED;
     }
 
@@ -389,12 +391,10 @@ void SystemController::unbail() {
 }
 
 void SystemController::setSleepMode(bool _sleepMode) {
-    if (_sleepMode && runState == RUN_STATE_HEATUP_STAGE_2) {
-        heatupStage2Timer.reset();
-    }
-
-    if (!_sleepMode) {
-        lastSleepModeExitAt = get_absolute_time();
+    if (_sleepMode) {
+        onSleepModeEntered();
+    } else {
+        onSleepModeExited();
     }
 
     settings->setSleepMode(_sleepMode);
@@ -434,4 +434,70 @@ bool SystemController::areTemperaturesAtSetPoint() const {
     }
 
     return true;
+}
+
+void SystemController::onBrewStarted() {
+    brewStartedAt = get_absolute_time();
+
+    // Starting a brew exits sleep mode
+    if (settings->getSleepMode()) {
+        settings->setSleepMode(false);
+    }
+
+    updatePlannedAutoSleep();
+}
+
+void SystemController::onBrewEnded() {
+    brewStartedAt.reset();
+}
+
+void SystemController::setAutoSleepMinutes(float minutes) {
+    auto autoSleepMinutes = (uint16_t)minutes;
+    settings->setAutoSleepMin(autoSleepMinutes);
+
+    updatePlannedAutoSleep();
+}
+
+void SystemController::updatePlannedAutoSleep() {
+    if (settings->getAutoSleepMin() > 0) {
+        uint32_t ms = (uint32_t)settings->getAutoSleepMin() * 60 * 1000;
+        plannedAutoSleepAt = delayed_by_ms(get_absolute_time(), ms);
+    } else {
+        plannedAutoSleepAt.reset();
+    }
+}
+
+void SystemController::onSleepModeEntered() {
+    if (runState == RUN_STATE_HEATUP_STAGE_2) {
+        heatupStage2Timer.reset();
+    }
+}
+
+void SystemController::onSleepModeExited() {
+    lastSleepModeExitAt = get_absolute_time();
+    updatePlannedAutoSleep();
+}
+
+void SystemController::handleRunningStateAutomations() {
+    if (runState == RUN_STATE_UNDETEMINED) {
+        if (currentControlBoardParsedPacket.brew_boiler_temperature < 65) {
+            initiateHeatup();
+        } else {
+            runState = RUN_STATE_NORMAL;
+        }
+    } else if (runState == RUN_STATE_HEATUP_STAGE_1) {
+        if (currentControlBoardParsedPacket.brew_boiler_temperature > 128) {
+            transitionToHeatupStage2();
+        }
+    } else if (runState == RUN_STATE_HEATUP_STAGE_2) {
+        if (absolute_time_diff_us(heatupStage2Timer.value(), get_absolute_time()) > 4 * 60 * 1000 * 1000) {
+            finishHeatup();
+        }
+    }
+
+    if (!plannedAutoSleepAt.has_value()) {
+        updatePlannedAutoSleep();
+    } else if (!settings->getSleepMode() && time_reached(plannedAutoSleepAt.value())) {
+        setSleepMode(true);
+    }
 }

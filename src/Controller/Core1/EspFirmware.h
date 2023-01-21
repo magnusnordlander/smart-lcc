@@ -52,27 +52,27 @@ private:
             case SOFT_BAIL:
                 return ESP_SYSTEM_INTERNAL_STATE_SOFT_BAIL;
             case HARD_BAIL:
+            default:
                 return ESP_SYSTEM_INTERNAL_STATE_HARD_BAIL;
         }
     }
 
     static inline ESPSystemRunState getRunState(SystemControllerRunState state) {
         switch (state) {
-            case RUN_STATE_UNDETEMINED:
-                return ESP_SYSTEM_RUN_STATE_UNDETEMINED;
             case RUN_STATE_HEATUP_STAGE_1:
                 return ESP_SYSTEM_RUN_STATE_HEATUP_STAGE_1;
             case RUN_STATE_HEATUP_STAGE_2:
                 return ESP_SYSTEM_RUN_STATE_HEATUP_STAGE_2;
             case RUN_STATE_NORMAL:
                 return ESP_SYSTEM_RUN_STATE_NORMAL;
+            case RUN_STATE_UNDETEMINED:
+            default:
+                return ESP_SYSTEM_RUN_STATE_UNDETEMINED;
         }
     }
 
     static inline ESPSystemCoalescedState getCoalescedState(SystemControllerCoalescedState state) {
         switch (state) {
-            case SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED:
-                return ESP_SYSTEM_COALESCED_STATE_UNDETERMINED;
             case SYSTEM_CONTROLLER_COALESCED_STATE_HEATUP:
                 return ESP_SYSTEM_COALESCED_STATE_HEATUP;
             case SYSTEM_CONTROLLER_COALESCED_STATE_TEMPS_NORMALIZING:
@@ -85,6 +85,9 @@ private:
                 return ESP_SYSTEM_COALESCED_STATE_BAILED;
             case SYSTEM_CONTROLLER_COALESCED_STATE_FIRST_RUN:
                 return ESP_SYSTEM_COALESCED_STATE_FIRST_RUN;
+            case SYSTEM_CONTROLLER_COALESCED_STATE_UNDETERMINED:
+            default:
+                return ESP_SYSTEM_COALESCED_STATE_UNDETERMINED;
         }
     }
 };

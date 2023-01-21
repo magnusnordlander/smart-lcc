@@ -5,7 +5,7 @@
 #ifndef SMART_LCC_USBDEBUG_H
 #define SMART_LCC_USBDEBUG_H
 
-#define USB_DEBUG 1
+#define USB_DEBUG 0
 
 #if USB_DEBUG
 #define INIT_USB_DEBUG() stdio_usb_init()
@@ -17,6 +17,6 @@
 
 #endif
 
-#define USB_PRINT_BUF(BUF, LEN) for (int __i = 0; __i < LEN; __i++) { USB_PRINTF("%02X", ((uint8_t*)BUF)[__i]); }
+#define USB_PRINT_BUF(BUF, LEN) for (unsigned int __i = 0; __i < LEN; __i++) { USB_PRINTF("%02X", ((uint8_t*)BUF)[__i]); }
 
 #endif //SMART_LCC_USBDEBUG_H

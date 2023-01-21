@@ -60,17 +60,17 @@ private:
     nonstd::optional<absolute_time_t> unbailTimer{};
     nonstd::optional<absolute_time_t> heatupStage2Timer{};
     nonstd::optional<absolute_time_t> brewStartedAt{};
+    nonstd::optional<absolute_time_t> plannedAutoSleepAt{};
 
     absolute_time_t lastSleepModeExitAt = nil_time;
 
+    uart_inst_t* uart;
+    PicoQueue<SystemControllerStatusMessage> *outgoingQueue;
+    PicoQueue<SystemControllerCommand> *incomingQueue;
     SystemSettings *settings;
 
     PidRuntimeParameters brewPidRuntimeParameters{};
     PidRuntimeParameters servicePidRuntimeParameters{};
-
-    PicoQueue<SystemControllerStatusMessage> *outgoingQueue;
-    PicoQueue<SystemControllerCommand> *incomingQueue;
-    uart_inst_t* uart;
 
     MovingAverage<float> brewTempAverage = MovingAverage<float>(5);
     MovingAverage<float> serviceTempAverage = MovingAverage<float>(5);
@@ -87,10 +87,12 @@ private:
     inline bool isSoftBailed() { return internalState == SOFT_BAIL; };
     void unbail();
 
+
     inline bool onlySendSafePackages() { return isBailed() || internalState == NOT_STARTED_YET; }
     [[nodiscard]] inline bool shouldForceHysteresisForBrewBoiler() const { return runState == RUN_STATE_HEATUP_STAGE_1 || runState == RUN_STATE_HEATUP_STAGE_2; };
 
     void setSleepMode(bool sleepMode);
+    void setAutoSleepMinutes(float minutes);
 
     [[nodiscard]] bool areTemperaturesAtSetPoint() const;
 
@@ -112,6 +114,16 @@ private:
     void updateControllerSettings();
 
     void sendLccPacket();
+
+    void updatePlannedAutoSleep();
+
+    void handleRunningStateAutomations();
+
+    void onBrewStarted();
+    void onBrewEnded();
+
+    void onSleepModeEntered();
+    void onSleepModeExited();
 };
 
 

@@ -29,11 +29,6 @@
 
 extern "C" volatile bool __otherCoreIdled;
 
-// Support nested IRQ disable/re-enable
-#define maxIRQs 15
-static uint32_t _irqStackTop[2] = { 0, 0 };
-static uint32_t _irqStack[2][maxIRQs];
-
 extern "C" void interrupts();
 
 extern "C" void noInterrupts();

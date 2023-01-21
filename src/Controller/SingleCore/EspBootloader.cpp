@@ -167,7 +167,7 @@ esp_bootloader_error_t EspBootloader::memBegin(uint32_t size, uint32_t blocks, u
     return 0x00;
 }
 
-esp_bootloader_error_t EspBootloader::memData(uint32_t seq, uint8_t *uploadData, size_t actualLen, size_t padLen) {
+esp_bootloader_error_t EspBootloader::memData(uint32_t seq, uint8_t *uploadData, size_t actualLen) {
     EspBootloaderResponseHeader response{};
     uint32_t data[4] = {
             actualLen,
@@ -228,14 +228,14 @@ esp_bootloader_error_t EspBootloader::memBeginAndData(uint32_t addr, const uint8
         return err;
     }
 
-    for (int seq = 0; seq < numBlocks; seq++) {
+    for (unsigned int seq = 0; seq < numBlocks; seq++) {
         uint32_t fromOffs = seq * blockSize;
         size_t actualLen = len - fromOffs;
         if (actualLen > blockSize) {
             actualLen = blockSize;
         }
 
-        err = memData(seq, const_cast<uint8_t *>(data + fromOffs), actualLen, blockSize);
+        err = memData(seq, const_cast<uint8_t *>(data + fromOffs), actualLen);
 
         if (err != 0x00) {
             return err;
@@ -406,7 +406,7 @@ esp_bootloader_error_t EspBootloader::flashBeginAndData(uint32_t addr, const uin
         return err;
     }
 
-    for (int seq = 0; seq < numBlocks; seq++) {
+    for (unsigned int seq = 0; seq < numBlocks; seq++) {
         uint32_t fromOffs = seq * blockSize;
         size_t actualLen = len - fromOffs;
         if (actualLen > blockSize) {
@@ -543,7 +543,7 @@ EspBootloader::EspBootloader(uart_inst_t *uart) : uart(uart) {}
 uint32_t EspBootloader::checksum(const uint8_t *data, size_t len) {
     uint32_t checksum = 0xEF;
 
-    for (int i = 0; i < len; i++) {
+    for (unsigned int i = 0; i < len; i++) {
         checksum ^= data[i];
     }
 

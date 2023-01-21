@@ -3,6 +3,7 @@
 //
 
 #include <cstdlib>
+#include <cmath>
 #include "EspFirmware.h"
 #include "pico/time.h"
 #include "hardware/regs/rosc.h"
@@ -130,6 +131,11 @@ bool EspFirmware::sendStatus(SystemControllerStatusMessage *systemControllerStat
             .length = sizeof(ESPSystemStatusMessage),
     };
 
+    uint16_t autosleepIn = 0;
+    if (!std::isinf(systemControllerStatusMessage->plannedSleepInSeconds)) {
+        autosleepIn = (uint16_t)systemControllerStatusMessage->plannedSleepInSeconds;
+    }
+
     ESPSystemStatusMessage statusMessage{
             .internalState = getInternalState(systemControllerStatusMessage->internalState),
             .runState = getRunState(systemControllerStatusMessage->runState),
@@ -139,13 +145,13 @@ bool EspFirmware::sendStatus(SystemControllerStatusMessage *systemControllerStat
             .serviceBoilerTemperature = systemControllerStatusMessage->serviceTemperature,
             .serviceBoilerSetPoint = systemControllerStatusMessage->serviceSetPoint,
             .brewTemperatureOffset = systemControllerStatusMessage->brewTemperatureOffset,
-            .autoSleepAfter = 0,
+            .autoSleepAfter = systemControllerStatusMessage->autoSleepMinutes,
             .currentlyBrewing = systemControllerStatusMessage->currentlyBrewing,
             .currentlyFillingServiceBoiler = systemControllerStatusMessage->currentlyFillingServiceBoiler,
             .ecoMode = systemControllerStatusMessage->ecoMode,
             .sleepMode = systemControllerStatusMessage->sleepMode,
             .waterTankLow = systemControllerStatusMessage->waterTankLow,
-            .plannedAutoSleepInSeconds = 0,
+            .plannedAutoSleepInSeconds = autosleepIn,
             .rp2040Temperature = 0,
     };
 
@@ -191,9 +197,15 @@ void EspFirmware::loop() {
                         return handleCommand(&header);
                     case ESP_MESSAGE_ESP_STATUS:
                         return handleESPStatus(&header);
+                    case ESP_MESSAGE_PING:
+                    case ESP_MESSAGE_PONG:
+                    case ESP_MESSAGE_ACK:
+                    case ESP_MESSAGE_NACK:
+                    case ESP_MESSAGE_SYSTEM_STATUS:
                     default:
                         ringbuffer.consumerClear();
                         return;
+
                 }
             }
         }
@@ -253,6 +265,8 @@ void EspFirmware::handleCommand(ESPMessageHeader *header) {
                     case ESP_SYSTEM_COMMAND_SET_ECO_MODE:
                         type = COMMAND_SET_ECO_MODE;
                         break;
+                    case ESP_SYSTEM_COMMAND_SET_AUTO_SLEEP_MINUTES:
+                        type = COMMAND_SET_AUTO_SLEEP_MINUTES;
                 }
 
                 SystemControllerCommand command{

@@ -17,6 +17,7 @@
 #include "Controller/Core1/EspFirmware.h"
 #include "utils/USBDebug.h"
 #include "firmware_crc.h"
+#include "pico/binary_info.h"
 
 #define U8G2_DISP_STR(__STR__) \
 u8g2_ClearBuffer(&u8g2); \
@@ -51,13 +52,26 @@ volatile bool __otherCoreIdled = false;
 
 [[noreturn]] void main1();
 
+void initEspNina() {
+    gpio_init(NINA_GPIO0);
+    gpio_init(NINA_RESETN);
+
+    bi_decl_if_func_used(bi_2pins_with_func(NINA_UART_TX_SPI_MISO, NINA_UART_RX_SPI_CS, GPIO_FUNC_UART));
+
+    gpio_set_function(NINA_UART_TX_SPI_MISO, GPIO_FUNC_UART);
+    gpio_set_function(NINA_UART_RX_SPI_CS, GPIO_FUNC_UART);
+
+    bi_decl_if_func_used(bi_2pins_with_names(NINA_GPIO0, "NINA GPIO0", NINA_RESETN, "NINA ResetN"));
+
+    gpio_set_dir(NINA_GPIO0, true);
+    gpio_set_dir(NINA_RESETN, true);
+}
+
 void initGpio() {
     // LED_BUILTIN uses the same pin as OLED SCK, so we can't use that
     // gpio_init(LED_BUILTIN);
     // gpio_set_dir(LED_BUILTIN, true);
 
-    gpio_init(NINA_GPIO0);
-    gpio_init(NINA_RESETN);
     gpio_init(PLUS_BUTTON);
     gpio_init(MINUS_BUTTON);
 
@@ -72,16 +86,16 @@ void initGpio() {
 //    gpio_set_function(AUX_RX, GPIO_FUNC_UART);
 //    gpio_set_function(AUX_TX, GPIO_FUNC_UART);
 
-    gpio_set_function(NINA_UART_TX_SPI_MISO, GPIO_FUNC_UART);
-    gpio_set_function(NINA_UART_RX_SPI_CS, GPIO_FUNC_UART);
+    initEspNina();
 
-    gpio_set_dir(NINA_GPIO0, true);
-    gpio_set_dir(NINA_RESETN, true);
+    bi_decl(bi_2pins_with_names(PLUS_BUTTON, "Plus button", MINUS_BUTTON, "Minus button"));
 
     gpio_set_dir(PLUS_BUTTON, false);
     gpio_pull_down(PLUS_BUTTON);
     gpio_set_dir(MINUS_BUTTON, false);
     gpio_pull_down(MINUS_BUTTON);
+
+    bi_decl(bi_2pins_with_func(CB_RX, CB_TX, GPIO_FUNC_UART));
 
     gpio_set_function(CB_RX, GPIO_FUNC_UART);
     gpio_set_inover(CB_RX, GPIO_OVERRIDE_INVERT);
@@ -217,6 +231,8 @@ void u8g2Int(uint8_t i) {
 }
 
 [[noreturn]] void main0() {
+    watchdog_enable(2000, true);
+
     cancel_repeating_timer(&safePacketBootupTimer);
     support.registerCore();
 
@@ -278,7 +294,7 @@ void u8g2Int(uint8_t i) {
 
         if (time_reached(nextSend)) {
             espFirmware->sendStatus(&sm);
-            nextSend = make_timeout_time_ms(1000);
+            nextSend = make_timeout_time_ms(250);
         }
     }
 
@@ -286,13 +302,13 @@ void u8g2Int(uint8_t i) {
 
 }
 
-bool repeating_timer_callback(repeating_timer_t *t) {
+bool repeating_timer_callback([[maybe_unused]] repeating_timer_t *t) {
     systemController->sendSafePacketNoWait();
     return true;
 }
 
 int main() {
-    INIT_USB_DEBUG();
+    stdio_usb_init();
 
     initGpio();
     initU8g2();

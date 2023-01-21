@@ -38,7 +38,7 @@ public:
     esp_bootloader_error_t spiAttach(bool stubRunning);
     esp_bootloader_error_t spiFlashMd5(uint32_t addr, uint32_t size, esp_bootloader_md5_t *md5);
     esp_bootloader_error_t memBegin(uint32_t size, uint32_t blocks, uint32_t blocksize, uint32_t offset);
-    esp_bootloader_error_t memData(uint32_t seq, uint8_t *data, size_t actualLen, size_t padLen);
+    esp_bootloader_error_t memData(uint32_t seq, uint8_t *data, size_t actualLen);
     esp_bootloader_error_t memEnd(uint32_t entrypoint);
     esp_bootloader_error_t flashBegin(uint32_t size, uint32_t blocks, uint32_t blocksize, uint32_t offset);
     esp_bootloader_error_t flashData(uint32_t seq, uint8_t *data, size_t actualLen, size_t padLen);

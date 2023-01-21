@@ -99,6 +99,8 @@ struct SystemControllerStatusMessage{
     bool currentlyBrewing{};
     bool currentlyFillingServiceBoiler{};
     bool waterTankLow{};
+    uint16_t autoSleepMinutes{};
+    float plannedSleepInSeconds{};
     absolute_time_t lastSleepModeExitAt = nil_time;
 };
 
@@ -111,6 +113,7 @@ typedef enum {
     COMMAND_SET_SERVICE_PID_PARAMETERS,
     COMMAND_SET_ECO_MODE,
     COMMAND_SET_SLEEP_MODE,
+    COMMAND_SET_AUTO_SLEEP_MINUTES,
     COMMAND_UNBAIL,
     COMMAND_TRIGGER_FIRST_RUN,
     COMMAND_BEGIN

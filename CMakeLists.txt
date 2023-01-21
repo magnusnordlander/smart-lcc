@@ -4,11 +4,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-#set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-mcpu=cortex-m0plus -mthumb -Wswitch-enum -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g2 -O0 -ggdb2")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-#set(CMAKE_C_FLAGS "-Wall -Wextra")
+set(CMAKE_C_FLAGS "-mcpu=cortex-m0plus -mthumb -Wswitch-enum -Wall -Wextra")
 set(CMAKE_C_FLAGS_DEBUG "-g2 -O0 -ggdb2")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
@@ -171,6 +171,7 @@ target_link_libraries(smart_lcc
         )
 
 # enable usb output, disable uart output
+# stdio_usb is required to be able to use picotool
 pico_enable_stdio_usb(smart_lcc 1)
 pico_enable_stdio_uart(smart_lcc 0)
 
@@ -180,5 +181,4 @@ pico_add_extra_outputs(smart_lcc)
 pico_set_linker_script(smart_lcc ${CMAKE_SOURCE_DIR}/memmap.ld)
 
 add_custom_target(Upload-JLink COMMAND /Applications/SEGGER/JLink/JLinkExe -device RP2040_M0_0 -CommandFile ../upload.jlink DEPENDS smart_lcc)
-
-add_custom_target(__DUMMY COMMAND echo foo)
+add_custom_target(Upload-Picotool COMMAND picotool load -x smart_lcc.uf2 -f DEPENDS smart_lcc)

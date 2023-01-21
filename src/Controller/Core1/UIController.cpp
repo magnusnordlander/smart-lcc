@@ -20,7 +20,7 @@
 #include "cup_no_smoke.h"
 
 UIController::UIController(SystemStatus *status, PicoQueue<SystemControllerCommand> *commandQueue, u8g2_t *display, uint minus_gpio, uint plus_gpio):
-status(status), commandQueue(commandQueue), display(display), minus_gpio(minus_gpio), plus_gpio(plus_gpio) {
+commandQueue(commandQueue), status(status), display(display), minus_gpio(minus_gpio), plus_gpio(plus_gpio) {
     blip = 0;
 }
 
@@ -161,7 +161,7 @@ void UIController::loop() {
     } else {
         u8g2_SetFont(display, u8g2_font_helvB14_tn);
 
-        char degreeBuf[9];
+        char degreeBuf[15];
 
         uint8_t progressOffset = 1;
 
@@ -289,7 +289,7 @@ void UIController::drawBrewScreen(BrewScreen screen, uint8_t seconds) {
 
     u8g2_SetFont(display, u8g2_font_5x7_tf);
 
-    char degreeBuf[9];
+    char degreeBuf[15];
     snprintf(degreeBuf, sizeof(degreeBuf), FUCKED_UP_FLOAT_1_FMT "°C", FUCKED_UP_FLOAT_1_ARG(status->getOffsetBrewTemperature()));
 
     u8g2_DrawStr(display, X_START + 5, Y_END - 1, "Brew temp");

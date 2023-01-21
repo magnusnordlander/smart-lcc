@@ -83,7 +83,7 @@ struct __packed ESPSystemStatusMessage {
     float serviceBoilerTemperature;
     float serviceBoilerSetPoint;
     float brewTemperatureOffset;
-    uint8_t autoSleepAfter;
+    uint16_t autoSleepAfter;
     bool currentlyBrewing;
     bool currentlyFillingServiceBoiler;
     bool ecoMode;
@@ -105,6 +105,7 @@ enum ESPSystemCommandType: uint32_t {
     ESP_SYSTEM_COMMAND_SET_SERVICE_PID_PARAMETERS,
     ESP_SYSTEM_COMMAND_SET_ECO_MODE,
     ESP_SYSTEM_COMMAND_SET_SLEEP_MODE,
+    ESP_SYSTEM_COMMAND_SET_AUTO_SLEEP_MINUTES
 };
 
 struct __packed ESPSystemCommandPayload {

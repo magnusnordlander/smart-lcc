@@ -25,7 +25,6 @@ public:
 
     nonstd::optional<absolute_time_t> lastBrewStartedAt;
     nonstd::optional<absolute_time_t> lastBrewEndedAt;
-    nonstd::optional<absolute_time_t> plannedAutoSleepAt;
 
     SystemMode mode;
 
