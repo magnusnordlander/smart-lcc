@@ -40,6 +40,16 @@ sensor:
     id: wifi_signal_db
     update_interval: 60s
     entity_category: "diagnostic"
+  - platform: uptime
+    name: "ESP32 Uptime"
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    filters:
+      - lambda: return x / 60;
+      - or:
+          - throttle: 60s
+          - delta: 0.45
+    entity_category: "diagnostic"
   - platform: template
     name: Brew boiler temperature
     id: brew_temp_sensor
@@ -68,6 +78,26 @@ sensor:
       - or:
           - throttle: 60s
           - delta: 0.45
+  - platform: template
+    name: RP2040 Uptime
+    id: rp2040_uptime
+    unit_of_measurement: "min"
+    accuracy_decimals: 0
+    filters:
+      - lambda: return x / 60;
+      - or:
+          - throttle: 60s
+          - delta: 0.45
+    entity_category: "diagnostic"
+  - platform: template
+    name: Bail count
+    id: bail_count
+    accuracy_decimals: 0
+    filters:
+      - or:
+          - throttle: 60s
+          - delta: 0.45
+    entity_category: "diagnostic"
 
 text_sensor:
   - platform: template
@@ -94,6 +124,8 @@ custom_component:
       lcc->set_brew_boiler_temp(id(brew_temp_sensor));
       lcc->set_service_boiler_temp(id(service_temp_sensor));
       lcc->set_planned_auto_sleep_sensor(id(planned_auto_sleep_sensor));
+      lcc->set_rp2040_uptime_sensor(id(rp2040_uptime));
+      lcc->set_bail_count_sensor(id(bail_count));
       lcc->set_coalesced_state_text_sensor(id(coalesced_state_text_sensor));
       lcc->set_water_tank_low_binary_sensor(id(water_tank_low_binary_sensor));
       lcc->set_currently_brewing_binary_sensor(id(currently_brewing_binary_sensor));

@@ -102,6 +102,7 @@ struct SystemControllerStatusMessage{
     uint16_t autoSleepMinutes{};
     float plannedSleepInSeconds{};
     absolute_time_t lastSleepModeExitAt = nil_time;
+    uint16_t bailCounter{};
 };
 
 typedef enum {

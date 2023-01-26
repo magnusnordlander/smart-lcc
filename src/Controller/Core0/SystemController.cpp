@@ -125,7 +125,8 @@ void SystemController::loop() {
             .waterTankLow = currentControlBoardParsedPacket.water_tank_empty,
             .autoSleepMinutes = settings->getAutoSleepMin(),
             .plannedSleepInSeconds = sleepSeconds,
-            .lastSleepModeExitAt = lastSleepModeExitAt
+            .lastSleepModeExitAt = lastSleepModeExitAt,
+            .bailCounter = bailCounter
     };
 
     if (!outgoingQueue->isFull()) {
@@ -341,6 +342,10 @@ void SystemController::updateControllerSettings() {
 }
 
 void SystemController::softBail(SystemControllerBailReason reason) {
+    if (!isBailed()) {
+        bailCounter++;
+    }
+
     if (internalState != HARD_BAIL) {
         internalState = SOFT_BAIL;
     }
@@ -351,6 +356,10 @@ void SystemController::softBail(SystemControllerBailReason reason) {
 }
 
 void SystemController::hardBail(SystemControllerBailReason reason) {
+    if (!isBailed()) {
+        bailCounter++;
+    }
+
     internalState = HARD_BAIL;
     bail_reason = reason;
 }

@@ -153,6 +153,8 @@ bool EspFirmware::sendStatus(SystemControllerStatusMessage *systemControllerStat
             .waterTankLow = systemControllerStatusMessage->waterTankLow,
             .plannedAutoSleepInSeconds = autosleepIn,
             .rp2040Temperature = 0,
+            .numBails = systemControllerStatusMessage->bailCounter,
+            .rp2040UptimeSeconds = to_ms_since_boot(systemControllerStatusMessage->timestamp) / 1000,
     };
 
     ringbuffer.consumerClear();

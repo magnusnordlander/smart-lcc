@@ -81,6 +81,7 @@ private:
 
     SystemControllerCoalescedState externalState();
 
+    uint16_t bailCounter = 0;
     void softBail(SystemControllerBailReason reason);
     void hardBail(SystemControllerBailReason reason);
     inline bool isBailed() { return internalState == SOFT_BAIL || internalState == HARD_BAIL; }

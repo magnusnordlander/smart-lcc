@@ -91,6 +91,8 @@ struct __packed ESPSystemStatusMessage {
     bool waterTankLow;
     uint16_t plannedAutoSleepInSeconds;
     float rp2040Temperature;
+    uint16_t numBails;
+    uint32_t rp2040UptimeSeconds;
     /*
      * To add:
      * Pid settings and pid parameters

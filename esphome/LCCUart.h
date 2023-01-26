@@ -22,6 +22,8 @@ public:
     esphome::sensor::Sensor *brewTemperatureSensor{nullptr};
     esphome::sensor::Sensor *serviceTemperatureSensor{nullptr};
     esphome::sensor::Sensor *plannedAutoSleepSensor{nullptr};
+    esphome::sensor::Sensor *rp2040UptimeSensor{nullptr};
+    esphome::sensor::Sensor *bailCountSensor{nullptr};
     esphome::text_sensor::TextSensor *coalescedStateSensor{nullptr};
     LambdaSwitch *ecoModeSwitch{nullptr};
     LambdaSwitch *sleepSwitch{nullptr};
@@ -100,6 +102,14 @@ public:
 
     void set_planned_auto_sleep_sensor(esphome::sensor::Sensor *sensor) {
         this->plannedAutoSleepSensor = sensor;
+    }
+
+    void set_rp2040_uptime_sensor(esphome::sensor::Sensor *sensor) {
+        this->rp2040UptimeSensor = sensor;
+    }
+
+    void set_bail_count_sensor(esphome::sensor::Sensor *sensor) {
+        this->bailCountSensor = sensor;
     }
 
 
@@ -246,6 +256,14 @@ public:
 
                 if (plannedAutoSleepSensor != nullptr) {
                     plannedAutoSleepSensor->publish_state((float)message.plannedAutoSleepInSeconds);
+                }
+
+                if (rp2040UptimeSensor != nullptr) {
+                    rp2040UptimeSensor->publish_state((float)message.rp2040UptimeSeconds);
+                }
+
+                if (bailCountSensor != nullptr) {
+                    bailCountSensor->publish_state((float)message.numBails);
                 }
 
                 std::string coalescedStateString = prettifyCoalescedStateString(message.coalescedState);
