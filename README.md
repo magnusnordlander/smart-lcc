@@ -6,7 +6,7 @@ A smarter LCC for the Lelit Bianca V2, with Wi-Fi and stuff.
 
 Based on the protocol dissection I'm doing in [magnusnordlander/lelit-bianca-protocol](https://github.com/magnusnordlander/lelit-bianca-protocol).
 
-**This project is moving to [https://github.com/open-lcc](https://github.com/open-lcc). Don't manufacture this board, there's a new revision coming.**
+**This project is moving to [https://github.com/variegated-coffee](https://github.com/variegated-coffee). Don't manufacture this board, there's a new revision coming.**
 
 ## Status
 
